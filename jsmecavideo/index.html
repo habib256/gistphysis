@@ -1,33 +1,43 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>jsmecavideo</title>
 
-        <!-- Inclusion de la bibliothèque p5.js -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.8.0/p5.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
-        <script src="videoplayer.js"></script>
-        <script src="visor.js"></script>
-        <script src="mecavideo.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <title>jsmecavideo</title>
 
-        <!-- Ajout de CSS -->
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-            }
+    <!-- Inclusion de la bibliothèque p5.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.8.0/p5.min.js"></script>
+    <script src="graphica.min.js.js"></script>
+    <script src="videoplayer.js"></script>
+    <script src="visor.js"></script>
+    <script src="mecavideo.js"></script>
 
-            canvas {
-                display: inline-block;
-                vertical-align: top;
-            }
-        </style>
-    </head>
-    <body>
-        <div id="controls">
-            <!-- Les boutons seront créés ici -->
-        </div>
-        <div id="canvas-container"></div>
-    </body>
+    <!-- Ajout de CSS -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        #controls {
+            width: 800px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="menu">
+        <!-- Les boutons seront créés ici -->
+    </div>
+    <div id="canvas-container"></div>
+    <div id="controls">
+        <!-- Les boutons seront créés ici -->
+    </div>
+</body>
+
 </html>

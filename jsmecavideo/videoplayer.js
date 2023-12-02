@@ -38,7 +38,8 @@ class VideoPlayer {
 
         this.slider = createSlider(0, 1, 0.5, 0.01);
         this.slider.parent('controls'); // Place le slider dans le conteneur 'controls'
-        this.slider.style('width', this.video.width + 'px');        
+        this.slider.style('width', this.video.width + 'px'); 
+        this.slider.style('float', 'right'); // Align the slider to the right
         this.slider.input(() => this.video.time(this.video.duration() * this.slider.value()));
     }
 
