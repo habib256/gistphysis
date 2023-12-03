@@ -65,4 +65,14 @@ class VideoPlayer {
         // Update the slider value
         this.slider.value(this.video.time() / this.video.duration());
     }
+    removeElements() {
+        this.video.remove();
+        this.buttonStart.remove();
+        this.buttonBack.remove();
+        this.buttonPlay.remove();
+        this.buttonPause.remove();
+        this.buttonForward.remove();
+        this.buttonEnd.remove();
+        this.slider.remove();
+    }
 }
