@@ -2,11 +2,27 @@ let videoPlayer;
 let visor;
 let dropdown;
 let dropdown2;
-// MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
-let videoFiles = ['videos/bille1-iv5.mp4', 'videos/bille2-iv5.mp4', 'videos/bille3-iv5.mp4', 'videos/billegrosse.mp4', 'videos/billepetite.mp4', 'videos/chute.mp4', 'videos/disque33t.mp4', 'videos/disque45t.mp4', 'videos/jump_side_view.mp4', 'videos/moto-relatif.mp4', 'videos/parabolique.mp4', 'videos/vague2cm5.mp4', 'videos/vague3.mp4', 'videos/vague3cm0.mp4']; // Ajoutez vos fichiers vidéo ici
 
 let data = new Data();
 let graph = new Graph(data);
+
+// MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
+let videoFiles = [
+  {path: 'videos/bille1-iv5.mp4', framerate: 1000000/33333},
+  {path: 'videos/bille2-iv5.mp4', framerate: 1000000/33333},
+  {path: 'videos/bille3-iv5.mp4', framerate: 500000/16129},
+  {path: 'videos/billegrosse.mp4', framerate: 25},
+  {path: 'videos/billepetite.mp4', framerate: 25},
+  {path: 'videos/chute.mp4', framerate: 25},
+  {path: 'videos/disque33t.mp4', framerate: 25},
+  {path: 'videos/disque45t.mp4', framerate: 25},
+  {path: 'videos/moto-relatif.mp4', framerate: 25},
+  {path: 'videos/parabolique.mp4', framerate: 25},
+  {path: 'videos/vague2cm5.mp4', framerate: 20},
+  {path: 'videos/vague3.mp4', framerate: 25},
+  {path: 'videos/vague3cm0.mp4', framerate: 20}
+]; // Ajoutez vos fichiers vidéo ici avec leur framerate respectif obtenu grace à la commande suivante
+// # ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate vague3.mp4 
 
 function setup() {
 
@@ -34,16 +50,15 @@ function setup() {
   dropdown2.parent('menu');
 
   videoFiles.forEach((videoFile, index) => {
-    dropdown2.option(videoFile, index); // Utilisez l'index comme valeur
+    dropdown2.option(videoFile.path, index); // Utilisez l'index comme valeur
   });
   // Définir une fonction de rappel pour le changement de vidéo
   dropdown2.changed(() => {
     if (videoPlayer) {
       videoPlayer.removeElements();
-      data.clearPoints();
     }
     let selectedVideoIndex = dropdown2.value();
-    videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex], 25);
+    videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
   });
 }
 

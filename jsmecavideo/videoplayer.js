@@ -19,7 +19,7 @@ class VideoPlayer {
         this.buttonPlay.parent('controls');
         this.buttonPlay.mousePressed(() => {
             this.video.play();
-            this.video.frameRate(this.framerate);
+            this.video.speed(1); // Contrôle la vitesse de lecture de la vidéo
         });
 
         this.buttonPause = createButton('Pause');

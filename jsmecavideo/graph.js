@@ -8,7 +8,8 @@ class Graph {
 
         for (let i = 0; i < points.length; i++) {
             let point = points[i];
-            ellipse(point.x, point.y, 5, 5);
+            line(point.x - 5, point.y - 5, point.x + 5, point.y + 5);
+            line(point.x + 5, point.y - 5, point.x - 5, point.y + 5);
         }
     }
 }
