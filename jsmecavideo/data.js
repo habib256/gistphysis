@@ -1,20 +1,24 @@
 class Data {
     constructor() {
-        this.trajectories = [];
+        this.points = [];
     }
 
-    // Ajoute une nouvelle trajectoire à la liste
-    addTrajectory(x, y) {
-        this.trajectories.push({x: x, y: y});
+    // Ajoute un nouveau point à la liste
+    addPoint(x, y) {
+        this.points.push({x: x, y: y});
     }
 
-    // Renvoie toutes les trajectoires
-    getAllTrajectories() {
-        return this.trajectories;
+    // Renvoie tous les points
+    getAllPoints() {
+        return this.points;
     }
 
-    // Supprime toutes les trajectoires
-    clearTrajectories() {
-        this.trajectories = [];
+    // Supprime tous les points
+    clearPoints() {
+        this.points = [];
+    }
+
+    removePoint(x, y) {
+        this.points.pop();
     }
 }

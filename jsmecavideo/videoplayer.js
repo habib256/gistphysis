@@ -1,7 +1,8 @@
 class VideoPlayer {
-    constructor(videoFile) {
+    constructor(videoFile, framerate) {
         this.video = createVideo([videoFile]);
         this.video.hide();
+        this.framerate = framerate;
 
         this.buttonStart = createButton('Début');
         this.buttonStart.parent('controls');
@@ -11,14 +12,14 @@ class VideoPlayer {
         this.buttonBack.parent('controls');
         this.buttonBack.mousePressed(() => {
             this.video.pause();
-            this.video.time(this.video.time() - 0.1);
+            this.previousFrame();
         });
 
         this.buttonPlay = createButton('Lire');
         this.buttonPlay.parent('controls');
         this.buttonPlay.mousePressed(() => {
             this.video.play();
-            this.video.frameRate(framerate);
+            this.video.frameRate(this.framerate);
         });
 
         this.buttonPause = createButton('Pause');
@@ -29,7 +30,7 @@ class VideoPlayer {
         this.buttonForward.parent('controls');
         this.buttonForward.mousePressed(() => {
             this.video.pause();
-            this.video.time(this.video.time() + 0.1);
+            this.nextFrame();
         });
 
         this.buttonEnd = createButton('Fin');
@@ -76,5 +77,14 @@ class VideoPlayer {
         this.buttonForward.remove();
         this.buttonEnd.remove();
         this.slider.remove();
+    }
+    nextFrame() {
+        let currentTime = this.video.time();
+        this.video.time(currentTime + 1/this.framerate); // Avance de 1/framerate de seconde
+    }
+
+    previousFrame() {
+        let currentTime = this.video.time();
+        this.video.time(currentTime - 1/this.framerate); // Recule de 1/framerate de seconde
     }
 }
