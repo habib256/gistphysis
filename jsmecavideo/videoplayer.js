@@ -56,10 +56,12 @@ class VideoPlayer {
         let x = (width - w) / 2;
         let y = (height - h) / 2;
 
-        stroke(0); // Couleur du viseur en rouge
+        stroke(0); // Couleur des bandes en noir
         fill(0);
-        rect(0, 0, width, y);
-        rect(0, y+h+1, width, height );
+        rect(0, 0, width, y); // Bande horizontale supérieure
+        rect(0, y+h+1, width, height ); // Bande horizontale inférieure
+        rect(0, 0, x, height); // Bande verticale gauche
+        rect(x+w+1, 0, width, height); // Bande verticale droite
         image(this.video, x, y, w, h);
 
         // Update the slider value
