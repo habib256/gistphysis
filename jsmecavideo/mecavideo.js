@@ -37,7 +37,6 @@ function setup() {
   dropdown = createSelect();
   dropdown.parent('menu');
   dropdown.option(' Videos');
-  dropdown.option(' Calibrage');
   dropdown.option(' Pointage');
   dropdown.option(' Graphiques');
   // Définir une fonction de rappel pour le changement d'option
@@ -64,9 +63,6 @@ function draw() {
     case 'Videos':
       videoPlayer.draw();
       break;
-    case 'Calibrage':
-      videoPlayer.draw();
-      break;
     case 'Pointage':
       videoPlayer.draw();
       graph.draw();
@@ -87,21 +83,23 @@ function optionChanged() {
   etat = dropdown.value().trim(); // Mettre à jour l'état lorsque l'option change
   console.log(etat);
 
-  if (etat !== 'Video') {
-
+  if (etat === 'Pointage') {
+    videoPlayer.jumpToStart(); // Remettre la vidéo au début
   }
 }
 
 
 // Ajoute une fonction pour ajouter ou retirer un point dans data à chaque clic sur la vidéo
 function mouseClicked(event) {
-  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
-    if (mouseButton === LEFT && keyIsDown(CONTROL)) {
-      data.removePoint();
-      videoPlayer.previousFrame();
-    } else if (mouseButton === LEFT) {
-      data.addPoint(mouseX, mouseY);
-      videoPlayer.nextFrame();
+  if (etat === 'Pointage' && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    if (videoPlayer.video.time() <= (videoPlayer.video.duration())) {
+      if (mouseButton === LEFT && keyIsDown(CONTROL)) {
+        data.removeLastPoint();
+        videoPlayer.previousFrame();
+      } else if (mouseButton === LEFT) {
+        data.addPoint(videoPlayer.video.time(), mouseX, mouseY);
+        videoPlayer.nextFrame();
+      }
     }
   }
 }

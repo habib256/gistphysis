@@ -4,6 +4,7 @@ class Graph {
     }
 
     draw() {
+        stroke(color(255, 0, 0, 255));
         let points = this.data.getAllPoints();
 
         for (let i = 0; i < points.length; i++) {

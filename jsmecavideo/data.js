@@ -4,8 +4,8 @@ class Data {
     }
 
     // Ajoute un nouveau point à la liste avec le temps
-    addPoint(x, y, time) {
-        this.points.push({x: x, y: y, time: time});
+    addPoint(time, x, y) {
+        this.points.push({time: time, x: x, y: y});
     }
 
     // Renvoie tous les points
@@ -14,12 +14,12 @@ class Data {
     }
 
     // Supprime tous les points
-    clearPoints() {
+    clearAllPoints() {
         this.points = [];
     }
 
     // Supprime le dernier point
-    removePoint() {
+    removeLastPoint() {
         this.points.pop();
     }
 }

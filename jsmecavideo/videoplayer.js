@@ -6,7 +6,7 @@ class VideoPlayer {
 
         this.buttonStart = createButton('Début');
         this.buttonStart.parent('controls');
-        this.buttonStart.mousePressed(() => this.video.time(0));
+        this.buttonStart.mousePressed(() => this.jumpToStart() );
 
         this.buttonBack = createButton('Retour');
         this.buttonBack.parent('controls');
@@ -33,15 +33,11 @@ class VideoPlayer {
             this.nextFrame();
         });
 
-        this.buttonEnd = createButton('Fin');
-        this.buttonEnd.parent('controls');
-        this.buttonEnd.mousePressed(() => this.video.time(this.video.duration()));
-
         this.slider = createSlider(0, 1, 0.5, 0.01);
         this.slider.parent('controls'); // Place le slider dans le conteneur 'controls'
         this.slider.style('width', this.video.width + 'px'); 
         this.slider.style('float', 'right'); // Align the slider to the right
-        this.slider.input(() => this.video.time(this.video.duration() * this.slider.value()));
+        this.slider.input(() => this.video.time((this.video.duration() - 1/this.framerate) * this.slider.value()));
     }
 
     draw() {
@@ -66,7 +62,7 @@ class VideoPlayer {
         image(this.video, x, y, w, h);
 
         // Update the slider value
-        this.slider.value(this.video.time() / this.video.duration());
+        this.slider.value(this.video.time() / (this.video.duration() - 1/this.framerate));
     }
     removeElements() {
         this.video.remove();
@@ -75,16 +71,19 @@ class VideoPlayer {
         this.buttonPlay.remove();
         this.buttonPause.remove();
         this.buttonForward.remove();
-        this.buttonEnd.remove();
         this.slider.remove();
     }
     nextFrame() {
-        let currentTime = this.video.time();
-        this.video.time(currentTime + 1/this.framerate); // Avance de 1/framerate de seconde
+       if (this.video.duration() > this.video.time()+ 1/(this.framerate)) {
+        this.video.time(this.video.time() + 1/this.framerate); // Avance de 1/framerate de seconde
+       }
     }
 
     previousFrame() {
-        let currentTime = this.video.time();
-        this.video.time(currentTime - 1/this.framerate); // Recule de 1/framerate de seconde
+        this.video.time( this.video.time() - 1/this.framerate); // Recule de 1/framerate de seconde
+    }
+
+    jumpToStart() {
+        this.video.time(0);
     }
 }
