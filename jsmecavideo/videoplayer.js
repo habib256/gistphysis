@@ -54,28 +54,37 @@ class VideoPlayer {
     }
 
     draw() {
-        let ratio = this.video.width / this.video.height;
-        let w = height * ratio;
-        let h = height;
+        if (this.video.loadedmetadata) {
+            let ratio = this.video.width / this.video.height;
+            let w = height * ratio;
+            let h = height;
 
-        if (w > width) {
-            w = width;
-            h = width / ratio;
+            if (w > width) {
+                w = width;
+                h = width / ratio;
+            }
+
+            let x = (width - w) / 2;
+            let y = (height - h) / 2;
+
+            stroke(0); // Couleur des bandes en noir
+            fill(0);
+            rect(0, 0, width, y); // Bande horizontale supérieure
+            rect(0, y+h+1, width, height ); // Bande horizontale inférieure
+            rect(0, 0, x, height); // Bande verticale gauche
+            rect(x+w+1, 0, width, height); // Bande verticale droite
+            image(this.video, x, y, w, h);
+
+            // Update the slider value
+            this.slider.value(this.video.time() / (this.video.duration() - 1/this.framerate));
+        } else {
+            background (0);
+            stroke(255); 
+            fill(255);
+            textSize(48);
+            textAlign(CENTER, CENTER);
+            text('Chargement de la vidéo', width / 2, height / 2);
         }
-
-        let x = (width - w) / 2;
-        let y = (height - h) / 2;
-
-        stroke(0); // Couleur des bandes en noir
-        fill(0);
-        rect(0, 0, width, y); // Bande horizontale supérieure
-        rect(0, y+h+1, width, height ); // Bande horizontale inférieure
-        rect(0, 0, x, height); // Bande verticale gauche
-        rect(x+w+1, 0, width, height); // Bande verticale droite
-        image(this.video, x, y, w, h);
-
-        // Update the slider value
-        this.slider.value(this.video.time() / (this.video.duration() - 1/this.framerate));
     }
     removeElements() {
         this.video.remove();

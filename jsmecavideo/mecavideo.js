@@ -3,28 +3,39 @@ let visor;
 let dropdown;
 let dropdown2;
 
-let xConversionFactor = 1; // Conversion de pixels en mètres
-let yConversionFactor = 1; // Conversion de pixels en mètres
-let data = new Data(xConversionFactor, yConversionFactor);
+let xConversionFactor = 1; // Echelle de pixels en mètres
+let yConversionFactor = 1; // Echelle de pixels en mètres
+let timeConversionFactor = 1; 
+let data = new Data();
 let graph;
 
 let etat = 'Pointage'; 
 
 // MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
 let videoFiles = [
+  { path: 'videos/chute.mp4', framerate: 25 },
+  { path: 'videos/parabolique.mp4', framerate: 25 },
+  { path: 'videos/disque33t.mp4', framerate: 25 },
+  { path: 'videos/disque45t.mp4', framerate: 25 },
+  { path: 'videos/VenusTerreMars.mp4', framerate: 25 },
+  { path: 'videos/PenduleSimpleAmorti_38cm1.mp4', framerate: 25 },
+  { path: 'videos/RessortVertical_Masse24g30.mp4', framerate: 25 },
   { path: 'videos/bille1-iv5.mp4', framerate: 1000000 / 33333 },
   { path: 'videos/bille2-iv5.mp4', framerate: 1000000 / 33333 },
   { path: 'videos/bille3-iv5.mp4', framerate: 500000 / 16129 },
   { path: 'videos/billegrosse.mp4', framerate: 25 },
   { path: 'videos/billepetite.mp4', framerate: 25 },
-  { path: 'videos/chute.mp4', framerate: 25 },
-  { path: 'videos/disque33t.mp4', framerate: 25 },
-  { path: 'videos/disque45t.mp4', framerate: 25 },
+  { path: 'videos/BilleFer_Eau25C_2g055_7mm93.mp4', framerate: 25 },
   { path: 'videos/moto-relatif.mp4', framerate: 25 },
-  { path: 'videos/parabolique.mp4', framerate: 25 },
   { path: 'videos/vague2cm5.mp4', framerate: 20 },
   { path: 'videos/vague3.mp4', framerate: 25 },
-  { path: 'videos/vague3cm0.mp4', framerate: 20 }
+  { path: 'videos/vague3cm0.mp4', framerate: 20 },
+  { path: 'videos/Eclatement2MA.mp4', framerate: 25 },
+  { path: 'videos/MasseRoule.mp4', framerate: 15 },
+  { path: 'videos/TableHorizChocPresqueElastique_R631g7_B749g2.mp4', framerate: 25 },
+  { path: 'videos/TableHorizRectiligneUniforme_631g7.mp4', framerate: 25 }
+
+
 ]; // Ajoutez vos fichiers vidéo ici avec leur framerate respectif obtenu grace à la commande suivante
 // # ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate vague3.mp4 
 
