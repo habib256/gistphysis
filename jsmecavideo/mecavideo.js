@@ -8,7 +8,7 @@ let yConversionFactor = 1; // Conversion de pixels en mètres
 let data = new Data(xConversionFactor, yConversionFactor);
 let graph;
 
-let etat = 'Videos'; // Initialiser l'état à 'Video'
+let etat = 'Pointage'; 
 
 // MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
 let videoFiles = [
@@ -39,7 +39,6 @@ function setup() {
   // Créer un menu déroulant
   dropdown = createSelect();
   dropdown.parent('menu');
-  dropdown.option(' Videos');
   dropdown.option(' Pointage');
   dropdown.option(' Graphiques');
   // Définir une fonction de rappel pour le changement d'option
@@ -55,7 +54,10 @@ function setup() {
   dropdown2.changed(() => {
     if (videoPlayer) {
       videoPlayer.removeElements();
+      dropdown.selected(' Pointage'); // Réinitialiser la valeur de dropdown à 'Pointage'
+      data.clearAllPoints();
     }
+    etat = 'Pointage'; 
     let selectedVideoIndex = dropdown2.value();
     videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
   });
@@ -64,15 +66,11 @@ function setup() {
 function draw() {
 
   switch (etat) {
-    case 'Videos':
-      videoPlayer.draw();
-      cursor(); 
-      break;
     case 'Pointage':
       videoPlayer.draw();
       data.getAllPoints().forEach((point) => {
         let x = point.x / xConversionFactor;
-        let y = point.y / yConversionFactor;
+        let y = 600-point.y / yConversionFactor;
         // Dessine une croix
         line(x - 3, y - 3, x + 3, y + 3);
         line(x + 3, y - 3, x - 3, y + 3);
@@ -98,12 +96,6 @@ function optionChanged() {
   etat = dropdown.value().trim(); // Mettre à jour l'état lorsque l'option change
   console.log(etat);
 
-  if (etat === 'Vidéo') { 
-    graph.destroy();
-    let selectedVideoIndex = dropdown2.value();
-    videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
-  }
-
   if (etat === 'Pointage') {
     graph.destroy();
     videoPlayer.addElements();
@@ -126,7 +118,7 @@ function mouseClicked(event) {
         videoPlayer.previousFrame();
       } else if (mouseButton === LEFT) {
         let calibratedX = mouseX * xConversionFactor;
-        let calibratedY = mouseY * yConversionFactor;
+        let calibratedY = 600-mouseY * yConversionFactor;
       
           data.addPoint(videoPlayer.time, calibratedX, calibratedY);
           videoPlayer.nextFrame();

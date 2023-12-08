@@ -16,7 +16,7 @@ class Graph {
             type: 'scatter',
             data: {
                 datasets: [{
-                    label: 'Scatter Dataset',
+                    label: 'JSMECAVIDEO GRAPH',
                     data: points.map(point => ({x: point.x, y: point.y})),
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1
@@ -25,10 +25,12 @@ class Graph {
             options: {
                 scales: {
                     x: {
-                        // Ajoutez vos options pour l'axe x ici
+                        min: 0,
+                        max: 800
                     },
                     y: {
-                        // Ajoutez vos options pour l'axe y ici
+                        min: 0,
+                        max: 600
                     }
                 }
             }
