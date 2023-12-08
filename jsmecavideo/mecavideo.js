@@ -3,8 +3,10 @@ let visor;
 let dropdown;
 let dropdown2;
 
-let data = new Data();
-let graph = new Graph(data);
+let xConversionFactor = 1; // Conversion de pixels en mètres
+let yConversionFactor = 1; // Conversion de pixels en mètres
+let data = new Data(xConversionFactor, yConversionFactor);
+let graph;
 
 let etat = 'Videos'; // Initialiser l'état à 'Video'
 
@@ -29,7 +31,8 @@ let videoFiles = [
 function setup() {
 
   videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
-  createCanvas(800, 600).parent('canvas-container');
+  let canvas = createCanvas(800, 600).parent('canvas-container');
+  graph = new Graph(data, canvas);
   visor = new Visor();
   noCursor();
 
@@ -59,22 +62,34 @@ function setup() {
 }
 
 function draw() {
+
   switch (etat) {
     case 'Videos':
       videoPlayer.draw();
+      cursor(); 
       break;
     case 'Pointage':
       videoPlayer.draw();
-      graph.draw();
+      data.getAllPoints().forEach((point) => {
+        let x = point.x / xConversionFactor;
+        let y = point.y / yConversionFactor;
+        // Dessine une croix
+        line(x - 3, y - 3, x + 3, y + 3);
+        line(x + 3, y - 3, x - 3, y + 3);
+      });
+      drawCursor(); 
       break;
     case 'Graphiques':
-      background(0);
-      graph.draw();
+      cursor(); 
       break;
     default:
       // Code pour un état inconnu
       console.log('Etat inconnu: ' + etat);
   }
+}
+
+function drawCursor(){
+  noCursor();
   visor.update(mouseX, mouseY);
   visor.draw();
 }
@@ -83,8 +98,21 @@ function optionChanged() {
   etat = dropdown.value().trim(); // Mettre à jour l'état lorsque l'option change
   console.log(etat);
 
+  if (etat === 'Vidéo') { 
+    graph.destroy();
+    let selectedVideoIndex = dropdown2.value();
+    videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
+  }
+
   if (etat === 'Pointage') {
+    graph.destroy();
+    videoPlayer.addElements();
     videoPlayer.jumpToStart(); // Remettre la vidéo au début
+  }
+  if (etat === 'Graphiques') {
+  videoPlayer.removeElements();
+  graph.destroy();
+  graph.create();
   }
 }
 
@@ -92,18 +120,17 @@ function optionChanged() {
 // Ajoute une fonction pour ajouter ou retirer un point dans data à chaque clic sur la vidéo
 function mouseClicked(event) {
   if (etat === 'Pointage' && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
-    if (videoPlayer.video.time() <= (videoPlayer.video.duration())) {
+
       if (mouseButton === LEFT && keyIsDown(CONTROL)) {
         data.removeLastPoint();
         videoPlayer.previousFrame();
       } else if (mouseButton === LEFT) {
-        data.addPoint(videoPlayer.video.time(), mouseX, mouseY);
-        videoPlayer.nextFrame();
+        let calibratedX = mouseX * xConversionFactor;
+        let calibratedY = mouseY * yConversionFactor;
+      
+          data.addPoint(videoPlayer.time, calibratedX, calibratedY);
+          videoPlayer.nextFrame();
+      
       }
-    }
   }
 }
-
-
-
-

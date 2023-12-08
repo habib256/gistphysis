@@ -1,16 +1,43 @@
 class Graph {
-    constructor(data) {
+    constructor(data,canvas) {
         this.data = data;
+        this.ctx = canvas;
+        this.chart = null; // Ajoutez cette ligne
     }
 
-    draw() {
-        stroke(color(255, 0, 0, 255));
-        let points = this.data.getAllPoints();
+    create() {
 
-        for (let i = 0; i < points.length; i++) {
-            let point = points[i];
-            line(point.x - 5, point.y - 5, point.x + 5, point.y + 5);
-            line(point.x + 5, point.y - 5, point.x - 5, point.y + 5);
+        let points = this.data.getAllPoints();
+        let labels = points.map((point, index) => index);
+        let dataX = points.map(point => point.x);
+        let dataY = points.map(point => point.y);
+
+        this.chart = new Chart(this.ctx, { 
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Scatter Dataset',
+                    data: points.map(point => ({x: point.x, y: point.y})),
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        // Ajoutez vos options pour l'axe x ici
+                    },
+                    y: {
+                        // Ajoutez vos options pour l'axe y ici
+                    }
+                }
+            }
+        });
+    }
+    
+    destroy() {
+        if (this.chart) {
+            this.chart.destroy();
         }
     }
 }

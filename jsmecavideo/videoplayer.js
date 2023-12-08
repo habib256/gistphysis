@@ -1,9 +1,19 @@
+
+
 class VideoPlayer {
     constructor(videoFile, framerate) {
         this.video = createVideo([videoFile]);
         this.video.hide();
         this.framerate = framerate;
+        // Calculer le nombre total de frames
+        this.totalFrames = this.video.duration() * this.framerate;
 
+        this.ElementsOff = true;
+        this.addElements();
+    }
+
+    addElements() {
+        if (this.ElementsOff) {
         this.buttonStart = createButton('Début');
         this.buttonStart.parent('controls');
         this.buttonStart.mousePressed(() => this.jumpToStart() );
@@ -38,6 +48,9 @@ class VideoPlayer {
         this.slider.style('width', this.video.width + 'px'); 
         this.slider.style('float', 'right'); // Align the slider to the right
         this.slider.input(() => this.video.time((this.video.duration() - 1/this.framerate) * this.slider.value()));
+
+        this.ElementsOff = false;
+    }
     }
 
     draw() {
@@ -72,6 +85,7 @@ class VideoPlayer {
         this.buttonPause.remove();
         this.buttonForward.remove();
         this.slider.remove();
+        this.ElementsOff = true;
     }
     nextFrame() {
        if (this.video.duration() > this.video.time()+ 1/(this.framerate)) {
