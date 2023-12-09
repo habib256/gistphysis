@@ -11,7 +11,6 @@ let graph;
 
 let etat = 'Pointage'; 
 
-// MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
 let videoFiles = [
   { path: 'videos/chute.mp4', framerate: 25 },
   { path: 'videos/parabolique.mp4', framerate: 25 },
@@ -34,11 +33,11 @@ let videoFiles = [
   { path: 'videos/Eclatement2MA.mp4', framerate: 25 },
   { path: 'videos/TableHorizChocPresqueElastique_R631g7_B749g2.mp4', framerate: 25 },
   { path: 'videos/TableHorizRectiligneUniforme_631g7.mp4', framerate: 25 }
-
-
-]; // Ajoutez vos fichiers vidéo ici avec leur framerate respectif obtenu grace à la commande suivante
+// MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
+// Ajoutez vos fichiers vidéo ici avec leur framerate respectif obtenu grace à la commande suivante
 // # ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate vague3.mp4 
 
+]; 
 function setup() {
 
   videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
