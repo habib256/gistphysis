@@ -10,9 +10,14 @@ class VideoPlayer {
 
         this.isRecording = false;
         this.lastBlinkTime = 0;
+        this.cam;
+        this.imgRecorded = false;
 
         this.ElementsOff = true;
         this.addElements();
+
+        this.frameIndex = 0 ;
+        this.images = [];
     }
 
     addElements() {
@@ -93,46 +98,58 @@ class VideoPlayer {
     }
 
     draw() {
-        if (this.video.loadedmetadata) {
-            let ratio = this.video.width / this.video.height;
-            let w = height * ratio;
-            let h = height;
-
-            if (w > width) {
-                w = width;
-                h = width / ratio;
-            }
-
-            let x = (width - w) / 2;
-            let y = (height - h) / 2;
-
-            stroke(0); // Couleur des bandes en noir
-            fill(0);
-            rect(0, 0, width, y); // Bande horizontale supérieure
-            rect(0, y + h + 1, width, height); // Bande horizontale inférieure
-            rect(0, 0, x, height); // Bande verticale gauche
-            rect(x + w + 1, 0, width, height); // Bande verticale droite
-            image(this.video, x, y, w, h);
-
-            // Update the slider value
-            this.slider.value(this.video.time() / (this.video.duration() - 1 / this.framerate));
-        } else {
-            background(0);
-            stroke(255);
-            fill(255);
-            textSize(48);
-            textAlign(CENTER, CENTER);
-            text('Chargement de la vidéo', width / 2, height / 2);
-        }
         if (this.isRecording) {
-                fill(255, 0, 0);
-                ellipse(width - 30, 30, 20, 20); // Dessine un cercle rouge en haut à droite
-                fill(255);
-                textSize(40);
-                text('REC', width - 80, 35); // Écrit "REC" à côté du cercle rouge
-                this.lastBlinkTime = millis();
-            } 
-        
+            let capture = this.cam.get();
+            image(capture, 0, 0, width, height);
+            fill(255,0,0);
+            textSize(40);
+            text('REC', width - 100, 35); // Écrit "REC" à côté du cercle rouge
+            this.lastBlinkTime = millis();
+
+            if (frameCount % 20 == 0) {
+                this.images.push(this.cam.get());
+            }
+        } 
+        if (!this.isRecording) {
+            if (this.imgRecorded) {
+                background(0);
+                image(this.images[this.frameIndex], 0, 0, width, height);
+            } else {
+                if (this.video.loadedmetadata) {
+                    let ratio = this.video.width / this.video.height;
+                    let w = height * ratio;
+                    let h = height;
+
+                    if (w > width) {
+                        w = width;
+                        h = width / ratio;
+                    }
+
+                    let x = (width - w) / 2;
+                    let y = (height - h) / 2;
+
+                    stroke(0); // Couleur des bandes en noir
+                    fill(0);
+                    rect(0, 0, width, y); // Bande horizontale supérieure
+                    rect(0, y + h + 1, width, height); // Bande horizontale inférieure
+                    rect(0, 0, x, height); // Bande verticale gauche
+                    rect(x + w + 1, 0, width, height); // Bande verticale droite
+                    image(this.video, x, y, w, h);
+
+                    // Update the slider value
+                    this.slider.value(this.video.time() / (this.video.duration() - 1 / this.framerate));
+                } else {
+                    background(0);
+                    stroke(255);
+                    fill(255);
+                    textSize(48);
+                    textAlign(CENTER, CENTER);
+                    text('Charge la vidéo', width / 2, height / 2);
+                }
+            
+        }
+
+    }
     }
     removeElements() {
         this.video.remove();
@@ -148,10 +165,18 @@ class VideoPlayer {
         if (this.video.duration() > this.video.time() + 1 / (this.framerate)) {
             this.video.time(this.video.time() + 1 / this.framerate); // Avance de 1/framerate de seconde
         }
+        if(this.frameIndex < this.images.length-1) {
+            this.frameIndex++;
+            console.log(this.frameIndex);
+        }
     }
 
     previousFrame() {
         this.video.time(this.video.time() - 1 / this.framerate); // Recule de 1/framerate de seconde
+        if(this.frameIndex > 0) {
+            this.frameIndex--;
+            console.log(this.frameIndex);
+        }
     }
 
     jumpToStart() {
@@ -168,16 +193,16 @@ class VideoPlayer {
     }
 
     startRecording() {
-        this.isRecording = true; 
-        this.video = createCapture(VIDEO);
-        this.video.hide();
+        this.images = [];
+        this.isRecording = true;
+        this.cam = createCapture(VIDEO);
+        this.cam.hide();
     }
     stopRecording() {
-        this.buttonRecord.style('background-image', 'url(img/tango/media-record.png)'); // Remettez l'image de fond
-     
-        // Créer une nouvelle vidéo à partir de l'enregistrement terminé
-        let recordedBlob = new Blob(this.recordedChunks, { type: "video/webm" });
-        let url = URL.createObjectURL(recordedBlob);
-        this.video = createVideo(url);
+        this.isRecording = false;
+        this.imgRecorded = true;
+        this.framerate = 30;
+        this.video.hide();
+        this.cam.hide();
     }
 }
