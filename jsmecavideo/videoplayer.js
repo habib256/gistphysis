@@ -4,9 +4,11 @@ class VideoPlayer {
     constructor(videoFile, framerate) {
         this.video = createVideo([videoFile]);
         this.video.hide();
+
         this.framerate = framerate;
-        // Calculer le nombre total de frames
-        this.totalFrames = this.video.duration() * this.framerate;
+        this.totalFrames = this.video.duration() * this.framerate; // Calculer le nombre total de frames
+
+        this.isRecording = false; 
 
         this.ElementsOff = true;
         this.addElements();
@@ -14,6 +16,18 @@ class VideoPlayer {
 
     addElements() {
         if (this.ElementsOff) {
+
+        this.buttonRecord = createButton('Enregistrer');
+        this.buttonRecord.parent('controls');
+        this.buttonRecord.style('width', '32px'); // Définir la largeur
+        this.buttonRecord.style('height', '32px'); // Définir la hauteur
+        this.buttonRecord.html('');
+        this.buttonRecord.style('background-image', 'url("img/tango/media-record.png")');
+        this.buttonRecord.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
+        this.buttonRecord.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
+        this.buttonRecord.style('background-position', 'center'); // Pour centrer l'image
+        this.buttonRecord.mousePressed(() => this.toggleRecording()); // Ajoutez une fonction de rappel pour le clic sur le bouton
+
         this.buttonStart = createButton('Début');
         this.buttonStart.parent('controls');
         this.buttonStart.style('width', '32px'); // Définir la largeur
@@ -112,6 +126,7 @@ class VideoPlayer {
     }
     removeElements() {
         this.video.remove();
+        this.buttonRecord.remove();
         this.buttonStart.remove();
         this.buttonBack.remove();
         this.buttonPlay.remove();
@@ -131,5 +146,39 @@ class VideoPlayer {
 
     jumpToStart() {
         this.video.time(0);
+    }
+
+    toggleRecording() {
+        this.isRecording = !this.isRecording;
+        if (this.isRecording) {
+            this.startRecording();
+        } else {
+            this.stopRecording();
+        }
+    }
+
+    startRecording() {
+        // Commencez l'enregistrement ici
+        this.isRecording = true; // Ajoutez cette ligne
+        this.buttonRecord.style('background-image', ''); // Supprimez l'image de fond
+        this.recordInterval = setInterval(() => {
+            // Faites clignoter l'image de fond
+            if (this.isRecording) {
+                this.buttonRecord.style('background-image', 'url(img/tango/media-record.png)');
+                this.isRecording = false; // Ajoutez cette ligne
+            } else {
+                this.buttonRecord.style('background-image', '');
+                this.isRecording = true; // Ajoutez cette ligne
+            }
+        }, 500); // Clignote toutes les 200 millisecondes
+
+        this.video = createCapture(VIDEO);
+        this.video.hide();
+
+    }
+    stopRecording() {
+        // Arrêtez l'enregistrement ici
+        this.buttonRecord.style('background-image', 'url(img/tango/media-record.png)'); // Remettez l'image de fond
+        clearInterval(this.recordInterval); // Arrêtez le clignotement
     }
 }
