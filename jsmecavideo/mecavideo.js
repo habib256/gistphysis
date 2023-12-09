@@ -2,6 +2,7 @@ let videoPlayer;
 let visor;
 let dropdown;
 let dropdown2;
+let dropdown3;
 
 let xConversionFactor = 1; // Echelle de pixels en mètres
 let yConversionFactor = 1; // Echelle de pixels en mètres
@@ -33,11 +34,7 @@ let videoFiles = [
   { path: 'videos/Eclatement2MA.mp4', framerate: 25 },
   { path: 'videos/TableHorizChocPresqueElastique_R631g7_B749g2.mp4', framerate: 25 },
   { path: 'videos/TableHorizRectiligneUniforme_631g7.mp4', framerate: 25 }
-// MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
-// Ajoutez vos fichiers vidéo ici avec leur framerate respectif obtenu grace à la commande suivante
-// # ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate vague3.mp4 
-
-]; 
+];
 function setup() {
 
   videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
@@ -50,25 +47,33 @@ function setup() {
   dropdown = createSelect();
   dropdown.parent('menu');
   dropdown.option(' Pointage');
-  dropdown.option(' Graphiques');
+  dropdown.option(' Graphique');
   // Définir une fonction de rappel pour le changement d'option
   dropdown.changed(optionChanged);
 
   // Créer un menu déroulant 2
   dropdown2 = createSelect();
   dropdown2.parent('menu');
+  dropdown2.option('1 point');
+  dropdown2.option('2 points');
+  dropdown2.option('3 points');
+  dropdown2.option('4 points');
+
+  // Créer un menu déroulant 3
+  dropdown3 = createSelect();
+  dropdown3.parent('menu');
   videoFiles.forEach((videoFile, index) => {
-    dropdown2.option(videoFile.path, index); // Utilisez l'index comme valeur
+    dropdown3.option(videoFile.path, index); // Utilisez l'index comme valeur
   });
   // Définir une fonction de rappel pour le changement de vidéo
-  dropdown2.changed(() => {
+  dropdown3.changed(() => {
     if (videoPlayer) {
       videoPlayer.removeElements();
       dropdown.selected(' Pointage'); // Réinitialiser la valeur de dropdown à 'Pointage'
       data.clearAllPoints();
     }
     etat = 'Pointage'; 
-    let selectedVideoIndex = dropdown2.value();
+    let selectedVideoIndex = dropdown3.value();
     videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
   });
 }
@@ -87,7 +92,7 @@ function draw() {
       });
       drawCursor(); 
       break;
-    case 'Graphiques':
+    case 'Graphique':
       cursor(); 
       break;
     default:
@@ -111,7 +116,7 @@ function optionChanged() {
     videoPlayer.addElements();
     videoPlayer.jumpToStart(); // Remettre la vidéo au début
   }
-  if (etat === 'Graphiques') {
+  if (etat === 'Graphique') {
   videoPlayer.removeElements();
   graph.destroy();
   graph.create();
@@ -136,3 +141,4 @@ function mouseClicked(event) {
       }
   }
 }
+

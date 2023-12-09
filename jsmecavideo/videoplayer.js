@@ -16,10 +16,24 @@ class VideoPlayer {
         if (this.ElementsOff) {
         this.buttonStart = createButton('Début');
         this.buttonStart.parent('controls');
+        this.buttonStart.style('width', '32px'); // Définir la largeur
+        this.buttonStart.style('height', '32px'); // Définir la hauteur
+        this.buttonStart.html('');
+        this.buttonStart.style('background-image', 'url("img/tango/media-playback-stop.png")');
+        this.buttonStart.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
+        this.buttonStart.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
+        this.buttonStart.style('background-position', 'center'); // Pour centrer l'image
         this.buttonStart.mousePressed(() => this.jumpToStart() );
 
         this.buttonBack = createButton('Retour');
         this.buttonBack.parent('controls');
+        this.buttonBack.style('width', '42px'); // Définir la largeur
+        this.buttonBack.style('height', '32px'); // Définir la hauteur
+        this.buttonBack.html('');
+        this.buttonBack.style('background-image', 'url("img/tango/media-skip-backward.png")');
+        this.buttonBack.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
+        this.buttonBack.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
+        this.buttonBack.style('background-position', 'center'); // Pour centrer l'image
         this.buttonBack.mousePressed(() => {
             this.video.pause();
             this.previousFrame();
@@ -27,6 +41,13 @@ class VideoPlayer {
 
         this.buttonPlay = createButton('Lire');
         this.buttonPlay.parent('controls');
+        this.buttonPlay.style('width', '32px'); // Définir la largeur
+        this.buttonPlay.style('height', '32px'); // Définir la hauteur
+        this.buttonPlay.html('');
+        this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
+        this.buttonPlay.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
+        this.buttonPlay.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
+        this.buttonPlay.style('background-position', 'center'); // Pour centrer l'image
         this.buttonPlay.mousePressed(() => {
             this.video.play();
             this.video.speed(1); // Contrôle la vitesse de lecture de la vidéo
@@ -34,6 +55,13 @@ class VideoPlayer {
 
         this.buttonForward = createButton('Avancer');
         this.buttonForward.parent('controls');
+        this.buttonForward.style('width', '42px'); // Définir la largeur
+        this.buttonForward.style('height', '32px'); // Définir la hauteur
+        this.buttonForward.html('');
+        this.buttonForward.style('background-image', 'url("img/tango/media-skip-forward.png")');
+        this.buttonForward.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
+        this.buttonForward.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
+        this.buttonForward.style('background-position', 'center'); // Pour centrer l'image
         this.buttonForward.mousePressed(() => {
             this.video.pause();
             this.nextFrame();

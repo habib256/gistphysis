@@ -10,6 +10,7 @@ L'application permet de sélectionner une vidéo à partir d'un menu déroulant.
 
 Liste des vidéos et explications:
 
+MANY THANKS TO : https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm
 - 'videos/MasseRoule.mp4': Une vidéo montrant une masse qui roule.
 - 'videos/PenduleSimpleAmorti_38cm1.mp4': Une vidéo d'un pendule simple amorti.
 - 'videos/RessortVertical_Masse24g30.mp4': Une vidéo d'un ressort vertical avec une masse de 24g.
