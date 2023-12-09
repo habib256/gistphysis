@@ -18,6 +18,7 @@ let videoFiles = [
   { path: 'videos/disque33t.mp4', framerate: 25 },
   { path: 'videos/disque45t.mp4', framerate: 25 },
   { path: 'videos/VenusTerreMars.mp4', framerate: 25 },
+  { path: 'videos/MasseRoule.mp4', framerate: 15 },
   { path: 'videos/PenduleSimpleAmorti_38cm1.mp4', framerate: 25 },
   { path: 'videos/RessortVertical_Masse24g30.mp4', framerate: 25 },
   { path: 'videos/bille1-iv5.mp4', framerate: 1000000 / 33333 },
@@ -31,7 +32,6 @@ let videoFiles = [
   { path: 'videos/vague3.mp4', framerate: 25 },
   { path: 'videos/vague3cm0.mp4', framerate: 20 },
   { path: 'videos/Eclatement2MA.mp4', framerate: 25 },
-  { path: 'videos/MasseRoule.mp4', framerate: 15 },
   { path: 'videos/TableHorizChocPresqueElastique_R631g7_B749g2.mp4', framerate: 25 },
   { path: 'videos/TableHorizRectiligneUniforme_631g7.mp4', framerate: 25 }
 

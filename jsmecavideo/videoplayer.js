@@ -32,10 +32,6 @@ class VideoPlayer {
             this.video.speed(1); // Contrôle la vitesse de lecture de la vidéo
         });
 
-        this.buttonPause = createButton('Pause');
-        this.buttonPause.parent('controls');
-        this.buttonPause.mousePressed(() => this.video.pause());
-
         this.buttonForward = createButton('Avancer');
         this.buttonForward.parent('controls');
         this.buttonForward.mousePressed(() => {
@@ -91,7 +87,6 @@ class VideoPlayer {
         this.buttonStart.remove();
         this.buttonBack.remove();
         this.buttonPlay.remove();
-        this.buttonPause.remove();
         this.buttonForward.remove();
         this.slider.remove();
         this.ElementsOff = true;
