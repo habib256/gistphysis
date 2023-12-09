@@ -27,7 +27,7 @@ class VideoPlayer {
 
             this.buttonRecord = createButton('Enregistrer');
             this.buttonRecord.parent('controls');
-            this.buttonRecord.style('width', '32px'); // Définir la largeur
+            this.buttonRecord.style('width', '48px'); // Définir la largeur
             this.buttonRecord.style('height', '32px'); // Définir la hauteur
             this.buttonRecord.html('');
             this.buttonRecord.style('background-image', 'url("img/tango/media-record.png")');
@@ -38,7 +38,7 @@ class VideoPlayer {
 
             this.buttonStart = createButton('Début');
             this.buttonStart.parent('controls');
-            this.buttonStart.style('width', '32px'); // Définir la largeur
+            this.buttonStart.style('width', '48px'); // Définir la largeur
             this.buttonStart.style('height', '32px'); // Définir la hauteur
             this.buttonStart.html('');
             this.buttonStart.style('background-image', 'url("img/tango/media-playback-stop.png")');
@@ -49,7 +49,7 @@ class VideoPlayer {
 
             this.buttonBack = createButton('Retour');
             this.buttonBack.parent('controls');
-            this.buttonBack.style('width', '42px'); // Définir la largeur
+            this.buttonBack.style('width', '48px'); // Définir la largeur
             this.buttonBack.style('height', '32px'); // Définir la hauteur
             this.buttonBack.html('');
             this.buttonBack.style('background-image', 'url("img/tango/media-skip-backward.png")');
@@ -63,7 +63,7 @@ class VideoPlayer {
 
             this.buttonPlay = createButton('Lire');
             this.buttonPlay.parent('controls');
-            this.buttonPlay.style('width', '32px'); // Définir la largeur
+            this.buttonPlay.style('width', '48px'); // Définir la largeur
             this.buttonPlay.style('height', '32px'); // Définir la hauteur
             this.buttonPlay.html('');
             this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
@@ -76,7 +76,7 @@ class VideoPlayer {
 
             this.buttonForward = createButton('Avancer');
             this.buttonForward.parent('controls');
-            this.buttonForward.style('width', '42px'); // Définir la largeur
+            this.buttonForward.style('width', '48px'); // Définir la largeur
             this.buttonForward.style('height', '32px'); // Définir la hauteur
             this.buttonForward.html('');
             this.buttonForward.style('background-image', 'url("img/tango/media-skip-forward.png")');
@@ -115,7 +115,6 @@ class VideoPlayer {
                     if (this.playMode) {
                         if (this.frameIndex < this.images.length - 1) {
                             this.frameIndex++;
-                            this.sliderUpdate();
                         } else {
                             this.playMode = false;
                         }
@@ -159,12 +158,16 @@ class VideoPlayer {
             }
 
         }
+        this.sliderUpdate();
     }
     sliderUpdate() {
         if (this.imgRecorded) {
             this.slider.value(this.frameIndex / (this.images.length - 1));
+            this.frameIndex = Math.round(this.slider.value() * (this.images.length - 1));
         } else {
-            this.video.time((this.video.duration() - 1 / this.framerate) * this.slider.value());
+            if (isFinite(this.video.duration()) && isFinite(this.framerate) && this.framerate != 0 && isFinite(this.slider.value())) {
+                this.video.time((this.video.duration() - 1 / this.framerate) * this.slider.value());
+            }
         }
     }
     removeElements() {
