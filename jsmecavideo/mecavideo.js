@@ -6,11 +6,11 @@ let dropdown3;
 
 let xConversionFactor = 1; // Echelle de pixels en mètres
 let yConversionFactor = 1; // Echelle de pixels en mètres
-let timeConversionFactor = 1; 
+let timeConversionFactor = 1;
 let data = new Data();
 let graph;
 
-let etat = 'Pointage'; 
+let etat = 'Pointage';
 
 let videoFiles = [
   { path: 'videos/chute.mp4', framerate: 25 },
@@ -39,6 +39,7 @@ function setup() {
 
   videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
   let canvas = createCanvas(800, 600).parent('canvas-container');
+  frameRate(15);
   graph = new Graph(data, canvas);
   visor = new Visor();
   noCursor();
@@ -72,7 +73,7 @@ function setup() {
       dropdown.selected(' Pointage'); // Réinitialiser la valeur de dropdown à 'Pointage'
       data.clearAllPoints();
     }
-    etat = 'Pointage'; 
+    etat = 'Pointage';
     let selectedVideoIndex = dropdown3.value();
     videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
   });
@@ -85,15 +86,15 @@ function draw() {
       videoPlayer.draw();
       data.getAllPoints().forEach((point) => {
         let x = point.x / xConversionFactor;
-        let y = 600-point.y / yConversionFactor;
+        let y = 600 - point.y / yConversionFactor;
         // Dessine une croix
         line(x - 3, y - 3, x + 3, y + 3);
         line(x + 3, y - 3, x - 3, y + 3);
       });
-      drawCursor(); 
+      drawCursor();
       break;
     case 'Graphique':
-      cursor(); 
+      cursor();
       break;
     default:
       // Code pour un état inconnu
@@ -101,7 +102,7 @@ function draw() {
   }
 }
 
-function drawCursor(){
+function drawCursor() {
   noCursor();
   visor.update(mouseX, mouseY);
   visor.draw();
@@ -117,9 +118,9 @@ function optionChanged() {
     videoPlayer.jumpToStart(); // Remettre la vidéo au début
   }
   if (etat === 'Graphique') {
-  videoPlayer.removeElements();
-  graph.destroy();
-  graph.create();
+    videoPlayer.removeElements();
+    graph.destroy();
+    graph.create();
   }
 }
 
@@ -128,17 +129,17 @@ function optionChanged() {
 function mouseClicked(event) {
   if (etat === 'Pointage' && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
 
-      if (mouseButton === LEFT && keyIsDown(CONTROL)) {
-        data.removeLastPoint();
-        videoPlayer.previousFrame();
-      } else if (mouseButton === LEFT) {
-        let calibratedX = mouseX * xConversionFactor;
-        let calibratedY = 600-mouseY * yConversionFactor;
-      
-          data.addPoint(videoPlayer.time, calibratedX, calibratedY);
-          videoPlayer.nextFrame();
-      
-      }
+    if (mouseButton === LEFT && keyIsDown(CONTROL)) {
+      data.removeLastPoint();
+      videoPlayer.previousFrame();
+    } else if (mouseButton === LEFT) {
+      let calibratedX = mouseX * xConversionFactor;
+      let calibratedY = 600 - mouseY * yConversionFactor;
+
+      data.addPoint(videoPlayer.time, calibratedX, calibratedY);
+      videoPlayer.nextFrame();
+
+    }
   }
 }
 

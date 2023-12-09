@@ -12,11 +12,13 @@ class VideoPlayer {
         this.lastBlinkTime = 0;
         this.cam;
         this.imgRecorded = false;
+        this.playMode = false;
 
         this.ElementsOff = true;
         this.addElements();
 
-        this.frameIndex = 0 ;
+        this.frameIndex = 0;
+        this.lastUpdateTime = 0; // Variable pour stocker la dernière fois que frameIndex a été mis à jour
         this.images = [];
     }
 
@@ -69,8 +71,7 @@ class VideoPlayer {
             this.buttonPlay.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
             this.buttonPlay.style('background-position', 'center'); // Pour centrer l'image
             this.buttonPlay.mousePressed(() => {
-                this.video.play();
-                this.video.speed(1); // Contrôle la vitesse de lecture de la vidéo
+                this.play();
             });
 
             this.buttonForward = createButton('Avancer');
@@ -91,8 +92,7 @@ class VideoPlayer {
             this.slider.parent('controls'); // Place le slider dans le conteneur 'controls'
             this.slider.style('width', '800px');
             this.slider.style('float', 'right'); // Align the slider to the right
-            this.slider.input(() => this.video.time((this.video.duration() - 1 / this.framerate) * this.slider.value()));
-
+            this.slider.input(() => this.sliderUpdate());
             this.ElementsOff = false;
         }
     }
@@ -101,18 +101,27 @@ class VideoPlayer {
         if (this.isRecording) {
             let capture = this.cam.get();
             image(capture, 0, 0, width, height);
-            fill(255,0,0);
+            fill(255, 0, 0);
             textSize(40);
-            text('REC', width - 100, 35); // Écrit "REC" à côté du cercle rouge
+            text('REC', width - 100, 50); // Écrit "REC" à côté du cercle rouge
             this.lastBlinkTime = millis();
 
-            if (frameCount % 20 == 0) {
-                this.images.push(this.cam.get());
-            }
-        } 
+            this.images.push(this.cam.get());
+
+        }
         if (!this.isRecording) {
             if (this.imgRecorded) {
-                background(0);
+                if (millis() - this.lastUpdateTime >= 1000 / 15) {
+                    if (this.playMode) {
+                        if (this.frameIndex < this.images.length - 1) {
+                            this.frameIndex++;
+                            this.sliderUpdate();
+                        } else {
+                            this.playMode = false;
+                        }
+                    }
+                    this.lastUpdateTime = millis();
+                }
                 image(this.images[this.frameIndex], 0, 0, width, height);
             } else {
                 if (this.video.loadedmetadata) {
@@ -146,10 +155,17 @@ class VideoPlayer {
                     textAlign(CENTER, CENTER);
                     text('Charge la vidéo', width / 2, height / 2);
                 }
-            
-        }
 
+            }
+
+        }
     }
+    sliderUpdate() {
+        if (this.imgRecorded) {
+            this.slider.value(this.frameIndex / (this.images.length - 1));
+        } else {
+            this.video.time((this.video.duration() - 1 / this.framerate) * this.slider.value());
+        }
     }
     removeElements() {
         this.video.remove();
@@ -162,25 +178,36 @@ class VideoPlayer {
         this.ElementsOff = true;
     }
     nextFrame() {
+        this.playMode = false;
         if (this.video.duration() > this.video.time() + 1 / (this.framerate)) {
             this.video.time(this.video.time() + 1 / this.framerate); // Avance de 1/framerate de seconde
         }
-        if(this.frameIndex < this.images.length-1) {
+        if (this.frameIndex < this.images.length - 1) {
             this.frameIndex++;
-            console.log(this.frameIndex);
         }
     }
 
     previousFrame() {
+        this.playMode = false;
         this.video.time(this.video.time() - 1 / this.framerate); // Recule de 1/framerate de seconde
-        if(this.frameIndex > 0) {
+        if (this.frameIndex > 0) {
             this.frameIndex--;
-            console.log(this.frameIndex);
         }
     }
 
+    play() {
+        this.video.play();
+        this.video.speed(1); // Contrôle la vitesse de lecture de la vidéo
+        this.playMode = true;
+    }
+
     jumpToStart() {
+        this.playMode = false;
         this.video.time(0);
+        if (this.isRecording) {
+            this.isRecording = !this.isRecording;
+        }
+        this.frameIndex = 0;
     }
 
     toggleRecording() {
@@ -193,16 +220,20 @@ class VideoPlayer {
     }
 
     startRecording() {
+        this.playMode = false;
         this.images = [];
         this.isRecording = true;
         this.cam = createCapture(VIDEO);
         this.cam.hide();
     }
     stopRecording() {
+        this.playMode = false;
         this.isRecording = false;
         this.imgRecorded = true;
-        this.framerate = 30;
+        this.framerate = 15;
+        this.frameNb = 0;
         this.video.hide();
         this.cam.hide();
+        this.images = this.images.slice(10); // Supprime les 10 premières images de this.images (Temps de démarrage de la caméra)
     }
 }
