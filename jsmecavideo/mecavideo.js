@@ -70,6 +70,7 @@ function setup() {
   // Définir une fonction de rappel pour le changement de vidéo
   dropdown3.changed(() => {
     etat = 'Pointage Vidéo';
+    data.clearAllPoints();
     initVideoPlayer();
   });
 }
@@ -159,7 +160,7 @@ function optionChanged() {
 
 // Ajoute une fonction pour ajouter ou retirer un point dans data à chaque clic sur la vidéo
 function mouseClicked(event) {
-  if (etat === 'Pointage Vidéo' && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+  if ((etat === 'Pointage Vidéo' || etat === 'Pointage Webcam') && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
 
     if (mouseButton === LEFT && keyIsDown(CONTROL)) {
       data.removeLastPoint();

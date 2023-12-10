@@ -6,11 +6,13 @@ class WebcamPlayer {
         this.framerate = framerate;
         this.frameIndex = 0;
         this.isRecording = false;
+        this.isRecorded = false;
         this.lastUpdateTime = millis();
 
         this.ElementsOff = true;
         this.addElements();
 
+        this.playMode = false;
         this.lastUpdateTime = 0; // Variable pour stocker la dernière fois que frameIndex a été mis à jour
         this.images = [];
     }
@@ -180,8 +182,10 @@ class WebcamPlayer {
     }
     stopRecording() {
         this.isRecording = false;
+        this.isRecorded = true;
         this.frameNb = 0;
         this.cam.hide();
         this.images = this.images.slice(10); // Supprime les 10 premières images de this.images (Temps de démarrage de la caméra)
     }
 }
+
