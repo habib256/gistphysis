@@ -1,4 +1,5 @@
 let videoPlayer;
+let webcamPlayer;
 let visor;
 let dropdown;
 let dropdown2;
@@ -10,7 +11,7 @@ let timeConversionFactor = 1;
 let data = new Data();
 let graph;
 
-let etat = 'Pointage';
+let etat = 'Pointage Vidéo';
 
 let videoFiles = [
   { path: 'videos/chute.mp4', framerate: 25 },
@@ -39,7 +40,6 @@ function setup() {
 
   videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
   let canvas = createCanvas(800, 600).parent('canvas-container');
-  frameRate(15);
   graph = new Graph(data, canvas);
   visor = new Visor();
   noCursor();
@@ -47,7 +47,8 @@ function setup() {
   // Créer un menu déroulant
   dropdown = createSelect();
   dropdown.parent('menu');
-  dropdown.option(' Pointage');
+  dropdown.option(' Pointage Vidéo');
+  dropdown.option(' Pointage Webcam');
   dropdown.option(' Graphique');
   // Définir une fonction de rappel pour le changement d'option
   dropdown.changed(optionChanged);
@@ -68,29 +69,22 @@ function setup() {
   });
   // Définir une fonction de rappel pour le changement de vidéo
   dropdown3.changed(() => {
-    if (videoPlayer) {
-      videoPlayer.removeElements();
-      dropdown.selected(' Pointage'); // Réinitialiser la valeur de dropdown à 'Pointage'
-      data.clearAllPoints();
-    }
-    etat = 'Pointage';
-    let selectedVideoIndex = dropdown3.value();
-    videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
+    etat = 'Pointage Vidéo';
+    initVideoPlayer();
   });
 }
 
 function draw() {
 
   switch (etat) {
-    case 'Pointage':
+    case 'Pointage Vidéo':
       videoPlayer.draw();
-      data.getAllPoints().forEach((point) => {
-        let x = point.x / xConversionFactor;
-        let y = 600 - point.y / yConversionFactor;
-        // Dessine une croix
-        line(x - 3, y - 3, x + 3, y + 3);
-        line(x + 3, y - 3, x - 3, y + 3);
-      });
+      drawCursor();
+      break;
+    case 'Pointage Webcam':
+      if (webcamPlayer) {
+        webcamPlayer.draw();
+      }
       drawCursor();
       break;
     case 'Graphique':
@@ -106,19 +100,57 @@ function drawCursor() {
   noCursor();
   visor.update(mouseX, mouseY);
   visor.draw();
+  data.getAllPoints().forEach((point) => {
+    let x = point.x / xConversionFactor;
+    let y = 600 - point.y / yConversionFactor;
+    // Dessine une croix
+    line(x - 3, y - 3, x + 3, y + 3);
+    line(x + 3, y - 3, x - 3, y + 3);
+  });
+}
+
+function initVideoPlayer() {
+  graph.destroy();
+  dropdown.selected(' Pointage Vidéo'); // Réinitialiser la valeur de dropdown à 'Pointage'
+  if (webcamPlayer) {
+    data.clearAllPoints();
+    webcamPlayer.removeElements();
+    webcamPlayer = null; // Détruire l'objet webcamPlayer
+    videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
+  }
+  if(videoPlayer) {
+    videoPlayer.removeElements();
+  }
+  let selectedVideoIndex = dropdown3.value();
+  videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
+  videoPlayer.jumpToStart(); // Remettre la vidéo au début   
 }
 
 function optionChanged() {
   etat = dropdown.value().trim(); // Mettre à jour l'état lorsque l'option change
   console.log(etat);
 
-  if (etat === 'Pointage') {
+  if (etat === 'Pointage Vidéo') {
+    initVideoPlayer();
+  }
+  if (etat === 'Pointage Webcam') {
+    if (videoPlayer) {
+      videoPlayer.removeElements();
+      videoPlayer = null; // Détruire l'objet videoPlayer
+      data.clearAllPoints();
+    }
     graph.destroy();
-    videoPlayer.addElements();
-    videoPlayer.jumpToStart(); // Remettre la vidéo au début
+    webcamPlayer = new WebcamPlayer(15); // L'argument correspond au framerate de capture de la webcam
+    webcamPlayer.addElements();
+    webcamPlayer.jumpToStart(); // Remettre la vidéo au début
   }
   if (etat === 'Graphique') {
+    if(videoPlayer){
     videoPlayer.removeElements();
+    }
+    if(webcamPlayer){
+      webcamPlayer.removeElements();
+    }
     graph.destroy();
     graph.create();
   }
@@ -127,7 +159,7 @@ function optionChanged() {
 
 // Ajoute une fonction pour ajouter ou retirer un point dans data à chaque clic sur la vidéo
 function mouseClicked(event) {
-  if (etat === 'Pointage' && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+  if (etat === 'Pointage Vidéo' && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
 
     if (mouseButton === LEFT && keyIsDown(CONTROL)) {
       data.removeLastPoint();

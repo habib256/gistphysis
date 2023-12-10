@@ -1,47 +1,31 @@
-
-
 class VideoPlayer {
     constructor(videoFile, framerate) {
         this.video = createVideo([videoFile]);
         this.video.hide();
 
         this.framerate = framerate;
-        this.totalFrames = this.video.duration() * this.framerate; // Calculer le nombre total de frames
 
-        this.isRecording = false;
-        this.lastBlinkTime = 0;
-        this.cam;
-        this.imgRecorded = false;
-        this.playMode = false;
+        this.isPlaying = false;
 
         this.ElementsOff = true;
         this.addElements();
 
-        this.frameIndex = 0;
-        this.lastUpdateTime = 0; // Variable pour stocker la dernière fois que frameIndex a été mis à jour
-        this.images = [];
+        this.video.onended(() => {
+            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
+            this.isPlaying = false;
+            this.video.time(this.video.time() - (1 / this.framerate)); // Recule de 1/framerate de seconde
+        });
     }
 
     addElements() {
         if (this.ElementsOff) {
-
-            this.buttonRecord = createButton('Enregistrer');
-            this.buttonRecord.parent('controls');
-            this.buttonRecord.style('width', '48px'); // Définir la largeur
-            this.buttonRecord.style('height', '32px'); // Définir la hauteur
-            this.buttonRecord.html('');
-            this.buttonRecord.style('background-image', 'url("img/tango/media-record.png")');
-            this.buttonRecord.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonRecord.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonRecord.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonRecord.mousePressed(() => this.toggleRecording()); // Ajoutez une fonction de rappel pour le clic sur le bouton
 
             this.buttonStart = createButton('Début');
             this.buttonStart.parent('controls');
             this.buttonStart.style('width', '48px'); // Définir la largeur
             this.buttonStart.style('height', '32px'); // Définir la hauteur
             this.buttonStart.html('');
-            this.buttonStart.style('background-image', 'url("img/tango/media-playback-stop.png")');
+            this.buttonStart.style('background-image', 'url("img/tango/media-skip-backward.png")');
             this.buttonStart.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
             this.buttonStart.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
             this.buttonStart.style('background-position', 'center'); // Pour centrer l'image
@@ -52,14 +36,11 @@ class VideoPlayer {
             this.buttonBack.style('width', '48px'); // Définir la largeur
             this.buttonBack.style('height', '32px'); // Définir la hauteur
             this.buttonBack.html('');
-            this.buttonBack.style('background-image', 'url("img/tango/media-skip-backward.png")');
+            this.buttonBack.style('background-image', 'url("img/tango/media-step-backward.png")');
             this.buttonBack.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
             this.buttonBack.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
             this.buttonBack.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonBack.mousePressed(() => {
-                this.video.pause();
-                this.previousFrame();
-            });
+            this.buttonBack.mousePressed(() => this.previousFrame());
 
             this.buttonPlay = createButton('Lire');
             this.buttonPlay.parent('controls');
@@ -70,59 +51,29 @@ class VideoPlayer {
             this.buttonPlay.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
             this.buttonPlay.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
             this.buttonPlay.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonPlay.mousePressed(() => {
-                this.play();
-            });
+            this.buttonPlay.mousePressed(() => this.play());
 
             this.buttonForward = createButton('Avancer');
             this.buttonForward.parent('controls');
             this.buttonForward.style('width', '48px'); // Définir la largeur
             this.buttonForward.style('height', '32px'); // Définir la hauteur
             this.buttonForward.html('');
-            this.buttonForward.style('background-image', 'url("img/tango/media-skip-forward.png")');
+            this.buttonForward.style('background-image', 'url("img/tango/media-step-forward.png")');
             this.buttonForward.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
             this.buttonForward.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
             this.buttonForward.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonForward.mousePressed(() => {
-                this.video.pause();
-                this.nextFrame();
-            });
+            this.buttonForward.mousePressed(() => this.nextFrame());
 
-            this.slider = createSlider(0, 1, 0.5, 0.01);
+            this.slider = createSlider(0, 1, 0, 0.01);
             this.slider.parent('controls'); // Place le slider dans le conteneur 'controls'
             this.slider.style('width', '800px');
             this.slider.style('float', 'right'); // Align the slider to the right
-            this.slider.input(() => this.sliderUpdate());
+            this.slider.input(() => this.video.time(this.slider.value() * this.video.duration()));
             this.ElementsOff = false;
         }
     }
 
     draw() {
-        if (this.isRecording) {
-            let capture = this.cam.get();
-            image(capture, 0, 0, width, height);
-            fill(255, 0, 0);
-            textSize(40);
-            text('REC', width - 100, 50); // Écrit "REC" à côté du cercle rouge
-            this.lastBlinkTime = millis();
-
-            this.images.push(this.cam.get());
-
-        }
-        if (!this.isRecording) {
-            if (this.imgRecorded) {
-                if (millis() - this.lastUpdateTime >= 1000 / 15) {
-                    if (this.playMode) {
-                        if (this.frameIndex < this.images.length - 1) {
-                            this.frameIndex++;
-                        } else {
-                            this.playMode = false;
-                        }
-                    }
-                    this.lastUpdateTime = millis();
-                }
-                image(this.images[this.frameIndex], 0, 0, width, height);
-            } else {
                 if (this.video.loadedmetadata) {
                     let ratio = this.video.width / this.video.height;
                     let w = height * ratio;
@@ -144,8 +95,6 @@ class VideoPlayer {
                     rect(x + w + 1, 0, width, height); // Bande verticale droite
                     image(this.video, x, y, w, h);
 
-                    // Update the slider value
-                    this.slider.value(this.video.time() / (this.video.duration() - 1 / this.framerate));
                 } else {
                     background(0);
                     stroke(255);
@@ -153,26 +102,18 @@ class VideoPlayer {
                     textSize(48);
                     textAlign(CENTER, CENTER);
                     text('Charge la vidéo', width / 2, height / 2);
-                }
-
-            }
-
-        }
-        this.sliderUpdate();
+                }   
+                this.sliderUpdate();
     }
-    sliderUpdate() {
-        if (this.imgRecorded) {
-            this.slider.value(this.frameIndex / (this.images.length - 1));
-            this.frameIndex = Math.round(this.slider.value() * (this.images.length - 1));
-        } else {
-            if (isFinite(this.video.duration()) && isFinite(this.framerate) && this.framerate != 0 && isFinite(this.slider.value())) {
-                this.video.time((this.video.duration() - 1 / this.framerate) * this.slider.value());
-            }
+
+    sliderUpdate() {  
+        if (isFinite(this.framerate) && this.framerate != 0 && isFinite(this.video.duration())) {
+            this.slider.value(this.video.time() / (this.video.duration()- (1 / (this.framerate))));
         }
     }
+
     removeElements() {
         this.video.remove();
-        this.buttonRecord.remove();
         this.buttonStart.remove();
         this.buttonBack.remove();
         this.buttonPlay.remove();
@@ -180,63 +121,31 @@ class VideoPlayer {
         this.slider.remove();
         this.ElementsOff = true;
     }
+
     nextFrame() {
-        this.playMode = false;
-        if (this.video.duration() > this.video.time() + 1 / (this.framerate)) {
-            this.video.time(this.video.time() + 1 / this.framerate); // Avance de 1/framerate de seconde
-        }
-        if (this.frameIndex < this.images.length - 1) {
-            this.frameIndex++;
+        if (this.video.duration() > this.video.time() + (1 / (this.framerate))) {
+            this.video.time(this.video.time() + (1 / this.framerate)); // Avance de 1/framerate de seconde
         }
     }
 
     previousFrame() {
-        this.playMode = false;
-        this.video.time(this.video.time() - 1 / this.framerate); // Recule de 1/framerate de seconde
-        if (this.frameIndex > 0) {
-            this.frameIndex--;
-        }
+        this.video.time(this.video.time() - (1 / this.framerate)); // Recule de 1/framerate de seconde
     }
 
     play() {
-        this.video.play();
-        this.video.speed(1); // Contrôle la vitesse de lecture de la vidéo
-        this.playMode = true;
+        if (this.isPlaying) {
+            this.video.pause();
+            this.video.time(this.video.time() + (1 / this.framerate)); // Avance de 1/framerate de seconde
+            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
+        } else {
+            this.video.play();
+            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-pause.png")');
+        }
+        this.isPlaying = !this.isPlaying;   
     }
 
     jumpToStart() {
-        this.playMode = false;
         this.video.time(0);
-        if (this.isRecording) {
-            this.isRecording = !this.isRecording;
-        }
-        this.frameIndex = 0;
-    }
-
-    toggleRecording() {
-        this.isRecording = !this.isRecording;
-        if (this.isRecording) {
-            this.startRecording();
-        } else {
-            this.stopRecording();
-        }
-    }
-
-    startRecording() {
-        this.playMode = false;
-        this.images = [];
-        this.isRecording = true;
-        this.cam = createCapture(VIDEO);
-        this.cam.hide();
-    }
-    stopRecording() {
-        this.playMode = false;
-        this.isRecording = false;
-        this.imgRecorded = true;
-        this.framerate = 15;
-        this.frameNb = 0;
-        this.video.hide();
-        this.cam.hide();
-        this.images = this.images.slice(10); // Supprime les 10 premières images de this.images (Temps de démarrage de la caméra)
     }
 }
+
