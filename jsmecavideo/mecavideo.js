@@ -83,9 +83,7 @@ function draw() {
       drawCursor();
       break;
     case 'Pointage Webcam':
-      if (webcamPlayer) {
         webcamPlayer.draw();
-      }
       drawCursor();
       break;
     case 'Graphique':
@@ -141,7 +139,7 @@ function optionChanged() {
       data.clearAllPoints();
     }
     graph.destroy();
-    webcamPlayer = new WebcamPlayer(15); // L'argument correspond au framerate de capture de la webcam
+    webcamPlayer = new WebcamPlayer(30); // L'argument correspond au framerate de capture de la webcam
     webcamPlayer.addElements();
     webcamPlayer.jumpToStart(); // Remettre la vidéo au début
   }
@@ -164,13 +162,17 @@ function mouseClicked(event) {
 
     if (mouseButton === LEFT && keyIsDown(CONTROL)) {
       data.removeLastPoint();
+      if(videoPlayer) {
       videoPlayer.previousFrame();
+      }
     } else if (mouseButton === LEFT) {
       let calibratedX = mouseX * xConversionFactor;
       let calibratedY = 600 - mouseY * yConversionFactor;
 
+      if(videoPlayer) {
       data.addPoint(videoPlayer.time, calibratedX, calibratedY);
       videoPlayer.nextFrame();
+      }
 
     }
   }

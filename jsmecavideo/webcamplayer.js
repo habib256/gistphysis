@@ -5,15 +5,14 @@ class WebcamPlayer {
 
         this.framerate = framerate;
         this.frameIndex = 0;
+
+        this.isPlaying = false;
         this.isRecording = false;
         this.isRecorded = false;
-        this.lastUpdateTime = millis();
 
         this.ElementsOff = true;
         this.addElements();
 
-        this.playMode = false;
-        this.lastUpdateTime = 0; // Variable pour stocker la dernière fois que frameIndex a été mis à jour
         this.images = [];
     }
 
@@ -90,44 +89,54 @@ class WebcamPlayer {
     }
 
     draw() {
-        if (this.cam) {
-            // Dessiner l'image de la webcam sur le canvas
-            image(this.cam, 0, 0, width, height);
-        } else {
-            // Dessiner le message d'erreur sur le canvas
-            fill(255, 0, 0); // Couleur du texte en rouge
-            textSize(32); // Taille du texte
-            textAlign(CENTER, CENTER); // Centrer le texte
-            text('WEBCAM ERROR', width / 2, height / 2); // Dessiner le texte au milieu du canvas
-        }
-        if (this.isRecording) {
-            let capture = this.cam.get();
-            this.images.push(capture);
-            image(capture, 0, 0, width, height);
-            fill(255, 0, 0);
-            textSize(40);
-            text('REC', width - 100, 50); // Écrit "REC" à côté du cercle rouge   
-        } else {
-            if (millis() - this.lastUpdateTime >= 1000 / this.framerate) {
-                if (this.playMode) {
-                    if (this.frameIndex < this.images.length - 1) {
-                        this.frameIndex++;
-                    } else {
-                        this.playMode = false;
+        if (this.cam.loadedmetadata) {
+            if (this.isRecording) {   
+                    let pic = this.cam.get();
+                    this.images.push(pic);
+                    image(pic, 0, 0, width, height);
+                    color(255, 0, 0);
+                    fill(255, 0, 0);
+                    textSize(40);
+                    text('REC', width - 100, 50); // Écrit "REC" à côté du cercle rouge   
+            }
+            if (this.isRecorded) {
+                    if (this.isPlaying) {
+                        if (this.frameIndex < this.images.length - 1) {
+                            this.frameIndex++;
+                        } else {
+                            this.isPlaying = false;
+                        }
                     }
+                if (this.images[this.frameIndex]) {
+                    image(this.images[this.frameIndex], 0, 0, width, height);
                 }
-                this.lastUpdateTime = millis();
             }
-            if (this.images[this.frameIndex]) {
-                image(this.images[this.frameIndex], 0, 0, width, height);
+            if (!(this.isRecording || this.isRecorded)) {
+                image(this.cam, 0, 0, width, height);
             }
+        
+        } else {
+            background(0);
+            textAlign(CENTER, CENTER);
+            textSize(40);
+            color(255, 255, 255);
+            stroke(255, 255, 255);
+            fill(255, 255, 255);
+            text('NO WEBCAM', width / 2, height / 2);
         }
         this.sliderUpdate();
+        this.buttonPlayUpdate();
     }
 
     sliderUpdate() {
-            this.slider.value(this.frameIndex / (this.images.length - 1));
-            this.frameIndex = Math.round(this.slider.value() * (this.images.length - 1));
+        this.slider.value(this.frameIndex / (this.images.length - 1));
+    }
+    buttonPlayUpdate() {
+        if (this.isPlaying) {
+            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-pause.png")');        
+        } else {
+            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');        
+        }   
     }
 
     removeElements() {
@@ -141,25 +150,27 @@ class WebcamPlayer {
     }
 
     nextFrame() {
-        this.playMode = false;
+        this.isPlaying = false;
         if (this.frameIndex < this.images.length - 1) {
             this.frameIndex++;
+        } else {
+            this.isPlaying = false;
         }
     }
 
     previousFrame() {
-        this.playMode = false;
+        this.isPlaying = false;
         if (this.frameIndex > 0) {
             this.frameIndex--;
         }
     }
 
     play() {
-        this.playMode = true;
+        this.isPlaying = !this.isPlaying;   
     }
 
     jumpToStart() {
-        this.playMode = false;
+        this.isPlaying = false;
         if (this.isRecording) {
             this.isRecording = !this.isRecording;
         }
@@ -177,15 +188,17 @@ class WebcamPlayer {
 
     startRecording() {
         this.images = [];
+        this.isRecorded = false;
         this.isRecording = true;
-       
+        console.log('Start Recording');
+        
+
     }
     stopRecording() {
         this.isRecording = false;
         this.isRecorded = true;
-        this.frameNb = 0;
-        this.cam.hide();
-        this.images = this.images.slice(10); // Supprime les 10 premières images de this.images (Temps de démarrage de la caméra)
+        this.frameIndex = 0;
+        console.log('Stop Recording');
+        //this.images = this.images.slice(10); // Supprime les 10 premières images de this.images (Temps de démarrage de la caméra)
     }
 }
-
