@@ -208,6 +208,5 @@ class WebcamPlayer {
         this.isRecorded = true;
         this.frameIndex = 0;
         console.log('Stop Recording');
-        //this.images = this.images.slice(10); // Supprime les 10 premières images de this.images (Temps de démarrage de la caméra)
     }
 }
