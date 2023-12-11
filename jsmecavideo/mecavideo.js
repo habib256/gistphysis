@@ -83,7 +83,7 @@ function draw() {
       drawCursor();
       break;
     case 'Pointage Webcam':
-        webcamPlayer.draw();
+      webcamPlayer.draw();
       drawCursor();
       break;
     case 'Graphique':
@@ -117,7 +117,7 @@ function initVideoPlayer() {
     webcamPlayer = null; // Détruire l'objet webcamPlayer
     videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
   }
-  if(videoPlayer) {
+  if (videoPlayer) {
     videoPlayer.removeElements();
   }
   let selectedVideoIndex = dropdown3.value();
@@ -130,6 +130,7 @@ function optionChanged() {
   console.log(etat);
 
   if (etat === 'Pointage Vidéo') {
+    frameRate(60);
     initVideoPlayer();
   }
   if (etat === 'Pointage Webcam') {
@@ -139,15 +140,15 @@ function optionChanged() {
       data.clearAllPoints();
     }
     graph.destroy();
-    webcamPlayer = new WebcamPlayer(30); // L'argument correspond au framerate de capture de la webcam
+    webcamPlayer = new WebcamPlayer(15); // L'argument correspond au framerate de capture de la webcam
     webcamPlayer.addElements();
     webcamPlayer.jumpToStart(); // Remettre la vidéo au début
   }
   if (etat === 'Graphique') {
-    if(videoPlayer){
-    videoPlayer.removeElements();
+    if (videoPlayer) {
+      videoPlayer.removeElements();
     }
-    if(webcamPlayer){
+    if (webcamPlayer) {
       webcamPlayer.removeElements();
     }
     graph.destroy();
@@ -162,16 +163,23 @@ function mouseClicked(event) {
 
     if (mouseButton === LEFT && keyIsDown(CONTROL)) {
       data.removeLastPoint();
-      if(videoPlayer) {
-      videoPlayer.previousFrame();
+      if (videoPlayer) {
+        videoPlayer.previousFrame();
+      }
+      if (webcamPlayer) {
+        webcamPlayer.previousFrame();
       }
     } else if (mouseButton === LEFT) {
       let calibratedX = mouseX * xConversionFactor;
       let calibratedY = 600 - mouseY * yConversionFactor;
 
-      if(videoPlayer) {
-      data.addPoint(videoPlayer.time, calibratedX, calibratedY);
-      videoPlayer.nextFrame();
+      if (videoPlayer) {
+        data.addPoint(videoPlayer.time, calibratedX, calibratedY);
+        videoPlayer.nextFrame();
+      }
+      if (webcamPlayer) {
+        data.addPoint(webcamPlayer.time, calibratedX, calibratedY);
+        webcamPlayer.nextFrame();
       }
 
     }

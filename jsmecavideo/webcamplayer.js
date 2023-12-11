@@ -3,6 +3,7 @@ class WebcamPlayer {
         this.cam = createCapture(VIDEO);
         this.cam.hide();
 
+        frameRate(framerate);
         this.framerate = framerate;
         this.frameIndex = 0;
 
@@ -84,6 +85,10 @@ class WebcamPlayer {
             this.slider.style('width', '800px');
             this.slider.style('float', 'right'); // Align the slider to the right
             this.slider.input(() => this.sliderUpdate());
+            this.slider.mousePressed(() => this.sliderActive = true);
+            this.slider.mouseReleased(() => this.sliderActive = false);
+            this.sliderActive = false;
+
             this.ElementsOff = false;
         }
     }
@@ -129,7 +134,11 @@ class WebcamPlayer {
     }
 
     sliderUpdate() {
-        this.slider.value(this.frameIndex / (this.images.length - 1));
+        if (this.isRecorded && this.sliderActive) {
+            this.frameIndex = Math.round(this.slider.value() * (this.images.length - 1));
+        } else {
+            this.slider.value(this.frameIndex / (this.images.length - 1));
+        }
     }
     buttonPlayUpdate() {
         if (this.isPlaying) {
