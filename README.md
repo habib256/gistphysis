@@ -42,13 +42,13 @@ Ce dépôt a pour objectif de proposer des démonstrations d'applications web in
 
 Vous pouvez lancer directement chacune des applications en cliquant sur les liens ci-dessous (assurez-vous d'utiliser GitHub Pages ou de servir les fichiers depuis un serveur local pour une expérience optimale) :
 
-- [Lancer Globe](./globe/index.html)  
+- [Lancer Globe](https://habib256.github.io/index.html)  
   _(Cliquez pour lancer l'application Globe)_
 
-- [Lancer JSMecanique Video](./jsmecavideo/index.html)  
+- [Lancer JSMecanique Video](https://habib256.github.io/jsmecavideo/index.html)  
   _(Cliquez pour lancer l'application JSMega Video)_
 
-- [Lancer Système Solaire](./SystemeSolaire/index.html)  
+- [Lancer Système Solaire](https://habib256.github.io/SystemeSolaire/index.html)  
   _(Cliquez pour lancer l'application Systèmes Solaire)_
 
 > **Note :** Pour un lancement optimal, nous recommandons d'utiliser un serveur local ou de déployer ces applications via GitHub Pages.
