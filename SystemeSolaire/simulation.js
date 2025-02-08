@@ -598,7 +598,7 @@ window.addEventListener('load', function init() {
         // Dessiner le Soleil
         ctx.beginPath();
         ctx.fillStyle = "yellow";
-        ctx.arc(originX, originY, 30 * zoom, 0, Math.PI * 2);
+        ctx.arc(originX, originY, 50 * zoom, 0, Math.PI * 2);
         ctx.fill();
 
         // Mettre à jour la trace du Soleil si le checkbox est coché
