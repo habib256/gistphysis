@@ -3,16 +3,16 @@ Bienvenue dans **gistphysis** - Un laboratoire d'applications interactives !
 
 ## ▶️ Lancer les applications
 
-Cliquez et explorez directement nos applications :
+- [Lancer Globe](https://habib256.github.io/gistphysis/globe/index.html)  
+  _(Cliquez pour lancer l'application Globe)_
 
-🌍 [Globe](./Globe/index.html)  
-_Explorez notre planète en 3D_
+- [Lancer JSMecanique Video](https://habib256.github.io/gistphysis/jsmecavideo/index.html)  
+  _(Cliquez pour lancer l'application JSMega Video)_
 
-🎥 [JSMega Video](./JSMegaVideo/index.html)  
-_Interface vidéo avancée_
+- [Lancer Système Solaire](https://habib256.github.io/gistphysis/SystemeSolaire/index.html)  
+  _(Cliquez pour lancer l'application Systèmes Solaire)_
 
-🪐 [Systèmes Solaire](./SystemesSolaire/index.html)  
-_Voyagez dans notre système solaire_
+> **Note :** Pour une expérience optimale, utilisez un navigateur moderne ! 🌐
 
 ## 📖 À propos
 
