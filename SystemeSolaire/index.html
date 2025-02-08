@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulation Solaire</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu" style="position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.5); color: white; padding: 5px; border-radius: 5px;">
+        <label for="planetSelect">Centrer sur : </label>
+        <select id="planetSelect">
+            <option value="soleil">Soleil</option>
+            <option value="Mercure">Mercure</option>
+            <option value="Vénus">Vénus</option>
+            <option value="Terre">Terre</option>
+            <option value="Mars">Mars</option>
+            <option value="Jupiter">Jupiter</option>
+            <option value="Saturne">Saturne</option>
+            <option value="Uranus">Uranus</option>
+            <option value="Neptune">Neptune</option>
+            <option value="Pluton">Pluton</option>
+            <option value="Comète HALLEY">Comète HALLEY</option>
+        </select>
+    </div>
+    <div id="timeControls" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;">
+        <button id="slowTime">Ralentir</button>
+        <button id="fastTime">Accélérer</button>
+    </div>
+    <div id="middleControls" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; gap: 10px;">
+        <button id="toggleOrbits" style="padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 4px; cursor: pointer;">
+            Masquer les orbites
+        </button>
+        <button id="toggleNames" style="padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 4px; cursor: pointer;">
+            Masquer les noms
+        </button>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script src="simulation.js"></script>
+    <!-- Contrôles de traces modifiés -->
+    <div id="traceControls" style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 10px; display: flex; flex-direction: column; gap: 10px; justify-content: center; align-items: center;">
+        
+        <!-- Première ligne : Soleil, Lune et Comète HALLEY -->
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+            <span>Obtenir les traces:</span>
+            <label><input type="checkbox" id="traceSoleil"> Soleil</label>
+            <label><input type="checkbox" id="traceLune"> Lune</label>
+            <label><input type="checkbox" id="traceComèteHALLEY"> Comète Halley</label>
+        </div>
+        <!-- Deuxième ligne : reste des planètes -->
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+            <label><input type="checkbox" id="traceMercure"> Mercure</label>
+            <label><input type="checkbox" id="traceVenus"> Vénus</label>
+            <label><input type="checkbox" id="traceTerre"> Terre</label>
+            <label><input type="checkbox" id="traceMars"> Mars</label>
+            <label><input type="checkbox" id="traceJupiter"> Jupiter</label>
+            <label><input type="checkbox" id="traceSaturne"> Saturne</label>
+            <label><input type="checkbox" id="traceUranus"> Uranus</label>
+            <label><input type="checkbox" id="traceNeptune"> Neptune</label>
+            <label><input type="checkbox" id="tracePluton"> Pluton</label>
+        </div>
+    </div>
+</body>
+</html> 
