@@ -1,5 +1,5 @@
 let selectedPlanet = null;
-let timeMultiplier = 0.25;
+let timeMultiplier = 0.0009765625;
 let showOrbits = true;
 let showNames = true;
 
@@ -54,11 +54,10 @@ function initControls() {
                 event.touches[0].clientX - event.touches[1].clientX,
                 event.touches[0].clientY - event.touches[1].clientY
             );
-            // Calculer la variation de distance par rapport à celle du début du geste
+            // Calculer la variation à partir de la distance initiale
             const deltaDistance = newDistance - initialDistance;
-            // Appliquer la même méthode que pour le zoom à la molette
-            const newZoomUnclamped = initialZoom * (1 + deltaDistance * 0.001);
-            // Appliquer le même clamp que pour la molette
+            // Tripler la réactivité en utilisant 0.003 au lieu de 0.001
+            const newZoomUnclamped = initialZoom * (1 + deltaDistance * 0.003);
             const newZoom = Math.max(0.05, Math.min(newZoomUnclamped, 5));
 
             // Pour garder la cible centrée, on conserve les offsets initiaux
