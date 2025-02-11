@@ -127,19 +127,22 @@
             }
         });
 
-        zoomCanvas.addEventListener('touchmove', function(event) {
-            if (event.touches.length === 2) {
-                // Empêcher le zoom natif du navigateur
-                event.preventDefault(); // Nécessite { passive: false } dans l'écouteur
-                const newDistance = getDistance(event.touches[0], event.touches[1]);
-                // Calculer le facteur de zoom par rapport à la distance initiale
-                const scaleChange = newDistance / initialDistance;
-                currentScale *= scaleChange;
-                updateZoom(currentScale);
-                // Mettre à jour la distance initiale pour le mouvement suivant
-                initialDistance = newDistance;
-            }
-        }, { passive: false });
+        // Écouteur d'événement pour le pinch qui appliquait un zoom direct sur le canvas.
+        // Ce code est désactivé afin de ne pas zoomer/dézoomer le canvas lui-même.
+        // zoomCanvas.addEventListener('touchmove', function(event) {
+        //     if (event.touches.length === 2) {
+        //         // Empêcher le zoom natif du navigateur
+        //         event.preventDefault(); // Nécessite { passive: false } dans l'écouteur
+        //
+        //         const newDistance = getDistance(event.touches[0], event.touches[1]);
+        //         // Calculer le facteur de zoom par rapport à la distance initiale
+        //         const scaleChange = newDistance / initialDistance;
+        //         currentScale *= scaleChange;
+        //         updateZoom(currentScale);
+        //         // Mettre à jour la distance initiale pour le mouvement suivant
+        //         initialDistance = newDistance;
+        //     }
+        // }, { passive: false });
     </script>
 </body>
 </html> 
