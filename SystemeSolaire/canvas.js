@@ -41,6 +41,9 @@ function setViewOffsets(x, y) {
 (function() {
     let initialDistance = 0;
     let currentScale = 1;
+    // Nouveaux paramètres pour gérer la translation (déplacement) du zoom
+    let currentTranslateX = 0;
+    let currentTranslateY = 0;
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -52,9 +55,9 @@ function setViewOffsets(x, y) {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    // Met à jour l'échelle du canvas via setTransform
-    function updateZoom(scale) {
-        ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    // Met à jour l'échelle et la translation du canvas via setTransform
+    function updateZoom() {
+        ctx.setTransform(currentScale, 0, 0, currentScale, currentTranslateX, currentTranslateY);
         // Optionnel : redessiner la scène ici si nécessaire,
         // par exemple en rappelant votre fonction d'animation.
     }
@@ -66,16 +69,26 @@ function setViewOffsets(x, y) {
         }
     });
 
-    // Gestion du mouvement lors du toucher
+    // Gestion du mouvement lors du toucher avec zoom centré sur le point de pincement
     canvas.addEventListener('touchmove', function(event) {
         if (event.touches.length === 2) {
-            // Empêche le zoom natif du navigateur
-            event.preventDefault(); // Assurez-vous que l'écouteur soit défini avec { passive: false }
+            event.preventDefault(); // Empêche le zoom natif du navigateur
             const newDistance = getDistance(event.touches[0], event.touches[1]);
-            const scaleChange = newDistance / initialDistance;
-            currentScale *= scaleChange;
-            updateZoom(currentScale);
-            // Mettre à jour la distance initiale pour la prochaine itération
+            const scaleFactor = newDistance / initialDistance;
+            
+            // Calculer le point médian entre les deux touches (centre du pinch)
+            const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+            const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+            
+            // Mettre à jour l'échelle
+            currentScale *= scaleFactor;
+            
+            // Ajuster la translation pour que le point médian reste fixe
+            currentTranslateX = midX - scaleFactor * (midX - currentTranslateX);
+            currentTranslateY = midY - scaleFactor * (midY - currentTranslateY);
+            
+            updateZoom();
+            // Mettre à jour la distance initiale pour le prochain événement
             initialDistance = newDistance;
         }
     }, { passive: false });
