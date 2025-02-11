@@ -28,6 +28,47 @@ function initControls() {
         // Vous pourrez par la suite effacer les traces lors du zoom si besoin
     });
     
+    // Gestion du zoom par pinch pour smartphone (comportement identique à la molette)
+    let initialDistance = 0;
+    let initialZoom = zoom;
+    let initialViewOffsetX = viewOffsetX;
+    let initialViewOffsetY = viewOffsetY;
+
+    canvas.addEventListener('touchstart', function(event) {
+        if (event.touches.length === 2) {
+            initialDistance = Math.hypot(
+                event.touches[0].clientX - event.touches[1].clientX,
+                event.touches[0].clientY - event.touches[1].clientY
+            );
+            // Enregistrer l'état initial du zoom et des offsets
+            initialZoom = zoom;
+            initialViewOffsetX = viewOffsetX;
+            initialViewOffsetY = viewOffsetY;
+        }
+    });
+
+    canvas.addEventListener('touchmove', function(event) {
+        if (event.touches.length === 2) {
+            event.preventDefault(); // Empêche le comportement par défaut
+            const newDistance = Math.hypot(
+                event.touches[0].clientX - event.touches[1].clientX,
+                event.touches[0].clientY - event.touches[1].clientY
+            );
+            const scaleFactor = newDistance / initialDistance;
+            const newZoom = initialZoom * scaleFactor;
+
+            // Calcul du point médian des deux touches
+            const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+            const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+
+            const newViewOffsetX = midX - (newZoom / initialZoom) * (midX - initialViewOffsetX);
+            const newViewOffsetY = midY - (newZoom / initialZoom) * (midY - initialViewOffsetY);
+
+            setZoom(newZoom);
+            setViewOffsets(newViewOffsetX, newViewOffsetY);
+        }
+    }, { passive: false });
+    
     // Gestion du clic sur le canvas pour recentrer la vue
     canvas.addEventListener("click", function(event) {
         const rect = canvas.getBoundingClientRect();
