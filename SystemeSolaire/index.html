@@ -112,37 +112,30 @@
             return Math.sqrt(dx * dx + dy * dy);
         }
 
-        // Mettre à jour l'échelle de la simulation / canvas
+        // Mise à jour de l'échelle de la simulation / canvas
         function updateZoom(scale) {
-            // Vous pouvez par exemple refaire un setTransform sur votre contexte de dessin
+            // Ici, updateZoom ne modifie que la simulation via setZoom, etc.
+            // Si nécessaire, vous pouvez adapter cette fonction.
             const ctx = zoomCanvas.getContext('2d');
             ctx.setTransform(scale, 0, 0, scale, 0, 0);
-            // Ensuite, redessinez votre scène ou utilisez votre boucle d'animation existante
         }
 
-        zoomCanvas.addEventListener('touchstart', function(event) {
+        // Le code ci-dessous gérait précédemment le zoom direct sur le canvas via le pinch,
+        // mais il est désormais désactivé pour que seul le zoom de la simulation soit pris en compte.
+        /*
+        zoomCanvas.addEventListener('touchmove', function(event) {
             if (event.touches.length === 2) {
-                // Calcule la distance de départ entre les deux doigts
-                initialDistance = getDistance(event.touches[0], event.touches[1]);
+                event.preventDefault(); // Nécessite { passive: false } dans l'écouteur
+                const newDistance = getDistance(event.touches[0], event.touches[1]);
+                // Calculer le facteur de zoom par rapport à la distance initiale
+                const scaleChange = newDistance / initialDistance;
+                currentScale *= scaleChange;
+                updateZoom(currentScale);
+                // Mettre à jour la distance initiale pour le mouvement suivant
+                initialDistance = newDistance;
             }
-        });
-
-        // Écouteur d'événement pour le pinch qui appliquait un zoom direct sur le canvas.
-        // Ce code est désactivé afin de ne pas zoomer/dézoomer le canvas lui-même.
-        // zoomCanvas.addEventListener('touchmove', function(event) {
-        //     if (event.touches.length === 2) {
-        //         // Empêcher le zoom natif du navigateur
-        //         event.preventDefault(); // Nécessite { passive: false } dans l'écouteur
-        //
-        //         const newDistance = getDistance(event.touches[0], event.touches[1]);
-        //         // Calculer le facteur de zoom par rapport à la distance initiale
-        //         const scaleChange = newDistance / initialDistance;
-        //         currentScale *= scaleChange;
-        //         updateZoom(currentScale);
-        //         // Mettre à jour la distance initiale pour le mouvement suivant
-        //         initialDistance = newDistance;
-        //     }
-        // }, { passive: false });
+        }, { passive: false });
+        */
     </script>
 </body>
 </html> 
