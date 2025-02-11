@@ -51,19 +51,10 @@
             <option value="Comète HALLEY">Comète HALLEY</option>
         </select>
         <!-- Boutons de temps repositionnés sous le menu déroulant -->
-        <div id="timeControls" style="margin-top: 10px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;">
+        <div id="timeControls" style="margin-top: 10px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
              <button id="slowTime">Ralentir</button>
              <button id="fastTime">Accélérer</button>
         </div>
-    </div>
-    <!-- Boutons de masquage placés en haut à droite, verticalement -->
-    <div id="middleControls" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; padding: 5px;">
-        <button id="toggleOrbits" style="padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 4px; cursor: pointer;">
-            Masquer les orbites
-        </button>
-        <button id="toggleNames" style="padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 4px; cursor: pointer;">
-            Masquer les noms
-        </button>
     </div>
     <canvas id="canvas"></canvas>
     <!-- Chargement des scripts (mode global) -->
@@ -74,23 +65,36 @@
     <script src="drawing.js"></script>
     <script src="animation.js"></script>
     <script src="simulation.js"></script>
-    <!-- Contrôles de traces modifiés - Version compacte -->
-    <details id="traceControls" style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-top: 1px solid white;">
-        <summary style="cursor: pointer; font-size: 18px;">Obtenir les traces</summary>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px; margin-top: 5px; text-align: center;">
-            <label><input type="checkbox" id="traceSoleil"> Soleil</label>
-            <label><input type="checkbox" id="traceLune"> Lune</label>
-            <label><input type="checkbox" id="traceHalley"> Halley</label>
-            <label><input type="checkbox" id="traceMercure"> Mercure</label>
-            <label><input type="checkbox" id="traceVenus"> Vénus</label>
-            <label><input type="checkbox" id="traceTerre"> Terre</label>
-            <label><input type="checkbox" id="traceMars"> Mars</label>
-            <label><input type="checkbox" id="traceJupiter"> Jupiter</label>
-            <label><input type="checkbox" id="traceSaturne"> Saturne</label>
-            <label><input type="checkbox" id="traceUranus"> Uranus</label>
-            <label><input type="checkbox" id="traceNeptune"> Neptune</label>
-            <label><input type="checkbox" id="tracePluton"> Pluton</label>
-        </div>
-    </details>
+    <!-- Conteneur des contrôles en bas, regroupant "Obtenir les traces" et "Masquage" -->
+    <div id="bottomControls" style="position: fixed; bottom: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 5px; z-index: 1000;">
+       <details id="maskControls" style="background: rgba(0,0,0,0.7); color: white; padding: 10px; border-top: 1px solid white;">
+           <summary style="cursor: pointer; font-size: 18px;">Masquage</summary>
+           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px; margin-top: 5px; text-align: center;">
+               <button id="toggleOrbits" style="padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 4px; cursor: pointer;">
+                   Masquer les orbites
+               </button>
+               <button id="toggleNames" style="padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 4px; cursor: pointer;">
+                   Masquer les noms
+               </button>
+           </div>
+       </details>
+       <details id="traceControls" style="background: rgba(0,0,0,0.7); color: white; padding: 10px; border-top: 1px solid white;">
+           <summary style="cursor: pointer; font-size: 18px;">Obtenir les traces</summary>
+           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px; margin-top: 5px; text-align: center;">
+               <label><input type="checkbox" id="traceSoleil"> Soleil</label>
+               <label><input type="checkbox" id="traceLune"> Lune</label>
+               <label><input type="checkbox" id="traceHalley"> Halley</label>
+               <label><input type="checkbox" id="traceMercure"> Mercure</label>
+               <label><input type="checkbox" id="traceVenus"> Vénus</label>
+               <label><input type="checkbox" id="traceTerre"> Terre</label>
+               <label><input type="checkbox" id="traceMars"> Mars</label>
+               <label><input type="checkbox" id="traceJupiter"> Jupiter</label>
+               <label><input type="checkbox" id="traceSaturne"> Saturne</label>
+               <label><input type="checkbox" id="traceUranus"> Uranus</label>
+               <label><input type="checkbox" id="traceNeptune"> Neptune</label>
+               <label><input type="checkbox" id="tracePluton"> Pluton</label>
+           </div>
+       </details>
+    </div>
 </body>
 </html> 
