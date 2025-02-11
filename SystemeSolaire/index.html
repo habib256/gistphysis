@@ -101,7 +101,8 @@
         let initialDistance = 0;
         let currentScale = 1;
 
-        const canvas = document.getElementById('canvas');
+        // Renommage de la variable pour éviter la redéclaration
+        const zoomCanvas = document.getElementById('canvas');
 
         // Fonction pour calculer la distance entre deux points tactiles
         function getDistance(touch1, touch2) {
@@ -113,19 +114,19 @@
         // Mettre à jour l'échelle de la simulation / canvas
         function updateZoom(scale) {
             // Vous pouvez par exemple refaire un setTransform sur votre contexte de dessin
-            const ctx = canvas.getContext('2d');
+            const ctx = zoomCanvas.getContext('2d');
             ctx.setTransform(scale, 0, 0, scale, 0, 0);
             // Ensuite, redessinez votre scène ou utilisez votre boucle d'animation existante
         }
 
-        canvas.addEventListener('touchstart', function(event) {
+        zoomCanvas.addEventListener('touchstart', function(event) {
             if (event.touches.length === 2) {
                 // Calcule la distance de départ entre les deux doigts
                 initialDistance = getDistance(event.touches[0], event.touches[1]);
             }
         });
 
-        canvas.addEventListener('touchmove', function(event) {
+        zoomCanvas.addEventListener('touchmove', function(event) {
             if (event.touches.length === 2) {
                 // Empêcher le zoom natif du navigateur
                 event.preventDefault(); // Nécessite { passive: false } dans l'écouteur
