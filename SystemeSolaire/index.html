@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <!-- Ajout de la balise viewport pour les affichages mobiles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulation Solaire</title>
     <style>
         body {
@@ -11,6 +13,24 @@
         }
         canvas {
             display: block;
+        }
+    </style>
+    <!-- Nouveau bloc de styles pour rendre l'interface mobile-friendly -->
+    <style>
+        /* Augmenter la taille de tous les boutons */
+        button {
+            font-size: 18px !important;
+            padding: 16px 24px !important;
+        }
+        /* Augmenter la taille des éléments de formulaire */
+        select, input, label {
+            font-size: 18px !important;
+            padding: 8px 12px !important;
+        }
+        /* Agrandir les conteneurs de contrôles */
+        #menu, #middleControls, #timeControls, #traceControls {
+            font-size: 18px !important;
+            padding: 10px !important;
         }
     </style>
 </head>
@@ -30,6 +50,11 @@
             <option value="Pluton">Pluton</option>
             <option value="Comète HALLEY">Comète HALLEY</option>
         </select>
+        <!-- Boutons de temps repositionnés sous le menu déroulant -->
+        <div id="timeControls" style="margin-top: 10px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;">
+             <button id="slowTime">Ralentir</button>
+             <button id="fastTime">Accélérer</button>
+        </div>
     </div>
     <!-- Boutons de masquage placés en haut à droite, verticalement -->
     <div id="middleControls" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 10px; padding: 5px;">
@@ -40,11 +65,6 @@
             Masquer les noms
         </button>
     </div>
-    <!-- Boutons de temps décalés vers le bas et repositionnés légèrement vers la droite -->
-    <div id="timeControls" style="position: absolute; top: 100px; right: 20px; z-index: 1000; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;">
-        <button id="slowTime">Ralentir</button>
-        <button id="fastTime">Accélérer</button>
-    </div>
     <canvas id="canvas"></canvas>
     <!-- Chargement des scripts (mode global) -->
     <script src="canvas.js"></script>
@@ -54,17 +74,13 @@
     <script src="drawing.js"></script>
     <script src="animation.js"></script>
     <script src="simulation.js"></script>
-    <!-- Contrôles de traces modifiés -->
-    <div id="traceControls" style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 10px; display: flex; flex-direction: column; gap: 10px; justify-content: center; align-items: center;">
-        <!-- Première ligne : Soleil, Lune et Comète HALLEY -->
-        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-            <span>Obtenir les traces:</span>
+    <!-- Contrôles de traces modifiés - Version compacte -->
+    <details id="traceControls" style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-top: 1px solid white;">
+        <summary style="cursor: pointer; font-size: 18px;">Obtenir les traces</summary>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px; margin-top: 5px; text-align: center;">
             <label><input type="checkbox" id="traceSoleil"> Soleil</label>
             <label><input type="checkbox" id="traceLune"> Lune</label>
             <label><input type="checkbox" id="traceHalley"> Halley</label>
-        </div>
-        <!-- Deuxième ligne : reste des planètes -->
-        <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
             <label><input type="checkbox" id="traceMercure"> Mercure</label>
             <label><input type="checkbox" id="traceVenus"> Vénus</label>
             <label><input type="checkbox" id="traceTerre"> Terre</label>
@@ -75,6 +91,6 @@
             <label><input type="checkbox" id="traceNeptune"> Neptune</label>
             <label><input type="checkbox" id="tracePluton"> Pluton</label>
         </div>
-    </div>
+    </details>
 </body>
 </html> 
