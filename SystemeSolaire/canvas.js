@@ -37,16 +37,17 @@ function setViewOffsets(x, y) {
     
 }
 
-// Gestion du zoom par pinch pour smartphone
+// Gestion du zoom par pinch pour smartphone (comportement identique à la molette)
 (function() {
+    // Variables pour stocker l'état initial lors du début du geste pinch
     let initialDistance = 0;
-    let currentScale = 1;
-    // Nouveaux paramètres pour gérer la translation (déplacement) du zoom
-    let currentTranslateX = 0;
-    let currentTranslateY = 0;
+    let initialZoom = 1;
+    let initialViewOffsetX = 0;
+    let initialViewOffsetY = 0;
 
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    // Suppression de la récupération du contexte car il n'est plus utilisé ici
+    // const ctx = canvas.getContext('2d');
 
     // Fonction pour calculer la distance entre deux points tactiles
     function getDistance(touch1, touch2) {
@@ -55,17 +56,14 @@ function setViewOffsets(x, y) {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    // Met à jour l'échelle et la translation du canvas via setTransform
-    function updateZoom() {
-        ctx.setTransform(currentScale, 0, 0, currentScale, currentTranslateX, currentTranslateY);
-        // Optionnel : redessiner la scène ici si nécessaire,
-        // par exemple en rappelant votre fonction d'animation.
-    }
-
     // Démarrage du geste pinch
     canvas.addEventListener('touchstart', function(event) {
         if (event.touches.length === 2) {
             initialDistance = getDistance(event.touches[0], event.touches[1]);
+            // Enregistrer l'état initial du zoom et de la translation
+            initialZoom = zoom;
+            initialViewOffsetX = viewOffsetX;
+            initialViewOffsetY = viewOffsetY;
         }
     });
 
@@ -75,21 +73,18 @@ function setViewOffsets(x, y) {
             event.preventDefault(); // Empêche le zoom natif du navigateur
             const newDistance = getDistance(event.touches[0], event.touches[1]);
             const scaleFactor = newDistance / initialDistance;
-            
+            const newZoom = initialZoom * scaleFactor;
+
             // Calculer le point médian entre les deux touches (centre du pinch)
             const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
             const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
-            
-            // Mettre à jour l'échelle
-            currentScale *= scaleFactor;
-            
-            // Ajuster la translation pour que le point médian reste fixe
-            currentTranslateX = midX - scaleFactor * (midX - currentTranslateX);
-            currentTranslateY = midY - scaleFactor * (midY - currentTranslateY);
-            
-            updateZoom();
-            // Mettre à jour la distance initiale pour le prochain événement
-            initialDistance = newDistance;
+
+            // Ajuster les offsets pour que le point médian reste fixe
+            const newViewOffsetX = midX - (newZoom / initialZoom) * (midX - initialViewOffsetX);
+            const newViewOffsetY = midY - (newZoom / initialZoom) * (midY - initialViewOffsetY);
+
+            setZoom(newZoom);
+            setViewOffsets(newViewOffsetX, newViewOffsetY);
         }
     }, { passive: false });
 })(); 
