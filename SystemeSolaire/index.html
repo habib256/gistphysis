@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <!-- Ajout de la balise viewport pour les affichages mobiles -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Simulation Solaire</title>
     <style>
         body {
@@ -96,5 +96,48 @@
            </div>
        </details>
     </div>
+    <!-- Déclaration des variables globales pour le zoom -->
+    <script>
+        let initialDistance = 0;
+        let currentScale = 1;
+
+        const canvas = document.getElementById('canvas');
+
+        // Fonction pour calculer la distance entre deux points tactiles
+        function getDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Mettre à jour l'échelle de la simulation / canvas
+        function updateZoom(scale) {
+            // Vous pouvez par exemple refaire un setTransform sur votre contexte de dessin
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            // Ensuite, redessinez votre scène ou utilisez votre boucle d'animation existante
+        }
+
+        canvas.addEventListener('touchstart', function(event) {
+            if (event.touches.length === 2) {
+                // Calcule la distance de départ entre les deux doigts
+                initialDistance = getDistance(event.touches[0], event.touches[1]);
+            }
+        });
+
+        canvas.addEventListener('touchmove', function(event) {
+            if (event.touches.length === 2) {
+                // Empêcher le zoom natif du navigateur
+                event.preventDefault(); // Nécessite { passive: false } dans l'écouteur
+                const newDistance = getDistance(event.touches[0], event.touches[1]);
+                // Calculer le facteur de zoom par rapport à la distance initiale
+                const scaleChange = newDistance / initialDistance;
+                currentScale *= scaleChange;
+                updateZoom(currentScale);
+                // Mettre à jour la distance initiale pour le mouvement suivant
+                initialDistance = newDistance;
+            }
+        }, { passive: false });
+    </script>
 </body>
 </html> 
