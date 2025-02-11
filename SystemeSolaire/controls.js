@@ -56,21 +56,14 @@ function initControls() {
             );
             // Calculer la variation de distance par rapport à celle du début du geste
             const deltaDistance = newDistance - initialDistance;
-            // Appliquer la même méthode que pour le zoom à la molette :
-            // dans le cas de la molette, on utilisait zoom * (1 - event.deltaY * 0.001).
-            // Ici, pour inverser le signe et permettre l'augmentation du zoom quand les doigts s'écartent, on fait :
+            // Appliquer la même méthode que pour le zoom à la molette
             const newZoomUnclamped = initialZoom * (1 + deltaDistance * 0.001);
             // Appliquer le même clamp que pour la molette
             const newZoom = Math.max(0.05, Math.min(newZoomUnclamped, 5));
 
-            // Calcul du point médian des deux touches pour ajuster les offsets
-            const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
-            const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
-            const newViewOffsetX = midX - (newZoom / initialZoom) * (midX - initialViewOffsetX);
-            const newViewOffsetY = midY - (newZoom / initialZoom) * (midY - initialViewOffsetY);
-
+            // Pour garder la cible centrée, on conserve les offsets initiaux
             setZoom(newZoom);
-            setViewOffsets(newViewOffsetX, newViewOffsetY);
+            setViewOffsets(initialViewOffsetX, initialViewOffsetY);
         }
     }, { passive: false });
     
