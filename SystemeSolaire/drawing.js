@@ -34,7 +34,8 @@ function getPlanetPosition(planet, originX, originY, zoom) {
 
 function drawOrbit(ctx, planet, originX, originY, zoom) {
     if (!showOrbits) return;
-    
+    if (planet.name === "Ceres") return; // Ne pas tracer l'orbite de Ceres
+
     ctx.beginPath();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
     ctx.lineWidth = 1;

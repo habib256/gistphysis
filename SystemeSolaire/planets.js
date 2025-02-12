@@ -19,6 +19,7 @@ const planets = [
           { name: "Deimos", orbit: 45.00, radius: 3.00, period: 1.263, speed: (2 * Math.PI / 1.263) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#dddddd' }
       ]
     },
+    { name: "Ceres", orbit: 1375.00, radius: 7.00, period: 1680.00, speed: (2 * Math.PI / 1680.00) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ccaa66', hideOrbit: true },
     { name: "Jupiter", orbit: 1650.00, radius: 24.00, period: 4332.82, speed: (2 * Math.PI / 4332.82) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ffaa00',
       satellites: [
           { name: "Io",       orbit: 50.00,  radius: 3.00, period: 1.769, speed: (2 * Math.PI / 1.769) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ffcc99' },
