@@ -9,10 +9,12 @@ function init() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff); // Fond blanc
 
-    // Création de la caméra
+    // Déclaration du conteneur avant création de la caméra
+    const modelContainer = document.getElementById("model-viewer") || document.body;
+    // Création de la caméra en utilisant les dimensions du conteneur
     const camera = new THREE.PerspectiveCamera(
         75, 
-        window.innerWidth / window.innerHeight,
+        modelContainer.clientWidth / modelContainer.clientHeight,
         0.1,
         1000
     );
@@ -20,8 +22,7 @@ function init() {
 
     // Création du renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    const modelContainer = document.getElementById("model-viewer") || document.body;
+    renderer.setSize(modelContainer.clientWidth, modelContainer.clientHeight);
     modelContainer.appendChild(renderer.domElement);
 
     // Création d'un groupe pour regrouper tous les atomes et liaisons de la molécule
@@ -37,7 +38,7 @@ function init() {
     // Positionnement suivant une configuration tétraédrique.
     // Nous plaçons les hydrogènes aux positions suivantes :
     // (d, d, d), (d, -d, -d), (-d, d, -d) et (-d, -d, d)
-    const d = 1.5; // distance rapprochée depuis le carbone central
+    const d = 1.0; // distance rapprochée depuis le carbone central (raccourcie)
     const hPositions = [
         new THREE.Vector3(d, d, d),
         new THREE.Vector3(d, -d, -d),
@@ -46,36 +47,34 @@ function init() {
     ];
 
     const hGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const hMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const hMaterial = new THREE.MeshPhongMaterial({ 
+         color: 0xffffff, 
+         specular: 0x111111, 
+         shininess: 30 
+    });
 
     hPositions.forEach(position => {
         const hSphere = new THREE.Mesh(hGeometry, hMaterial);
         hSphere.position.copy(position);
-        // Ajout d'un contour noir (wireframe) pour surligner la sphère d'hydrogène
-        const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
-        const outline = new THREE.Mesh(hGeometry, outlineMaterial);
-        outline.scale.set(1.1, 1.1, 1.1);
-        hSphere.add(outline);
         molecule.add(hSphere);
     });
 
     // Création des liaisons entre le carbone central et chaque hydrogène
     function createBond(start, end) {
-        const distance = start.distanceTo(end);
-        const bondGeometry = new THREE.CylinderGeometry(0.1, 0.1, distance, 16);
-        const bondMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
+        // Utilisation de la distance complète entre le carbone et l'hydrogène
+        const fullDistance = start.distanceTo(end);
+        const bondGeometry = new THREE.CylinderGeometry(0.15, 0.15, fullDistance, 16);
+        const bondMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
         const bond = new THREE.Mesh(bondGeometry, bondMaterial);
 
-        // Positionner la liaison au milieu entre les deux points
+        // Positionner la liaison au milieu entre le carbone et l'hydrogène
         const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
         bond.position.copy(midPoint);
 
-        // Orienter la liaison
-        // Le cylindre est défini verticalement (le long de l'axe Y) par défaut.
-        // On calcule la rotation nécessaire pour l'aligner avec le vecteur allant de start à end.
-        const v = new THREE.Vector3().subVectors(end, start).normalize();
+        // Orienter le cylindre pour qu'il suive la direction allant du carbone vers l'hydrogène
+        const direction = new THREE.Vector3().subVectors(end, start).normalize();
         const axis = new THREE.Vector3(0, 1, 0);
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, v);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction);
         bond.quaternion.copy(quaternion);
 
         return bond;
@@ -88,19 +87,33 @@ function init() {
 
     // Ajout du groupe complet de la molécule à la scène
     scene.add(molecule);
+    // Mise à l'échelle de la molécule pour remplir le conteneur model-viewer
+    molecule.scale.set(2.5, 2.5, 2.5);
 
     // Gestion de la redimension de la fenêtre
     window.addEventListener("resize", () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
+        const containerWidth = modelContainer.clientWidth;
+        const containerHeight = modelContainer.clientHeight;
+        camera.aspect = containerWidth / containerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(containerWidth, containerHeight);
     });
+
+    // Ajout de lumières pour le rendu Phong
+    const ambientLight = new THREE.AmbientLight(0x404040); // lumière ambiante douce
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xffffff, 1);
+    pointLight.position.set(10, 10, 10);
+    scene.add(pointLight);
 
     // Fonction d'animation
     function animate() {
         requestAnimationFrame(animate);
-        // Rotation de l'ensemble de la molécule
+        var time = Date.now() * 0.001;
+        // Détournement créatif de la molécule : rotation dynamique sur plusieurs axes
         molecule.rotation.y += 0.01;
+        molecule.rotation.x = Math.sin(time) * 0.3;
+        molecule.rotation.z = Math.cos(time) * 0.3;
         renderer.render(scene, camera);
     }
     animate();
