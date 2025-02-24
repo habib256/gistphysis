@@ -5,6 +5,12 @@ import { setupControls, updateCameraPosition } from './Control.js';
 // Initialisation de la scène, de la caméra et du rendu
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+// Position initiale de la caméra avec une élévation de 45°:
+// Pour 45°, le rapport entre la composante verticale et la distance horizontale doit être égal à tan(45°)=1
+// On choisit par exemple posX = posZ = 20, ce qui impose y = √(20²+20²) ≈ 28.28.
+const posX = 20;
+const posZ = 20;
+camera.position.set(posX, Math.sqrt(posX * posX + posZ * posZ), posZ);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
