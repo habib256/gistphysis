@@ -7,9 +7,58 @@
     <style>
         body { margin: 0; }
         canvas { display: block; }
+        /* Styles pour le menu déroulant */
+        #menu-container {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+        }
+        #camera-dropdown {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        /* Styles améliorés pour le bouton afficher/masquer les orbites */
+        #toggle-orbits-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 150;
+        }
+        #toggle-orbits-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.5); /* Fond transparent */
+            color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        #toggle-orbits-btn:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
     </style>
 </head>
 <body>
+    <div id="menu-container">
+        <select id="camera-dropdown">
+            <option value="sun">☀️ Soleil</option>
+            <option value="earth">🌍 Terre</option>
+            <option value="moon">🌙 Lune</option>
+            <option value="mars">🔴 Mars</option>
+        </select>
+    </div>
+    <!-- Bouton pour afficher/masquer les orbites -->
+    <div id="toggle-orbits-container">
+        <button id="toggle-orbits-btn">🛰️ Masquer les orbites</button>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script type="module" src="./app.js"></script>
 </body>
