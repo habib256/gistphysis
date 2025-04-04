@@ -6,6 +6,10 @@ class RocketSimulation {
         this.engine = Engine.create();
         this.engine.world.gravity.y = 0.5; // Gravité modérée
 
+        // Chargement de l'image de fond
+        this.backgroundImage = new Image();
+        this.backgroundImage.src = 'image/Moon.png';
+
         // Création du rendu
         this.render = Render.create({
             element: document.body,
@@ -14,7 +18,8 @@ class RocketSimulation {
                 width: 800,
                 height: 600,
                 wireframes: false,
-                background: '#1c1c1c'
+                background: 'transparent',
+                backgroundImage: this.backgroundImage
             }
         });
 
@@ -63,19 +68,19 @@ class RocketSimulation {
         const walls = [
             Bodies.rectangle(400, 590, 810, 60, { 
                 isStatic: true,
-                render: { fillStyle: '#444444' }
+                render: { fillStyle: 'transparent' }
             }),
             Bodies.rectangle(0, 300, 60, 600, { 
                 isStatic: true,
-                render: { fillStyle: '#444444' }
+                render: { fillStyle: 'transparent' }
             }),
             Bodies.rectangle(800, 300, 60, 600, { 
                 isStatic: true,
-                render: { fillStyle: '#444444' }
+                render: { fillStyle: 'transparent' }
             }),
             Bodies.rectangle(400, 0, 810, 60, { 
                 isStatic: true,
-                render: { fillStyle: '#444444' }
+                render: { fillStyle: 'transparent' }
             })
         ];
 
