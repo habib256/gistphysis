@@ -63,6 +63,9 @@ Le projet est divisé en plusieurs fichiers JavaScript, chacun correspondant à 
 
 Si vous souhaitez contribuer, n'hésitez pas à forker le projet et à soumettre vos améliorations via une pull request ! 🤝
 
+## Fichier manifest.json
+Le fichier manifest.json définit les paramètres de l'application en tant que Progressive Web App (PWA). Il spécifie le nom, le mode d'affichage (standalone), les couleurs de thème et de fond, ainsi que les icônes utilisées pour l'installation sur les appareils mobiles.
+
 ---
 
 Fait avec ❤️ pour tous les passionnés d'astronomie 🌟

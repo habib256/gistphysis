@@ -199,14 +199,26 @@ class WebcamPlayer {
         this.images = [];
         this.isRecorded = false;
         this.isRecording = true;
+        // Lancer le clignotement du bouton d'enregistrement
+        this.recordBlinkState = false;
+        this.recordBlinkInterval = setInterval(() => {
+            this.recordBlinkState = !this.recordBlinkState;
+            if (this.recordBlinkState) {
+                // Réduire l'opacité pour un effet clignotant
+                this.buttonRecord.style('opacity', '0.3');
+            } else {
+                this.buttonRecord.style('opacity', '1');
+            }
+        }, 500);
         console.log('Start Recording');
-        
-
     }
     stopRecording() {
         this.isRecording = false;
         this.isRecorded = true;
         this.frameIndex = 0;
+        // Arrêter le clignotement et réinitialiser l'opacité
+        clearInterval(this.recordBlinkInterval);
+        this.buttonRecord.style('opacity', '1');
         console.log('Stop Recording');
     }
 }

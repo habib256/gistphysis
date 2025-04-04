@@ -12,7 +12,7 @@ class Graph {
         let dataX = points.map(point => point.x);
         let dataY = points.map(point => point.y);
 
-        this.chart = new Chart(this.ctx, { 
+        this.chart = new Chart(this.ctx.elt, { 
             type: 'scatter',
             data: {
                 datasets: [{

@@ -47,6 +47,7 @@ function setup() {
   // Créer un menu déroulant
   dropdown = createSelect();
   dropdown.parent('menu');
+  dropdown.style("font-size", "20px"); // Augmente la taille de la police
   dropdown.option(' Pointage Vidéo');
   dropdown.option(' Pointage Webcam');
   dropdown.option(' Graphique');
@@ -56,6 +57,7 @@ function setup() {
   // Créer un menu déroulant 2
   dropdown2 = createSelect();
   dropdown2.parent('menu');
+  dropdown2.style("font-size", "20px"); // Augmente la taille de la police
   dropdown2.option('1 point');
   dropdown2.option('2 points');
   dropdown2.option('3 points');
@@ -64,8 +66,38 @@ function setup() {
   // Créer un menu déroulant 3
   dropdown3 = createSelect();
   dropdown3.parent('menu');
+  dropdown3.style("font-size", "20px"); // Augmente la taille de la police
   videoFiles.forEach((videoFile, index) => {
-    dropdown3.option(videoFile.path, index); // Utilisez l'index comme valeur
+    let emoji = "";
+    if (videoFile.path.includes("chute")) {
+      emoji = "😱";
+    } else if (videoFile.path.includes("parabolique")) {
+      emoji = "🚀";
+    } else if (videoFile.path.includes("disque")) {
+      emoji = "🪩";
+    } else if (videoFile.path.includes("VenusTerreMars")) {
+      emoji = "🪐";
+    } else if (videoFile.path.includes("MasseRoule")) {
+      emoji = "⚽";
+    } else if (videoFile.path.includes("Pendule")) {
+      emoji = "⏱️";
+    } else if (videoFile.path.includes("Ressort")) {
+      emoji = "🌀";
+    } else if (videoFile.path.includes("bille")) {
+      emoji = "⚫";
+    } else if (videoFile.path.includes("moto")) {
+      emoji = "🏍️";
+    } else if (videoFile.path.includes("vague")) {
+      emoji = "🌊";
+    } else if (videoFile.path.includes("Eclatement")) {
+      emoji = "💥";
+    } else if (videoFile.path.includes("TableHorizChocPresqueElastique") || videoFile.path.includes("TableHorizRectiligneUniforme")) {
+      emoji = "📏";
+    } else {
+      emoji = "🎞️";
+    }
+    let optionLabel = emoji + " " + videoFile.path;
+    dropdown3.option(optionLabel, index);
   });
   // Définir une fonction de rappel pour le changement de vidéo
   dropdown3.changed(() => {

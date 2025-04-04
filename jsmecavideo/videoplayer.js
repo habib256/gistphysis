@@ -15,6 +15,8 @@ class VideoPlayer {
             this.isPlaying = false;
             this.video.time(this.video.time() - (1 / this.framerate)); // Recule de 1/framerate de seconde
         });
+
+        this.images = []; // Initialisez `images` comme tableau ou avec vos données images
     }
 
     addElements() {
@@ -106,9 +108,16 @@ class VideoPlayer {
                 this.sliderUpdate();
     }
 
-    sliderUpdate() {  
-        if (isFinite(this.framerate) && this.framerate != 0 && isFinite(this.video.duration())) {
-            this.slider.value(this.video.time() / (this.video.duration()- (1 / (this.framerate))));
+    sliderUpdate() {
+        if (this.video.loadedmetadata && this.video.duration() > 0) {
+            // Si temps actuel + incrément de 1 frame est supérieur ou égal à la durée,
+            // on considère que c'est la dernière frame et on positionne le slider à 100%
+            if (this.video.time() + (1 / this.framerate) >= this.video.duration()) {
+                this.slider.value(1);
+            } else {
+                const progress = this.video.time() / this.video.duration();
+                this.slider.value(progress);
+            }
         }
     }
 
@@ -129,7 +138,8 @@ class VideoPlayer {
     }
 
     previousFrame() {
-        this.video.time(this.video.time() - (1 / this.framerate)); // Recule de 1/framerate de seconde
+        let newTime = this.video.time() - (1 / this.framerate);  // Recule de 1/framerate de seconde
+        this.video.time(newTime < 0 ? 0 : newTime);
     }
 
     play() {
