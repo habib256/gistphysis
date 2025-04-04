@@ -9,11 +9,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #1c1c1c;
-            background-image: url('image/Moon.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background-color: #0a0a0a;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -37,15 +33,51 @@
             border-radius: 5px;
         }
     </style>
+    
+    <!-- Bibliothèques externes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <!-- Plugin Matter Attractors (ignorer le warning de compatibilité, il fonctionne quand même) -->
+    <script src="https://cdn.jsdelivr.net/npm/matter-attractors@0.1.6/build/matter-attractors.min.js"></script>
 </head>
 <body>
     <div id="instructions">
         Utilisez les flèches du clavier pour contrôler la fusée<br>
-        ↑ : Propulsion principale | ← → : Propulsion latérale
+        ↑ : Propulsion principale | ← → : Rotation<br>
+        ↓ : Propulsion arrière | R : Réinitialiser<br>
+        C : Centrer la caméra | +/- : Zoom | V : Afficher les forces
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-    <script src="rocket.js"></script>
-    <script src="particles.js"></script>
-    <script src="simulation.js"></script>
+    
+    <!-- Script d'initialisation du plugin Matter Attractors -->
+    <script>
+        // Initialisation du plugin Matter Attractors
+        // Note: Ignorer le warning "Plugin.use: matter-attractors est pour matter-js@^0.12.0" - ça fonctionne quand même
+        Matter.use(MatterAttractors);
+        console.log("Plugin Matter Attractors initialisé");
+    </script>
+    
+    <!-- Constantes globales -->
+    <script src="constants.js"></script>
+    
+    <!-- Modèles (Models) -->
+    <script src="models/ParticleModel.js"></script>
+    <script src="models/CelestialBodyModel.js"></script>
+    <script src="models/UniverseModel.js"></script>
+    <script src="models/RocketModel.js"></script>
+    <script src="models/ParticleSystemModel.js"></script>
+    
+    <!-- Vues (Views) -->
+    <script src="views/ParticleView.js"></script>
+    <script src="views/CelestialBodyView.js"></script>
+    <script src="views/UniverseView.js"></script>
+    <script src="views/RocketView.js"></script>
+    
+    <!-- Contrôleurs (Controllers) -->
+    <script src="controllers/InputController.js"></script>
+    <script src="controllers/PhysicsController.js"></script>
+    <script src="controllers/ParticleController.js"></script>
+    <script src="controllers/GameController.js"></script>
+    
+    <!-- Point d'entrée -->
+    <script src="main.js"></script>
 </body>
 </html> 
