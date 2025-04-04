@@ -23,6 +23,9 @@ class RocketSimulation {
             }
         });
 
+        // Initialisation du système de particules
+        this.particleSystem = new RocketParticleSystem();
+
         // Chargement de l'image de la fusée
         this.rocketImage = new Image();
         this.rocketImage.src = 'image/rocket.png';
@@ -97,22 +100,28 @@ class RocketSimulation {
     }
 
     setupControls() {
+        const ROTATION_SPEED = 0.05;  // Vitesse de rotation uniforme
+        const LATERAL_POWER = 50;     // Puissance uniforme pour les réacteurs latéraux
+
         document.addEventListener('keydown', (event) => {
             switch(event.key) {
                 case 'ArrowUp':
                     this.rocket.toggleEngine('main', true);
                     this.rocket.setEnginePower('main', 100);
+                    this.particleSystem.setEmitterState('main', true);
                     this.applyMainThrust();
                     break;
                 case 'ArrowLeft':
                     this.rocket.toggleEngine('right', true);
-                    this.rocket.setEnginePower('right', 50);
-                    Body.setAngularVelocity(this.rocketBody, -0.05);
+                    this.rocket.setEnginePower('right', LATERAL_POWER);
+                    this.particleSystem.setEmitterState('right', true);
+                    Body.setAngularVelocity(this.rocketBody, -ROTATION_SPEED);
                     break;
                 case 'ArrowRight':
                     this.rocket.toggleEngine('left', true);
-                    this.rocket.setEnginePower('left', 50);
-                    Body.setAngularVelocity(this.rocketBody, 0.05);
+                    this.rocket.setEnginePower('left', LATERAL_POWER);
+                    this.particleSystem.setEmitterState('left', true);
+                    Body.setAngularVelocity(this.rocketBody, ROTATION_SPEED);
                     break;
             }
         });
@@ -121,13 +130,16 @@ class RocketSimulation {
             switch(event.key) {
                 case 'ArrowUp':
                     this.rocket.toggleEngine('main', false);
+                    this.particleSystem.setEmitterState('main', false);
                     break;
                 case 'ArrowLeft':
                     this.rocket.toggleEngine('right', false);
+                    this.particleSystem.setEmitterState('right', false);
                     Body.setAngularVelocity(this.rocketBody, 0);
                     break;
                 case 'ArrowRight':
                     this.rocket.toggleEngine('left', false);
+                    this.particleSystem.setEmitterState('left', false);
                     Body.setAngularVelocity(this.rocketBody, 0);
                     break;
             }
@@ -139,6 +151,13 @@ class RocketSimulation {
             // Mise à jour de la position de la fusée
             this.rocket.x = this.rocketBody.position.x;
             this.rocket.y = this.rocketBody.position.y;
+            
+            // Mise à jour des positions des émetteurs de particules
+            this.particleSystem.updateEmitterPositions(this.rocketBody);
+            
+            // Mise à jour et rendu des particules
+            const ctx = this.render.context;
+            this.particleSystem.update(ctx);
             
             // Application continue de la poussée si le moteur principal est actif
             if (this.rocket.engines.main.isOn) {
