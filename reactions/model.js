@@ -28,9 +28,13 @@ function init() {
     // Création d'un groupe pour regrouper tous les atomes et liaisons de la molécule
     const molecule = new THREE.Group();
 
-    // Création de la sphère centrale noire (carbone)
+    // Création de la sphère centrale noire (carbone) avec matériau Phong
     const centerGeometry = new THREE.SphereGeometry(1, 32, 32);
-    const centerMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const centerMaterial = new THREE.MeshPhongMaterial({ 
+         color: 0x000000, 
+         specular: 0x111111, 
+         shininess: 30 
+    });
     const centerSphere = new THREE.Mesh(centerGeometry, centerMaterial);
     molecule.add(centerSphere);
 
@@ -117,6 +121,21 @@ function init() {
         renderer.render(scene, camera);
     }
     animate();
+
+    // Ajout d'une description secondaire détaillée sous le canvas
+    const secondaryDescription = document.createElement("div");
+    secondaryDescription.style.padding = "10px";
+    secondaryDescription.style.fontFamily = "Arial, sans-serif";
+    secondaryDescription.style.color = "#333";
+    secondaryDescription.innerHTML = `<h2>Équilibrage des Réactions Chimiques : Analyse Approfondie</h2>
+    <p>
+      La réaction chimique présentée ci-dessus illustre le principe fondamental de la conservation des atomes.
+      Chaque réactif, soigneusement réparti sur la gauche de l'équation, se transforme en produits situés à droite, sans jamais perdre ni créer d'atomes.
+      L'équilibrage de cette équation consiste à ajuster les coefficients stœchiométriques afin que le nombre d'atomes de chaque élément demeure constant des deux côtés de la flèche de réaction.
+      Cette démarche met en avant l'application rigoureuse de la loi de conservation de la masse, où la somme des atomes initiaux des réactifs est parfaitement retrouvée dans les produits finaux.
+      Ainsi, l'approche systématique employée ici démontre comment une réaction apparemment complexe peut être résumée en un bilan atomique parfaitement équilibré.
+    </p>`;
+    document.body.appendChild(secondaryDescription);
 }
 
 init(); 

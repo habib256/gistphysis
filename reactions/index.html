@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Equilibrer des réactions chimiques</title>
+    <title>Équilibrer les réactions chimiques</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -53,16 +53,39 @@
             color: red;
             font-weight: bold;
         }
+        #game {
+            margin-top: 20px;
+        }
+        #score {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #reaction {
+            margin-bottom: 10px;
+        }
     </style>
-    <script src="équation.js"></script>
+    <script src="equation.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- <script src="equilibre.js"></script> -->
+    <script src="equilibre.js"></script>
+    <script src="game.js"></script>
 </head>
 <body>
-    <h1 style="text-align: center;">Équilibrer des réactions chimiques</h1>
+    <h1>Équilibrer les réactions chimiques</h1>
+    <div id="score">Score: 0</div>
+    <!-- Bouton Documentation -->
+    <button id="doc-button" onclick="window.location.href='documentation.html'">Documentation</button>
+    
     <div id="app"></div>
     <div id="model-viewer" style="width: 100%; height: 200px;"></div>
-    <script src="equilibre.js"></script>
     <script src="model.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof Game !== 'undefined') {
+                const game = new Game();
+                game.startGame();
+                window.currentGame = game;
+            }
+        });
+    </script>
 </body>
 </html> 
