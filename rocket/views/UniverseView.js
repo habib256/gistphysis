@@ -1,6 +1,7 @@
 class UniverseView {
     constructor(celestialBodyView) {
         this.celestialBodyView = celestialBodyView;
+        this.traceView = new TraceView();
         this.camera = {
             x: 0,
             y: 0,
@@ -131,6 +132,9 @@ class UniverseView {
         // Appliquer la transformation de caméra complète pour les corps célestes
         this.applyCameraTransform(ctx);
         
+        // Dessiner la trace avant les corps célestes
+        this.traceView.render(ctx);
+        
         // Dessiner chaque corps céleste
         for (const body of celestialBodies) {
             // Utiliser la vue des corps célestes pour le rendu
@@ -150,5 +154,21 @@ class UniverseView {
             const twinkling = Math.sin(time * twinkleSpeed + star.x * 0.01 + star.y * 0.01);
             star.brightness = RENDER.STAR_BRIGHTNESS_BASE + twinkling * twinkleFactor + RENDER.STAR_BRIGHTNESS_RANGE;
         }
+    }
+
+    // Mettre à jour la trace avec la position de la fusée
+    updateTrace(rocketPosition) {
+        const screenPos = this.worldToScreen(rocketPosition.x, rocketPosition.y);
+        this.traceView.update(screenPos);
+    }
+
+    // Effacer la trace
+    clearTrace() {
+        this.traceView.clear();
+    }
+
+    // Basculer la visibilité de la trace
+    toggleTraceVisibility() {
+        this.traceView.toggleVisibility();
     }
 } 

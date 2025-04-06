@@ -22,7 +22,7 @@
         }
         #instructions {
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             color: white;
@@ -41,10 +41,18 @@
 </head>
 <body>
     <div id="instructions">
-        Utilisez les flèches du clavier pour contrôler la fusée<br>
-        ↑ : Propulsion principale | ← → : Rotation<br>
-        ↓ : Propulsion arrière | R : Réinitialiser<br>
-        C : Centrer la caméra | +/- : Zoom | V : Afficher les forces
+        Contrôles<br>
+        ↑ ou W: Propulsion avant<br>
+        ↓ ou S: Propulsion arrière<br>
+        ← ou A: Rotation gauche<br>
+        → ou D: Rotation droite<br>
+        R: Réinitialiser la fusée<br>
+        C: Centrer la caméra<br>
+        T: Afficher la trace<br>
+        V: Afficher les forces<br>
+        + / -: Zoom<br>
+        Echap: Pause<br>
+        
     </div>
     
     <!-- Script d'initialisation du plugin Matter Attractors -->
@@ -70,6 +78,7 @@
     <script src="views/CelestialBodyView.js"></script>
     <script src="views/UniverseView.js"></script>
     <script src="views/RocketView.js"></script>
+    <script src="views/TraceView.js"></script>
     
     <!-- Contrôleurs (Controllers) -->
     <script src="controllers/InputController.js"></script>

@@ -43,7 +43,7 @@ const RENDER = {
     MAX_ZOOM: 2.0,              // Zoom maximum
     
     // Vecteur de gravité
-    GRAVITY_VECTOR_SCALE: 15000, // Échelle du vecteur de gravité pour le rendu
+    GRAVITY_VECTOR_SCALE: 150000, // Échelle du vecteur de gravité pour le rendu
     GRAVITY_ARROW_SIZE: 15,      // Taille de la flèche du vecteur de gravité
     
     // Couleurs et affichage
@@ -97,7 +97,7 @@ const ROCKET = {
 
 // Constantes du corps céleste
 const CELESTIAL_BODY = {
-    MASS: 200000000,             // Masse de l'astre (augmentée 4x)
+    MASS: 600000000,             // Masse de l'astre (augmentée 4x)
     RADIUS: 120,                // Rayon de l'astre
     ORBIT_DISTANCE: 220,        // Distance orbitale initiale (rayon + 100)
     ATMOSPHERE_THRESHOLD: 1e23, // Seuil de masse pour avoir une atmosphère

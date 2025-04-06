@@ -26,7 +26,8 @@ class InputController {
             'KeyG': 'toggleGravityVector',
             'Equal': 'zoomIn',
             'Minus': 'zoomOut',
-            'Escape': 'pauseGame'
+            'Escape': 'pauseGame',
+            'KeyT': 'toggleTrace'
         };
         
         // Initialiser les événements du clavier
@@ -144,7 +145,8 @@ class InputController {
             'KeyG': 'toggleGravityVector',
             'Equal': 'zoomIn',
             'Minus': 'zoomOut',
-            'Escape': 'pauseGame'
+            'Escape': 'pauseGame',
+            'KeyT': 'toggleTrace'
         };
     }
 } 

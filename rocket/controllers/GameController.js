@@ -10,6 +10,7 @@ class GameController {
         this.universeView = null;
         this.particleView = null;
         this.celestialBodyView = null;
+        this.traceView = null;
         
         // Contrôleurs
         this.inputController = null;
@@ -130,6 +131,9 @@ class GameController {
         // Créer la vue des particules
         this.particleView = new ParticleView();
         
+        // Créer la vue de la trace
+        this.traceView = new TraceView();
+        
         // Créer la vue de la fusée
         this.rocketView = new RocketView(this.particleView);
         // Ajuster les dimensions selon les constantes
@@ -235,6 +239,14 @@ class GameController {
         
         this.inputController.onKeyPress('resetRocket', () => {
             this.resetRocket();
+        });
+        
+        // Toggle de la trace
+        this.inputController.onKeyPress('toggleTrace', () => {
+            if (this.traceView) {
+                this.traceView.toggleVisibility();
+                console.log(`Trace ${this.traceView.isVisible ? 'activée' : 'désactivée'}`);
+            }
         });
         
         // Touche pour afficher/masquer les vecteurs de force
@@ -431,6 +443,11 @@ class GameController {
         // Définir la fusée comme étant posée
         this.rocketModel.isLanded = true;
         
+        // Réinitialiser la trace
+        if (this.traceView) {
+            this.traceView.clear();
+        }
+        
         // Réinitialiser les thrusteurs
         this.rocketModel.thrusters = {
             main: { 
@@ -539,6 +556,11 @@ class GameController {
         // Mettre à jour la physique des corps célestes
         this.physicsController.updateCelestialBodiesPhysics(this.universeModel, deltaTime);
         
+        // Mettre à jour la trace de la fusée
+        if (this.traceView && this.rocketModel) {
+            this.traceView.update(this.rocketModel.position);
+        }
+        
         // Centrer la caméra sur la fusée
         if (this.universeView && this.rocketModel) {
             this.universeView.centerOn(this.rocketModel.position.x, this.rocketModel.position.y);
@@ -565,6 +587,11 @@ class GameController {
         
         // Dessiner les corps célestes
         this.universeView.renderCelestialBodies(this.ctx, this.universeModel.celestialBodies);
+        
+        // Dessiner la trace de la fusée
+        if (this.traceView) {
+            this.traceView.render(this.ctx, camera);
+        }
         
         // Dessiner les particules
         this.particleView.renderParticles(this.ctx, this.particleSystemModel, camera);
