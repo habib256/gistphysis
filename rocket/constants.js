@@ -66,7 +66,7 @@ const ROCKET = {
     MASS: 1500,                 // Masse de la fusée en kg
     WIDTH: 30,                  // Largeur de la hitbox
     HEIGHT: 60,                 // Hauteur de la hitbox
-    FRICTION: 0.1,              // Friction de la fusée
+    FRICTION: 0.0,              // Friction de la fusée
     MAX_HEALTH: 100,            // Santé maximale de la fusée
     ROTATION_SPEED: 100,        // Vitesse de rotation
     
@@ -81,7 +81,7 @@ const ROCKET = {
     // Propulseurs - Forces
     MAIN_THRUST: 5500.0,         // Force du propulseur principal 
     LATERAL_THRUST: 20.0,       // Force des propulseurs latéraux 
-    REAR_THRUST: 100.0,         // Force du propulseur arrière
+    REAR_THRUST: 1000.0,         // Force du propulseur arrière
     
     // Propulseurs - Puissance maximale
     THRUSTER_POWER: {
@@ -110,8 +110,8 @@ const CELESTIAL_BODY = {
 
 // Constantes pour les particules
 const PARTICLES = {
-    STAR_COUNT: 1000,           // Nombre d'étoiles dans l'espace
-    VISIBLE_RADIUS: 24000,      // Rayon visible de l'espace (doublé de 12000 à 24000)
+    STAR_COUNT: 800,           // Nombre d'étoiles dans l'espace
+    VISIBLE_RADIUS: 25000,      // Rayon visible de l'espace (doublé de 12000 à 24000)
     
     // Propriétés des émetteurs de particules
     EMITTER: {

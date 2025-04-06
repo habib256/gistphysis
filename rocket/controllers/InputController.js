@@ -3,8 +3,8 @@ class InputController {
     static DEFAULT_KEY_MAP = {
         'ArrowUp': 'thrustForward',
         'ArrowDown': 'thrustBackward',
-        'ArrowLeft': 'rotateLeft',
-        'ArrowRight': 'rotateRight',
+        'ArrowLeft': 'rotateRight',
+        'ArrowRight': 'rotateLeft',
         'Space': 'boost',
         'KeyW': 'thrustForward',
         'KeyS': 'thrustBackward',
@@ -49,8 +49,8 @@ class InputController {
         this.keyMap = {
             ArrowUp: 'thrustForward',
             ArrowDown: 'thrustBackward',
-            ArrowLeft: 'rotateLeft',
-            ArrowRight: 'rotateRight',
+            ArrowLeft: 'rotateRight',
+            ArrowRight: 'rotateLeft',
             w: 'thrustForward',
             s: 'thrustBackward',
             a: 'rotateLeft',

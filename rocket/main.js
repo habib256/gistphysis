@@ -42,38 +42,31 @@ function cleanup() {
     }
 }
 
+// Fonction pour afficher les instructions
+function showInstructions() {
+    // Créer élément d'instructions
+    const instructions = document.createElement('div');
+    instructions.id = 'instructions';
+    instructions.innerHTML = `
+        <h3>Contrôles</h3>
+        <p>↑/W: Propulsion avant | ↓/S: Propulsion arrière</p>
+        <p>←/A: Rotation gauche | →/D: Rotation droite</p>
+        <p>R: Réinitialiser | C: Centrer caméra | T: Traces</p>
+    `;
+    
+    // Créer le bouton de fermeture
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Fermer';
+    closeButton.onclick = () => {
+        document.body.removeChild(instructions);
+    };
+    
+    instructions.appendChild(closeButton);
+    document.body.appendChild(instructions);
+}
+
 // Nettoyer lors du déchargement de la page
 window.addEventListener('beforeunload', cleanup);
 
 // Attendre que le DOM soit chargé pour initialiser l'application
-document.addEventListener('DOMContentLoaded', init);
-
-// Afficher des instructions pour le joueur
-function showInstructions() {
-    const instructions = document.getElementById('instructions');
-    if (!instructions) return; // Si l'élément n'existe pas, ne rien faire
-    
-    instructions.innerHTML = `
-        <h3>Contrôles</h3>
-        <p>↑ ou W: Propulsion avant</p>
-        <p>↓ ou S: Propulsion arrière</p>
-        <p>← ou A: Rotation gauche</p>
-        <p>→ ou D: Rotation droite</p>
-        <p>R: Réinitialiser la fusée</p>
-        <p>C: Centrer la caméra</p>
-        <p>+ / -: Zoom</p>
-        <p>Echap: Pause</p>
-    `;
-    
-    // Ajouter un bouton pour fermer les instructions
-    const closeButton = document.createElement('button');
-    closeButton.textContent = 'Fermer';
-    closeButton.style.marginTop = '10px';
-    closeButton.style.padding = '5px 10px';
-    closeButton.style.cursor = 'pointer';
-    closeButton.onclick = function() {
-        instructions.style.display = 'none';
-    };
-    
-    instructions.appendChild(closeButton);
-} 
+document.addEventListener('DOMContentLoaded', init); 
