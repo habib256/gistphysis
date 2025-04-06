@@ -11,16 +11,9 @@ function init() {
     canvas.height = window.innerHeight;
     document.body.appendChild(canvas);
     
-    // Configurer le style du canvas
-    canvas.style.position = 'absolute';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    document.body.style.margin = '0';
-    document.body.style.overflow = 'hidden';
-    document.body.style.backgroundColor = 'black';
-    
     // Créer l'EventBus pour la communication
     eventBus = new EventBus();
+    window.eventBus = eventBus; // Rendre l'EventBus accessible globalement
     
     // Créer les contrôleurs avec l'EventBus
     const inputController = new InputController(eventBus);
@@ -37,6 +30,9 @@ function init() {
     
     // Initialiser le jeu
     gameController.init(canvas);
+    
+    // Afficher les instructions
+    showInstructions();
 }
 
 // Arrêter le jeu et nettoyer
@@ -50,4 +46,34 @@ function cleanup() {
 window.addEventListener('beforeunload', cleanup);
 
 // Attendre que le DOM soit chargé pour initialiser l'application
-document.addEventListener('DOMContentLoaded', init); 
+document.addEventListener('DOMContentLoaded', init);
+
+// Afficher des instructions pour le joueur
+function showInstructions() {
+    const instructions = document.getElementById('instructions');
+    if (!instructions) return; // Si l'élément n'existe pas, ne rien faire
+    
+    instructions.innerHTML = `
+        <h3>Contrôles</h3>
+        <p>↑ ou W: Propulsion avant</p>
+        <p>↓ ou S: Propulsion arrière</p>
+        <p>← ou A: Rotation gauche</p>
+        <p>→ ou D: Rotation droite</p>
+        <p>R: Réinitialiser la fusée</p>
+        <p>C: Centrer la caméra</p>
+        <p>+ / -: Zoom</p>
+        <p>Echap: Pause</p>
+    `;
+    
+    // Ajouter un bouton pour fermer les instructions
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Fermer';
+    closeButton.style.marginTop = '10px';
+    closeButton.style.padding = '5px 10px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.onclick = function() {
+        instructions.style.display = 'none';
+    };
+    
+    instructions.appendChild(closeButton);
+} 

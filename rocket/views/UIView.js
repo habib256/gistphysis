@@ -27,6 +27,10 @@ class UIView {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         
+        const barWidth = 100;
+        const barHeight = 10;
+        const barX = 100;
+        
         // Afficher la santé avec code couleur
         const health = Math.floor(rocketModel.health);
         if (health < 30) {
@@ -37,18 +41,15 @@ class UIView {
             ctx.fillStyle = this.colors.green;
         }
         
-        // Afficher le texte de santé
-        ctx.fillText(`Santé: ${health}`, 20, 20);
+        // Texte de santé (sans valeur numérique)
+        ctx.fillText(`Santé:`, 20, 20);
         
-        // Ajouter une barre de progression pour la santé
-        const barWidth = 100;
-        const barHeight = 10;
-        const barX = 100;
-        const barY = 25;
+        // Barre de santé
+        const barYHealth = 25;
         
         // Fond de la barre
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
+        ctx.fillRect(barX, barYHealth, barWidth, barHeight);
         
         // Barre de progression
         if (health < 30) {
@@ -59,12 +60,30 @@ class UIView {
             ctx.fillStyle = this.colors.green;
         }
         const healthWidth = (health / ROCKET.MAX_HEALTH) * barWidth;
-        ctx.fillRect(barX, barY, healthWidth, barHeight);
+        ctx.fillRect(barX, barYHealth, healthWidth, barHeight);
         
         ctx.fillStyle = this.colors.white;
         
         // Afficher le carburant
-        ctx.fillText(`Carburant: ${Math.floor(rocketModel.fuel)}`, 20, 50);
+        ctx.fillText(`Carburant:`, 20, 50);
+        
+        // Barre de carburant
+        const barYFuel = 55;
+        
+        // Fond de la barre
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(barX, barYFuel, barWidth, barHeight);
+        
+        // Barre de progression pour le carburant
+        const fuel = rocketModel.fuel;
+        
+        // Le carburant est toujours affiché en vert puisqu'il commence plein à 5000
+        ctx.fillStyle = 'green';
+        
+        const fuelWidth = (fuel / ROCKET.MAX_FUEL) * barWidth;
+        ctx.fillRect(barX, barYFuel, fuelWidth, barHeight);
+        
+        ctx.fillStyle = this.colors.white;
         
         // Calculer et afficher la vitesse
         const speed = this.calculateSpeed(rocketModel);
@@ -92,15 +111,37 @@ class UIView {
     }
 
     renderSpeed(ctx, speed, x, y) {
-        if (Math.abs(speed) > 1.0) {
-            ctx.fillStyle = this.colors.red;
-        } else if (Math.abs(speed) > 0.5) {
-            ctx.fillStyle = this.colors.orange;
-        } else {
-            ctx.fillStyle = this.colors.green;
-        }
-        ctx.fillText(`Vitesse: ${speed} m/s`, x, y);
         ctx.fillStyle = this.colors.white;
+        ctx.fillText(`Vitesse:`, x, y);
+        
+        // Barre de vitesse
+        const barWidth = 100;
+        const barHeight = 10;
+        const barX = 100;
+        const barYSpeed = y + 5;
+        
+        // Fond de la barre
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(barX, barYSpeed, barWidth, barHeight);
+        
+        // Calculer la largeur relative de la barre de vitesse
+        const maxDisplaySpeed = 2.0;
+        const displaySpeed = Math.min(Math.abs(speed), maxDisplaySpeed);
+        const speedWidth = (displaySpeed / maxDisplaySpeed) * barWidth;
+        const speedPercentage = (displaySpeed / maxDisplaySpeed) * 100;
+        
+        // Déterminer la couleur basée sur le pourcentage de vitesse
+        // Vert pour les 10 premiers %, orange entre 10% et 90%, rouge au-delà
+        if (speedPercentage < 10) {
+            ctx.fillStyle = 'green'; // Vert quand c'est lent (0-10%)
+        } else if (speedPercentage < 90) {
+            ctx.fillStyle = this.colors.orange; // Orange pour vitesse moyenne (10-90%)
+        } else {
+            ctx.fillStyle = 'red'; // Rouge quand c'est rapide (>90%)
+        }
+        
+        // Dessiner la barre
+        ctx.fillRect(barX, barYSpeed, speedWidth, barHeight);
     }
 
     renderLandingGuidance(ctx, canvas, rocketModel, universeModel) {

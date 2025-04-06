@@ -10,9 +10,6 @@ class PhysicsController {
         this.Vector = Matter.Vector;
         this.Events = Matter.Events;
         
-        // Toujours utiliser Matter Attractors
-        console.log("Utilisation de Matter Attractors: OUI");
-        
         // Créer le moteur physique
         this.engine = this.Engine.create({
             enableSleeping: false,
@@ -33,7 +30,7 @@ class PhysicsController {
         
         // Conserver les paramètres supplémentaires
         this.timeScale = 1.0;
-        this.gravitationalConstant = PHYSICS.G;
+        this.gravitationalConstant = PHYSICS.G * 0.3; // Réduire l'intensité de l'attraction gravitationnelle
         this.collisionDamping = PHYSICS.COLLISION_DAMPING;
         
         // Visualisation des forces (pour le débogage)
@@ -50,11 +47,15 @@ class PhysicsController {
         this.forceCache = new Map();
         this.cacheTimeout = 1000; // Durée de vie du cache en ms
         this.lastCacheClear = Date.now();
+        
+        // Délai d'initialisation avant activation des collisions
+        this.initTime = Date.now();
+        this.collisionsEnabled = false;
     }
     
     // Initialiser les objets physiques
     initPhysics(rocketModel, universeModel) {
-        console.log("Initialisation du moteur physique Matter.js avec Matter Attractors");
+       // console.log("Initialisation du moteur physique Matter.js avec Matter Attractors");
         
         // Vider le monde physique
         this.Composite.clear(this.engine.world);
@@ -82,8 +83,14 @@ class PhysicsController {
                     collisionFilter: {
                         category: 0x0001,
                         mask: 0xFFFFFFFF
+                    },
+                    // Configurer la fusée comme attracteur gravitationnel avec la fonction standard 1/r²
+                    plugin: {
+                        attractors: [
+                            // Utiliser l'attracteur standard de Matter Attractors (relation en 1/r²)
+                            MatterAttractors.Attractors.gravity
+                        ]
                     }
-                    // La fusée n'est plus configurée comme attracteur gravitationnel
                 }
             );
             
@@ -94,13 +101,13 @@ class PhysicsController {
                     y: rocketModel.velocity.y 
                 });
                 this.Body.setAngularVelocity(this.rocketBody, rocketModel.angularVelocity);
-                console.log("Fusée initialisée (sans attraction gravitationnelle)");
+                //console.log("Fusée initialisée avec attraction gravitationnelle standard (1/r²)");
             }
             
             // Ajouter la fusée au monde
             if (this.rocketBody) {
                 this.Composite.add(this.engine.world, this.rocketBody);
-                console.log("Corps physique de la fusée créé et ajouté au monde");
+               // console.log("Corps physique de la fusée créé et ajouté au monde");
             } else {
                 console.error("Échec de la création du corps physique de la fusée");
             }
@@ -122,14 +129,14 @@ class PhysicsController {
                 
                 // Ajouter les propriétés d'attracteur spécifiquement pour la Terre
                 if (body.name === 'Terre') {
-                    // Configurer l'attracteur en utilisant directement la fonction du plugin pour la Terre
+                    // Configurer l'attracteur standard de Matter Attractors pour la Terre
                     options.plugin = {
                         attractors: [
-                            // Utiliser directement la fonction de gravité de Matter Attractors
+                            // Utiliser l'attracteur standard de Matter Attractors (relation en 1/r²)
                             MatterAttractors.Attractors.gravity
                         ]
                     };
-                    console.log("Terre configurée comme attracteur gravitationnel");
+                   // console.log("Terre configurée comme attracteur gravitationnel standard (1/r²)");
                 }
                 
                 // Créer le corps céleste
@@ -147,7 +154,7 @@ class PhysicsController {
                         body: celestialBody,
                         model: body
                     });
-                    console.log(`Corps physique de ${body.name} créé et ajouté au monde${body.name === 'Terre' ? ' avec attraction gravitationnelle' : ''}`);
+                   // console.log(`Corps physique de ${body.name} créé et ajouté au monde${body.name === 'Terre' ? ' avec attraction gravitationnelle standard (1/r²)' : ''}`);
                 }
             }
             
@@ -168,9 +175,8 @@ class PhysicsController {
                             const distanceSq = dx * dx + dy * dy;
                             const distance = Math.sqrt(distanceSq);
                             
-                            // Modification: utiliser une relation inverse linéaire (1/r) au lieu de quadratique (1/r²)
-                            // pour que la gravité diminue moins rapidement avec la distance
-                            const forceMagnitude = this.gravitationalConstant * celestialBody.mass * this.rocketBody.mass / distance;
+                            // Utiliser une relation inverse quadratique (1/r²) pour la visualisation
+                            const forceMagnitude = this.gravitationalConstant * celestialBody.mass * this.rocketBody.mass / distanceSq;
                             
                             this.gravityForce.x = forceMagnitude * (dx / distance);
                             this.gravityForce.y = forceMagnitude * (dy / distance);
@@ -191,6 +197,17 @@ class PhysicsController {
     setupCollisionEvents() {
         // Événement déclenché au début d'une collision
         this.Events.on(this.engine, 'collisionStart', (event) => {
+            // Vérifier si les collisions sont actives
+            if (!this.collisionsEnabled) {
+                // Vérifier si le délai d'initialisation est écoulé
+                if (Date.now() - this.initTime < PHYSICS.COLLISION_DELAY) {
+                    return; // Ignorer les collisions pendant le délai d'initialisation
+                } else {
+                    this.collisionsEnabled = true;
+                    console.log("Collisions activées après le délai d'initialisation");
+                }
+            }
+            
             const pairs = event.pairs;
             
             for (let i = 0; i < pairs.length; i++) {
@@ -233,29 +250,59 @@ class PhysicsController {
             for (let i = 0; i < pairs.length; i++) {
                 const pair = pairs[i];
                 
-                // Si la fusée est impliquée et qu'elle est au sol
-                if ((pair.bodyA === this.rocketBody || pair.bodyB === this.rocketBody) && this.rocketModel.isLanded) {
-                    // Vérifier si un propulseur est actif
-                    const mainThrusterActive = this.rocketModel.thrusters.main.power > 0;
+                // Si la fusée est impliquée dans la collision
+                if (pair.bodyA === this.rocketBody || pair.bodyB === this.rocketBody) {
+                    const otherBody = pair.bodyA === this.rocketBody ? pair.bodyB : pair.bodyA;
                     
-                    // Ne pas amortir les mouvements si la fusée essaie de décoller
-                    if (!mainThrusterActive) {
-                        // Amortir les mouvements pendant le contact avec le sol seulement si le propulseur principal n'est pas actif
-                        this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
-                        this.Body.setAngularVelocity(this.rocketBody, 0);
-                    } else {
-                        // Si le propulseur principal est actif, forcer le décollage
-                        this.rocketModel.isLanded = false;
+                    // Si c'est une collision avec la Terre, considérer l'atterrissage
+                    if (otherBody.label === 'Terre') {
+                        // Définir isLanded si pas déjà défini
+                        if (!this.rocketModel.isLanded) {
+                            this.rocketModel.isLanded = true;
+                            console.log("Fusée posée");
+                        }
                         
-                        // Appliquer une impulsion vers le haut pour aider au décollage
-                        const impulseY = -2.0;
-                        this.Body.applyForce(
-                            this.rocketBody,
-                            this.rocketBody.position,
-                            { x: 0, y: impulseY }
-                        );
+                        // Stabiliser la fusée: fixer l'angle à 0 (verticale) si proche de 0
+                        if (Math.abs(this.rocketModel.angle) < 0.3) {  // Environ 17 degrés
+                            this.Body.setAngle(this.rocketBody, 0);
+                            this.Body.setAngularVelocity(this.rocketBody, 0);
+                        }
                         
-                        console.log("Décollage forcé avec le propulseur principal");
+                        // Vérifier si un propulseur est actif
+                        const mainThrusterActive = this.rocketModel.thrusters.main.power > 0;
+                        
+                        // Ne pas amortir les mouvements si la fusée essaie de décoller
+                        if (!mainThrusterActive) {
+                            // Amortir les mouvements pendant le contact avec le sol
+                            const currentVelocity = this.rocketBody.velocity;
+                            
+                            // Ajouter un amortissement plus fort pour la vitesse horizontale, mais garder la vitesse verticale
+                            this.Body.setVelocity(this.rocketBody, { 
+                                x: currentVelocity.x * 0.8,  // Amortissement horizontal
+                                y: currentVelocity.y 
+                            });
+                            
+                            // Réduire progressivement l'angle et la vitesse angulaire
+                            const currentAngle = this.rocketBody.angle;
+                            if (Math.abs(currentAngle) > 0.01) {
+                                this.Body.setAngle(this.rocketBody, currentAngle * 0.9);
+                            } else {
+                                this.Body.setAngle(this.rocketBody, 0);
+                            }
+                        } else {
+                            // Si le propulseur principal est actif, forcer le décollage
+                            this.rocketModel.isLanded = false;
+                            
+                            // Appliquer une impulsion vers le haut pour aider au décollage
+                            const impulseY = -2.0;
+                            this.Body.applyForce(
+                                this.rocketBody,
+                                this.rocketBody.position,
+                                { x: 0, y: impulseY }
+                            );
+                            
+                           // console.log("Décollage forcé avec le propulseur principal");
+                        }
                     }
                 }
             }
@@ -290,8 +337,30 @@ class PhysicsController {
             this.initPhysics(rocketModel, universeModel);
         }
         
+        // Calculer et afficher les exigences de poussée pour le décollage
+        this.calculateThrustRequirements(rocketModel, universeModel);
+        
         // Si la fusée est déjà posée, vérifier si l'utilisateur essaie de décoller
         if (rocketModel.isLanded) {
+            // Stabiliser la fusée au sol lorsqu'elle est posée
+            if (this.rocketBody && rocketModel.thrusters.main.power === 0) {
+                // Ajouter une petite force vers le bas pour garder la fusée stable au sol
+                this.Body.setAngularVelocity(this.rocketBody, 0);
+                
+                // Réduire la vitesse horizontale jusqu'à zéro progressivement quand posée
+                if (Math.abs(this.rocketBody.velocity.x) > 0.01) {
+                    const dampingFactor = 0.9;
+                    const newVelocity = { 
+                        x: this.rocketBody.velocity.x * dampingFactor, 
+                        y: this.rocketBody.velocity.y
+                    };
+                    this.Body.setVelocity(this.rocketBody, newVelocity);
+                } else {
+                    // Si la vitesse est suffisamment basse, fixer à zéro pour une stabilité parfaite
+                    this.Body.setVelocity(this.rocketBody, { x: 0, y: this.rocketBody.velocity.y });
+                }
+            }
+            
             // Si le propulseur principal est activé avec assez de puissance, permettre le décollage immédiatement
             if (rocketModel.thrusters.main.power > 0) {
                 // Forcer le décollage immédiat si le propulseur principal est actif
@@ -334,6 +403,65 @@ class PhysicsController {
         }
     }
     
+    // Calculer les exigences de poussée pour le décollage
+    calculateThrustRequirements(rocketModel, universeModel) {
+        // Ne calculer qu'une fois toutes les 60 frames pour éviter de surcharger la console
+        if (!this._lastThrustCalculation || Date.now() - this._lastThrustCalculation > 2000) {
+            this._lastThrustCalculation = Date.now();
+            
+            if (!universeModel || !universeModel.celestialBodies || !rocketModel) return;
+            
+            const earth = universeModel.celestialBodies.find(body => body.name === 'Terre');
+            if (!earth) return;
+            
+            // Calculer la distance entre la fusée et la Terre
+            const dx = earth.position.x - rocketModel.position.x;
+            const dy = earth.position.y - rocketModel.position.y;
+            const distanceSquared = dx * dx + dy * dy;
+            const distance = Math.sqrt(distanceSquared);
+            
+            // Calculer la force gravitationnelle
+            const gravitationalForce = PHYSICS.G * earth.mass * rocketModel.mass / distanceSquared;
+            
+            // Force du propulseur principal à pleine puissance avec multiplicateur
+            const mainThrusterForce = ROCKET.MAIN_THRUST * 1.5 * PHYSICS.THRUST_MULTIPLIER;
+            
+            // Rapport poussée/poids (TWR - Thrust to Weight Ratio)
+            const twr = mainThrusterForce / gravitationalForce;
+            
+            // Pour décoller, TWR doit être > 1
+            const canLiftOff = twr > 1;
+            
+            // Facteur d'augmentation nécessaire si TWR < 1
+            const requiredThrustMultiplier = canLiftOff ? 1 : (1 / twr);
+            
+            // Force nécessaire pour décoller
+            const requiredThrust = canLiftOff ? mainThrusterForce : (mainThrusterForce * requiredThrustMultiplier);
+            
+            // Calculer combien de propulseurs principaux seraient nécessaires avec le multiplicateur actuel
+            const mainThrustersNeeded = Math.ceil(requiredThrust / (ROCKET.MAIN_THRUST * PHYSICS.THRUST_MULTIPLIER));
+            
+            // Afficher les résultats dans la console
+            console.log("=== ANALYSE DES EXIGENCES DE POUSSÉE ===");
+            console.log(`Masse de la fusée: ${rocketModel.mass.toFixed(0)} kg`);
+            console.log(`Force gravitationnelle: ${gravitationalForce.toFixed(2)} N`);
+            console.log(`Force du propulseur principal (avec multiplicateur ${PHYSICS.THRUST_MULTIPLIER}x): ${mainThrusterForce.toFixed(2)} N`);
+            console.log(`Rapport poussée/poids (TWR): ${twr.toFixed(4)}`);
+            console.log(`La fusée ${canLiftOff ? "PEUT" : "NE PEUT PAS"} décoller avec la configuration actuelle`);
+            
+            if (!canLiftOff) {
+                console.log(`Pour décoller, il faudrait:`);
+                console.log(`1. Augmenter le multiplicateur de poussée à: ${(PHYSICS.THRUST_MULTIPLIER * requiredThrustMultiplier).toFixed(2)}`);
+                console.log(`2. OU ajouter ${mainThrustersNeeded - 1} propulseurs principaux supplémentaires`);
+                console.log(`3. OU réduire la constante gravitationnelle (G) à: ${(PHYSICS.G / requiredThrustMultiplier).toFixed(6)}`);
+            } else {
+                console.log(`Marge de sécurité: ${((twr - 1) * 100).toFixed(2)}% de poussée supplémentaire`);
+            }
+            
+            console.log("======================================");
+        }
+    }
+    
     // Mettre à jour et appliquer toutes les forces des propulseurs
     updateThrusters(rocketModel) {
         if (!this.rocketBody) return;
@@ -360,14 +488,14 @@ class PhysicsController {
         let thrustForce;
         switch (thrusterName) {
             case 'main': 
-                thrustForce = PHYSICS.MAIN_THRUST * (powerPercentage / 100) * 1.5;  // Facteur multiplicateur réduit
+                thrustForce = ROCKET.MAIN_THRUST * (powerPercentage / 100) * 1.5 * PHYSICS.THRUST_MULTIPLIER;
                 break;
             case 'rear': 
-                thrustForce = PHYSICS.REAR_THRUST * (powerPercentage / 100) * 1.5;  // Facteur multiplicateur réduit
+                thrustForce = ROCKET.REAR_THRUST * (powerPercentage / 100) * 1.5 * PHYSICS.THRUST_MULTIPLIER;
                 break;
             case 'left':
             case 'right': 
-                thrustForce = PHYSICS.LATERAL_THRUST * (powerPercentage / 100) * 3;  // Facteur multiplicateur modéré
+                thrustForce = ROCKET.LATERAL_THRUST * (powerPercentage / 100) * 3 * PHYSICS.THRUST_MULTIPLIER;
                 break;
             default:
                 thrustForce = 0;
@@ -404,70 +532,10 @@ class PhysicsController {
         // Si pas de poussée, on sort
         if (thrustForce <= 0) return;
         
-        // Pour les propulseurs latéraux, appliquer principalement une rotation
-        if (thrusterName === 'left' || thrusterName === 'right') {
-            // Appliquer un couple (torque) pour faire tourner la fusée
-            const rotationDirection = thrusterName === 'left' ? -1 : 1; // left = sens anti-horaire, right = sens horaire
-            const torque = rotationDirection * thrustForce * 0.1; // Ajuster le facteur pour contrôler la vitesse de rotation
-            
-            // APRÈS: Appliquer une force angulaire appropriée
-            this.Body.applyForce(
-                this.rocketBody,
-                { 
-                    x: this.rocketBody.position.x + (thrusterName === 'left' ? -ROCKET.WIDTH/2 : ROCKET.WIDTH/2), 
-                    y: this.rocketBody.position.y 
-                },
-                { 
-                    x: 0, 
-                    y: thrusterName === 'left' ? thrustForce : thrustForce 
-                }
-            );
-            
-            // Stocker les forces pour la visualisation en debug
-            this.thrustForces[thrusterName] = { 
-                x: Math.cos(rocketModel.angle + Math.PI/2) * thrustForce * 0.2, 
-                y: Math.sin(rocketModel.angle + Math.PI/2) * thrustForce * 0.2 
-            };
-            
-            // Afficher les informations de débogage
-            console.log(`Propulseur ${thrusterName}: Force de rotation appliquée`);
-            
-            return; // Sortir après avoir appliqué la rotation
-        }
-        
-        // Pour les propulseurs principaux (main et rear), continuer avec le code existant
-        // Calculer la direction de la poussée
-        let thrustAngle;
-        switch (thrusterName) {
-            case 'main': 
-                thrustAngle = rocketModel.angle - Math.PI/2; // Poussée vers le haut (correction: inversé)
-                break;
-            case 'rear': 
-                thrustAngle = rocketModel.angle + Math.PI/2; // Poussée vers le bas (correction: inversé)
-                break;
-            default:
-                thrustAngle = rocketModel.angle;
-        }
-        
-        // Calculer les composantes vectorielles de la force
-        const thrustX = Math.cos(thrustAngle) * thrustForce;
-        const thrustY = Math.sin(thrustAngle) * thrustForce;
-        
-        // Stocker les forces pour la visualisation en debug
-        this.thrustForces[thrusterName] = { x: thrustX, y: thrustY };
-        
         // Calculer le point d'application de la force (position du propulseur)
-        let leverX, leverY;
-        
-        // Pour les propulseurs principaux, utiliser la position définie dans le modèle
-        if (thrusterName === 'main' || thrusterName === 'rear') {
-            leverX = thruster.position.x;
-            leverY = thruster.position.y;
-        } else {
-            // Pour d'autres propulseurs (cas par défaut)
-            leverX = 0;
-            leverY = 0;
-        }
+        // Utiliser les positions définies dans le modèle pour TOUS les propulseurs
+        const leverX = thruster.position.x;
+        const leverY = thruster.position.y;
         
         // Calculer le point d'application dans les coordonnées du monde
         const offsetX = Math.cos(rocketModel.angle) * leverX - Math.sin(rocketModel.angle) * leverY;
@@ -478,11 +546,52 @@ class PhysicsController {
             y: this.rocketBody.position.y + offsetY
         };
         
+        // Calculer l'angle de poussée selon le type de propulseur
+        let thrustAngle;
+        
+        if (thrusterName === 'left' || thrusterName === 'right') {
+            // Pour les propulseurs latéraux, la poussée est perpendiculaire à l'axe du propulseur
+            // L'angle dépend de la position du propulseur par rapport au centre de la fusée
+            const propAngle = Math.atan2(leverY, leverX);
+            
+            // Direction perpendiculaire à l'angle du propulseur (+ ou - 90° selon le côté)
+            const perpDirection = thrusterName === 'left' ? Math.PI/2 : -Math.PI/2;
+            thrustAngle = rocketModel.angle + propAngle + perpDirection;
+        } else {
+            // Pour les propulseurs principaux (main et rear)
+            switch (thrusterName) {
+                case 'main': 
+                    thrustAngle = rocketModel.angle - Math.PI/2; // Poussée vers le haut
+                    break;
+                case 'rear': 
+                    thrustAngle = rocketModel.angle + Math.PI/2; // Poussée vers le bas
+                    break;
+                default:
+                    thrustAngle = rocketModel.angle;
+            }
+        }
+        
+        // Calculer les composantes vectorielles de la force
+        const thrustX = Math.cos(thrustAngle) * thrustForce;
+        const thrustY = Math.sin(thrustAngle) * thrustForce;
+        
+        // Stocker les forces pour la visualisation en debug
+        this.thrustForces[thrusterName] = { x: thrustX, y: thrustY };
+        
         // Appliquer la force au corps physique
         this.Body.applyForce(this.rocketBody, position, { x: thrustX, y: thrustY });
         
-        // Afficher les informations de débogage
-        //console.log(`Propulseur ${thrusterName}: Force (${thrustX.toFixed(2)}, ${thrustY.toFixed(2)}) appliquée à la position (${position.x.toFixed(2)}, ${position.y.toFixed(2)})`);
+        // Stocker les vecteurs de poussée pour la visualisation dans RocketView
+        if (!this.rocketBody.thrustVectors) {
+            this.rocketBody.thrustVectors = {};
+        }
+        
+        this.rocketBody.thrustVectors[thrusterName] = {
+            position: { x: offsetX, y: offsetY },
+            x: Math.cos(thrustAngle),
+            y: Math.sin(thrustAngle),
+            magnitude: thrustForce
+        };
     }
     
     // Mettre à jour la physique des corps célestes

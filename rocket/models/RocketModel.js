@@ -12,6 +12,13 @@ class RocketModel {
         this.radius = ROCKET.WIDTH / 2;
         
         // Propulsion
+        // Les positions des propulseurs sont définies en coordonnées polaires dans constants.js
+        // L'angle définit la direction depuis le centre de la fusée (0 = droite, PI/2 = bas, PI = gauche, 3PI/2 = haut)
+        // La distance définit l'éloignement du propulseur par rapport au centre de la fusée
+        // Ces positions influencent:
+        //  1. Le point d'application des forces, ce qui affecte la rotation et la stabilité
+        //  2. La direction de la poussée qui est perpendiculaire pour les propulseurs latéraux
+        //  3. Le moment (couple) créé lors de l'activation des propulseurs
         this.thrusters = {
             main: { 
                 power: 0, 

@@ -19,6 +19,9 @@
             display: block;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         #instructions {
             position: fixed;
@@ -40,7 +43,11 @@
     <script src="https://cdn.jsdelivr.net/npm/matter-attractors@0.1.6/build/matter-attractors.min.js"></script>
 </head>
 <body> 
-  
+    <!-- Élément d'instructions -->
+    <div id="instructions">
+        Utilisez les flèches ou WASD pour contrôler la fusée. Appuyez sur R pour réinitialiser.
+        Utilisez P et M pour ajuster la puissance des propulseurs.
+    </div>
     
     <!-- Script d'initialisation du plugin Matter Attractors -->
     <script>
@@ -49,7 +56,6 @@
         // car ça fonctionne parfaitement avec matter-js@0.19.0
         try {
             Matter.use(MatterAttractors);
-            console.log("Plugin Matter Attractors initialisé");
         } catch (e) {
             console.error("Erreur lors de l'initialisation du plugin Matter Attractors:", e);
         }
@@ -84,64 +90,5 @@
     
     <!-- Point d'entrée -->
     <script src="main.js"></script>
-    
-    <!-- Patch pour corriger les bugs identifiés -->
-    <script>
-        window.addEventListener('DOMContentLoaded', function() {
-            // 1. Correction pour la méthode obsolète dans ParticleView
-            if (window.ParticleView && ParticleView.prototype.renderSystem) {
-                console.warn("La méthode obsolète ParticleView.renderSystem a été désactivée.");
-                // La méthode reste disponible mais affiche un avertissement pour maintenir la compatibilité
-            }
-            
-            // 2. Correction des événements tactiles pour utiliser passive: true
-            // Remplacer les gestionnaires d'événements tactiles avec passive: false
-            const eventBus = window.eventBus; // Référence à l'EventBus global
-            
-            if (eventBus) {
-                // Supprimer les anciens gestionnaires d'événements et en ajouter de nouveaux
-                const oldTouchStart = window.ontouchstart;
-                const oldTouchMove = window.ontouchmove;
-                const oldTouchEnd = window.ontouchend;
-                
-                // Supprimer les écouteurs existants (ne fonctionne que si les références sont stockées)
-                window.removeEventListener('touchstart', oldTouchStart);
-                window.removeEventListener('touchmove', oldTouchMove);
-                window.removeEventListener('touchend', oldTouchEnd);
-                
-                // Ajouter de nouveaux écouteurs avec passive: true
-                window.addEventListener('touchstart', function(event) {
-                    const touch = event.touches[0];
-                    if (eventBus && eventBus.emit) {
-                        eventBus.emit('INPUT_TOUCHSTART', {
-                            x: touch.clientX,
-                            y: touch.clientY
-                        });
-                    }
-                    // Pas de preventDefault() pour permettre passive: true
-                }, { passive: true });
-                
-                window.addEventListener('touchmove', function(event) {
-                    const touch = event.touches[0];
-                    if (eventBus && eventBus.emit) {
-                        eventBus.emit('INPUT_TOUCHMOVE', {
-                            x: touch.clientX,
-                            y: touch.clientY
-                        });
-                    }
-                    // Pas de preventDefault() pour permettre passive: true
-                }, { passive: true });
-                
-                window.addEventListener('touchend', function(event) {
-                    if (eventBus && eventBus.emit) {
-                        eventBus.emit('INPUT_TOUCHEND', {});
-                    }
-                    // Pas de preventDefault() pour permettre passive: true
-                }, { passive: true });
-                
-                console.log("Gestionnaires d'événements tactiles optimisés pour les performances mobiles");
-            }
-        });
-    </script>
 </body>
 </html> 

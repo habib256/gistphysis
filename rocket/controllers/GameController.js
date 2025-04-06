@@ -157,6 +157,15 @@ class GameController {
                     console.log(`Vitesse de simulation: ${this.physicsController.timeScale.toFixed(2)}x`);
                 }
                 break;
+            case 'toggleThrusterPositions':
+                this.toggleThrusterPositions();
+                break;
+            case 'increaseThrustMultiplier':
+                this.adjustThrustMultiplier(2.0); // Doubler
+                break;
+            case 'decreaseThrustMultiplier':
+                this.adjustThrustMultiplier(0.5); // Réduire de moitié
+                break;
         }
     }
     
@@ -354,27 +363,56 @@ class GameController {
     
     // Configurer les modèles
     setupModels() {
-        // Créer le modèle de l'univers
-        this.universeModel = new UniverseModel();
-        
-        // Créer le modèle de la fusée
-        this.rocketModel = new RocketModel();
-        
-        // Ajouter la Terre au modèle de l'univers
-        const earth = new CelestialBodyModel(
-            'Terre',
-            CELESTIAL_BODY.MASS,
-            CELESTIAL_BODY.RADIUS,
-            { x: this.canvas.width / 2, y: this.canvas.height / 2 + CELESTIAL_BODY.ORBIT_DISTANCE },
-            '#3399FF'
-        );
-        this.universeModel.addCelestialBody(earth);
-        
-        // Créer le modèle de système de particules
-        this.particleSystemModel = new ParticleSystemModel();
-        
-        // Émettre les états initiaux
-        this.emitUpdatedStates();
+        try {
+            // Créer un modèle d'univers
+            this.universeModel = new UniverseModel();
+            
+            // Ajouter la Terre
+            const earth = new CelestialBodyModel(
+                'Terre',
+                CELESTIAL_BODY.MASS,
+                CELESTIAL_BODY.RADIUS,
+                { x: 0, y: 0 },
+                '#1E88E5'
+            );
+            
+            // L'atmosphère est déjà défini dans le constructeur de CelestialBodyModel
+            // Pas besoin d'appeler setAtmosphere
+            
+            this.universeModel.addCelestialBody(earth);
+            
+            // Créer la fusée à une position initiale plus éloignée pour éviter les collisions
+            this.rocketModel = new RocketModel();
+            
+            // Positionner la fusée à une distance sécuritaire par rapport à la Terre
+            const safeDistanceFromEarth = CELESTIAL_BODY.RADIUS * 2.5; // Augmenter la distance par sécurité
+            const initialAngle = -Math.PI / 4; // Légèrement vers le haut-gauche
+            this.rocketModel.setPosition(
+                Math.cos(initialAngle) * safeDistanceFromEarth,
+                Math.sin(initialAngle) * safeDistanceFromEarth
+            );
+            
+            // Initialiser la fusée avec une vitesse tangentielle pour l'orbite
+            const initialSpeed = 2.0; // Vitesse tangentielle pour une orbite stable
+            const tangentialAngle = initialAngle + Math.PI / 2; // Perpendiculaire à la direction radiale
+            this.rocketModel.setVelocity(
+                Math.cos(tangentialAngle) * initialSpeed,
+                Math.sin(tangentialAngle) * initialSpeed
+            );
+            
+            // Créer le système de particules
+            this.particleSystemModel = new ParticleSystemModel();
+            
+            // Les émetteurs sont déjà créés dans le constructeur de ParticleSystemModel
+            // Configurer la position et l'angle des émetteurs si nécessaire
+            this.particleSystemModel.updateEmitterAngle('main', Math.PI/2);
+            this.particleSystemModel.updateEmitterAngle('rear', -Math.PI/2);
+            this.particleSystemModel.updateEmitterAngle('left', 0);
+            this.particleSystemModel.updateEmitterAngle('right', Math.PI);
+            
+        } catch (error) {
+            console.error("Erreur lors de l'initialisation des modèles:", error);
+        }
     }
     
     // Configurer les vues
@@ -492,10 +530,10 @@ class GameController {
         const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
         if (!earth) return;
         
-        // Réinitialiser la position
+        // Réinitialiser la position - Placer légèrement plus haut pour éviter les collisions immédiates
         this.rocketModel.setPosition(
             earth.position.x,
-            earth.position.y - CELESTIAL_BODY.RADIUS - 50
+            earth.position.y - CELESTIAL_BODY.RADIUS - 60  // Réduit de 100 à 60 pour placer la fusée plus bas
         );
         
         // Réinitialiser la vélocité
@@ -519,7 +557,19 @@ class GameController {
         
         // Mettre à jour l'état physique
         if (this.physicsController && this.universeModel) {
-            this.physicsController.syncPhysics(this.rocketModel, this.universeModel);
+            // Forcer une réinitialisation complète de la physique
+            this.physicsController.resetPhysics(this.rocketModel, this.universeModel);
+            setTimeout(() => {
+                // S'assurer que la fusée est bien stable après la réinitialisation
+                if (this.physicsController.rocketBody) {
+                    this.physicsController.Body.setStatic(this.physicsController.rocketBody, true);
+                    setTimeout(() => {
+                        if (this.physicsController.rocketBody) {
+                            this.physicsController.Body.setStatic(this.physicsController.rocketBody, false);
+                        }
+                    }, 100);
+                }
+            }, 50);
         }
         
         // Effacer la trace
@@ -549,6 +599,32 @@ class GameController {
         // Désabonner des événements
         if (this.eventBus) {
             // Les événements seront nettoyés par l'EventBus lui-même
+        }
+    }
+
+    // Active ou désactive l'affichage des positions des propulseurs
+    toggleThrusterPositions() {
+        const isVisible = this.rocketView.showThrusterPositions;
+        this.rocketView.setShowThrusterPositions(!isVisible);
+        console.log(`Affichage des positions des propulseurs: ${!isVisible ? 'activé' : 'désactivé'}`);
+    }
+
+    // Ajuster le multiplicateur de poussée
+    adjustThrustMultiplier(factor) {
+        const currentMultiplier = PHYSICS.THRUST_MULTIPLIER;
+        const newMultiplier = currentMultiplier * factor;
+        
+        // Limiter le multiplicateur à des valeurs raisonnables
+        const minMultiplier = 0.1;
+        const maxMultiplier = 1000;
+        
+        PHYSICS.THRUST_MULTIPLIER = Math.max(minMultiplier, Math.min(maxMultiplier, newMultiplier));
+        
+        console.log(`Multiplicateur de poussée: ${PHYSICS.THRUST_MULTIPLIER.toFixed(2)}x`);
+        
+        // Force une mise à jour de l'analyse des exigences de poussée
+        if (this.physicsController) {
+            this.physicsController._lastThrustCalculation = 0;
         }
     }
 } 

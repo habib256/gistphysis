@@ -13,7 +13,7 @@ class ParticleSystemModel {
                 colorEnd: PARTICLES.EMITTER.MAIN.COLOR_END,
                 particleLifetimeBase: PARTICLES.EMITTER.MAIN.LIFETIME,
                 particleCountPerEmit: PARTICLES.EMITTER.MAIN.COUNT,
-                spread: 0.3,
+                spread: 0.4,
                 particleSpeedVar: 0.3,
                 particleLifetimeVar: 0.5
             },

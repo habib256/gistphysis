@@ -4,8 +4,8 @@ class ParticleController {
             throw new Error('ParticleSystemModel est requis pour initialiser ParticleController');
         }
         this.particleSystemModel = particleSystemModel;
-        console.log('ParticleController initialisé avec:', this.particleSystemModel);
-        console.log('Émetteurs:', this.particleSystemModel.emitters);
+        //console.log('ParticleController initialisé avec:', this.particleSystemModel);
+        //console.log('Émetteurs:', this.particleSystemModel.emitters);
         
         this.particlePool = [];
         this.maxParticles = 1000; // Limite maximale de particules

@@ -11,6 +11,7 @@ class RocketView {
         // Affichage des vecteurs
         this.showGravityVector = false; // Option pour activer/désactiver l'affichage
         this.showThrustVector = false;  // Option pour afficher les vecteurs de poussée
+        this.showThrusterPositions = false; // Option pour afficher la position des propulseurs
     }
     
     // Nouveau rendu avec support de la caméra et prise en charge de l'état
@@ -220,6 +221,11 @@ class RocketView {
         
         ctx.save();
         
+        // Afficher les positions des propulseurs si activé
+        if (this.showThrusterPositions) {
+            this.renderThrusterPositions(ctx, rocketState);
+        }
+        
         // Dessiner les vecteurs de poussée pour chaque propulseur
         for (const thrusterName in rocketState.thrustVectors) {
             const thrustVector = rocketState.thrustVectors[thrusterName];
@@ -233,7 +239,8 @@ class RocketView {
                 switch (thrusterName) {
                     case 'main': color = '#FF5500'; break;
                     case 'rear': color = '#FF8800'; break;
-                    case 'left': case 'right': color = '#FFAA00'; break;
+                    case 'left': color = '#FFAA00'; break;
+                    case 'right': color = '#FFAA00'; break;
                     default: color = '#FFFFFF';
                 }
                 
@@ -250,9 +257,10 @@ class RocketView {
                 ctx.strokeStyle = color;
                 ctx.stroke();
                 
-                // Dessiner la flèche
+                // Dessiner une flèche au bout du vecteur
                 const arrowSize = RENDER.THRUST_ARROW_SIZE;
                 const angle = Math.atan2(thrustVector.y, thrustVector.x);
+                
                 ctx.beginPath();
                 ctx.moveTo(
                     thrustVector.position.x + thrustVector.x * length,
@@ -273,5 +281,48 @@ class RocketView {
         }
         
         ctx.restore();
+    }
+    
+    // Visualise la position des propulseurs
+    renderThrusterPositions(ctx, rocketState) {
+        // Afficher la position de chaque propulseur défini dans ROCKET.THRUSTER_POSITIONS
+        for (const thrusterName in ROCKET.THRUSTER_POSITIONS) {
+            const position = ROCKET.THRUSTER_POSITIONS[thrusterName];
+            
+            // Convertir la position polaire en coordonnées cartésiennes
+            const x = Math.cos(position.angle) * position.distance;
+            const y = Math.sin(position.angle) * position.distance;
+            
+            // Appliquer la rotation de la fusée
+            const rotatedX = Math.cos(rocketState.angle) * x - Math.sin(rocketState.angle) * y;
+            const rotatedY = Math.sin(rocketState.angle) * x + Math.cos(rocketState.angle) * y;
+            
+            // Couleur selon le propulseur
+            let color;
+            switch (thrusterName) {
+                case 'MAIN': color = '#FF0000'; break;  // Rouge
+                case 'REAR': color = '#00FF00'; break;  // Vert
+                case 'LEFT': color = '#0000FF'; break;  // Bleu
+                case 'RIGHT': color = '#FFFF00'; break; // Jaune
+                default: color = '#FFFFFF';              // Blanc
+            }
+            
+            // Dessiner un cercle à la position du propulseur
+            ctx.beginPath();
+            ctx.arc(rotatedX, rotatedY, 3, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            // Ajouter une étiquette avec le nom du propulseur
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(thrusterName, rotatedX, rotatedY - 8);
+        }
+    }
+
+    // Activer/désactiver l'affichage des positions des propulseurs
+    setShowThrusterPositions(enabled) {
+        this.showThrusterPositions = enabled;
     }
 } 
