@@ -158,7 +158,7 @@ class GameController {
                 }
                 break;
             case 'toggleThrusterPositions':
-                this.toggleThrusterPositions();
+                this.toggleTraceVisibility();
                 break;
             case 'increaseThrustMultiplier':
                 this.adjustThrustMultiplier(2.0); // Doubler
@@ -206,11 +206,11 @@ class GameController {
         if (this.camera) {
             const zoomFactor = 1 + RENDER.ZOOM_SPEED;
             if (data.delta > 0) {
-                // Zoom in
-                this.camera.setZoom(this.camera.zoom * zoomFactor);
-            } else {
-                // Zoom out
+                // Zoom out (molette vers le bas)
                 this.camera.setZoom(this.camera.zoom / zoomFactor);
+            } else {
+                // Zoom in (molette vers le haut)
+                this.camera.setZoom(this.camera.zoom * zoomFactor);
             }
         }
     }
@@ -625,6 +625,14 @@ class GameController {
         // Force une mise à jour de l'analyse des exigences de poussée
         if (this.physicsController) {
             this.physicsController._lastThrustCalculation = 0;
+        }
+    }
+
+    // Activer/désactiver l'affichage de la trace
+    toggleTraceVisibility() {
+        if (this.traceView) {
+            this.traceView.toggleVisibility();
+            console.log(`Affichage de la trace: ${this.traceView.isVisible ? 'activé' : 'désactivé'}`);
         }
     }
 } 

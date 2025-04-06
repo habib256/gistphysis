@@ -37,7 +37,7 @@ const RENDER = {
     CAMERA_SMOOTHING: 1,      // Facteur de lissage du mouvement de caméra
     ZOOM_SMOOTHING: 0.1,        // Facteur de lissage du zoom
     ZOOM_SPEED: 0.2,            // Vitesse de zoom avec la molette 
-    MIN_ZOOM: 0.1,              // Zoom minimum
+    MIN_ZOOM: 0.01,              // Zoom minimum
     MAX_ZOOM: 4.0,              // Zoom maximum 
     
     // Vecteur de gravité
@@ -63,7 +63,7 @@ const RENDER = {
 // Constantes de la fusée
 const ROCKET = {
     // Propriétés physiques
-    MASS: 2500,                 // Masse de la fusée en kg
+    MASS: 1500,                 // Masse de la fusée en kg
     WIDTH: 30,                  // Largeur de la hitbox
     HEIGHT: 60,                 // Hauteur de la hitbox
     FRICTION: 0.1,              // Friction de la fusée
@@ -95,14 +95,14 @@ const ROCKET = {
     THRUSTER_POSITIONS: {
         MAIN: { angle: -Math.PI/2, distance: 30 },    // Propulseur principal 
         REAR: { angle: Math.PI/2, distance: 30 },     // Propulseur arrière 
-        LEFT: { angle: 0, distance: 15 },       // Propulseur gauche 
-        RIGHT: { angle: Math.PI, distance: 15 }             // Propulseur droit 
+        LEFT: { angle: Math.PI, distance: 15 },       // Propulseur gauche 
+        RIGHT: { angle: 0, distance: 15 }             // Propulseur droit 
     }
 };
 
 // Constantes du corps céleste
 const CELESTIAL_BODY = {
-    MASS: 80000000000,             // Masse de l'astre 
+    MASS: 200000000000,             // Masse de l'astre 
     RADIUS: 720,                  // Rayon de l'astre
     ORBIT_DISTANCE: 820,          // Distance orbitale initiale (rayon + 100)
     ATMOSPHERE_RATIO: 0.1625      // Ratio du rayon pour la hauteur de l'atmosphère
@@ -111,7 +111,7 @@ const CELESTIAL_BODY = {
 // Constantes pour les particules
 const PARTICLES = {
     STAR_COUNT: 1000,           // Nombre d'étoiles dans l'espace
-    VISIBLE_RADIUS: 12000,      // Rayon visible de l'espace
+    VISIBLE_RADIUS: 24000,      // Rayon visible de l'espace (doublé de 12000 à 24000)
     
     // Propriétés des émetteurs de particules
     EMITTER: {

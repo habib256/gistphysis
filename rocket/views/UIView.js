@@ -31,17 +31,7 @@ class UIView {
         const barHeight = 10;
         const barX = 100;
         
-        // Afficher la santé avec code couleur
-        const health = Math.floor(rocketModel.health);
-        if (health < 30) {
-            ctx.fillStyle = this.colors.red;
-        } else if (health < 70) {
-            ctx.fillStyle = this.colors.orange;
-        } else {
-            ctx.fillStyle = this.colors.green;
-        }
-        
-        // Texte de santé (sans valeur numérique)
+        // Texte de santé (toujours en blanc)
         ctx.fillText(`Santé:`, 20, 20);
         
         // Barre de santé
@@ -51,7 +41,8 @@ class UIView {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.fillRect(barX, barYHealth, barWidth, barHeight);
         
-        // Barre de progression
+        // Barre de progression pour la santé
+        const health = Math.floor(rocketModel.health);
         if (health < 30) {
             ctx.fillStyle = this.colors.red;
         } else if (health < 70) {
@@ -62,6 +53,7 @@ class UIView {
         const healthWidth = (health / ROCKET.MAX_HEALTH) * barWidth;
         ctx.fillRect(barX, barYHealth, healthWidth, barHeight);
         
+        // Retour à la couleur blanche pour le texte
         ctx.fillStyle = this.colors.white;
         
         // Afficher le carburant
@@ -76,13 +68,21 @@ class UIView {
         
         // Barre de progression pour le carburant
         const fuel = rocketModel.fuel;
+        const fuelPercentage = (fuel / ROCKET.FUEL_MAX) * 100;
         
-        // Le carburant est toujours affiché en vert puisqu'il commence plein à 5000
-        ctx.fillStyle = 'green';
+        // Changer la couleur en fonction du niveau de carburant
+        if (fuelPercentage < 30) {
+            ctx.fillStyle = this.colors.red;
+        } else if (fuelPercentage < 70) {
+            ctx.fillStyle = this.colors.orange;
+        } else {
+            ctx.fillStyle = this.colors.green;
+        }
         
-        const fuelWidth = (fuel / ROCKET.MAX_FUEL) * barWidth;
+        const fuelWidth = (fuel / ROCKET.FUEL_MAX) * barWidth;
         ctx.fillRect(barX, barYFuel, fuelWidth, barHeight);
         
+        // Retour à la couleur blanche pour le texte
         ctx.fillStyle = this.colors.white;
         
         // Calculer et afficher la vitesse
@@ -91,26 +91,19 @@ class UIView {
     }
 
     calculateSpeed(rocketModel) {
-        const velocity = {
-            x: rocketModel.velocity.x,
-            y: rocketModel.velocity.y
-        };
+        if (!rocketModel || !rocketModel.velocity) return 0;
         
-        const rocketDirection = {
-            x: Math.sin(rocketModel.angle),
-            y: -Math.cos(rocketModel.angle)
-        };
+        // Calculer la vitesse absolue (amplitude du vecteur vitesse)
+        const vx = rocketModel.velocity.x;
+        const vy = rocketModel.velocity.y;
         
-        const directionMagnitude = Math.sqrt(rocketDirection.x * rocketDirection.x + rocketDirection.y * rocketDirection.y);
-        if (directionMagnitude > 0) {
-            rocketDirection.x /= directionMagnitude;
-            rocketDirection.y /= directionMagnitude;
-        }
-        
-        return (velocity.x * rocketDirection.x + velocity.y * rocketDirection.y).toFixed(1);
+        // On utilise la vitesse absolue pour l'affichage de la jauge
+        // C'est plus représentatif de l'état réel de la fusée
+        return Math.sqrt(vx * vx + vy * vy);
     }
 
     renderSpeed(ctx, speed, x, y) {
+        // Texte de vitesse (toujours en blanc)
         ctx.fillStyle = this.colors.white;
         ctx.fillText(`Vitesse:`, x, y);
         
@@ -120,28 +113,45 @@ class UIView {
         const barX = 100;
         const barYSpeed = y + 5;
         
-        // Fond de la barre
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        // Fond de la barre (vert complet = vitesse 0)
+        ctx.fillStyle = this.colors.green;
         ctx.fillRect(barX, barYSpeed, barWidth, barHeight);
         
-        // Calculer la largeur relative de la barre de vitesse
-        const maxDisplaySpeed = 2.0;
-        const displaySpeed = Math.min(Math.abs(speed), maxDisplaySpeed);
-        const speedWidth = (displaySpeed / maxDisplaySpeed) * barWidth;
-        const speedPercentage = (displaySpeed / maxDisplaySpeed) * 100;
+        // Paramètres pour l'échelle exponentielle
+        const maxDisplaySpeed = 10.0;       // Vitesse maximale à afficher
+        const threshold = 0.3;              // Seuil pour la vitesse "nulle"
+        const exponent = 0.5;               // Exposant pour l'échelle (0.5 = racine carrée, comportement logarithmique)
         
-        // Déterminer la couleur basée sur le pourcentage de vitesse
-        // Vert pour les 10 premiers %, orange entre 10% et 90%, rouge au-delà
-        if (speedPercentage < 10) {
-            ctx.fillStyle = 'green'; // Vert quand c'est lent (0-10%)
-        } else if (speedPercentage < 90) {
-            ctx.fillStyle = this.colors.orange; // Orange pour vitesse moyenne (10-90%)
-        } else {
-            ctx.fillStyle = 'red'; // Rouge quand c'est rapide (>90%)
+        // Limiter la vitesse à la plage d'affichage
+        const displaySpeed = Math.min(Math.abs(speed), maxDisplaySpeed);
+        
+        // Si la vitesse est quasi-nulle, on garde la barre verte complète
+        if (displaySpeed < threshold) {
+            // Rien à faire, la barre reste verte et pleine
+            return;
         }
         
-        // Dessiner la barre
-        ctx.fillRect(barX, barYSpeed, speedWidth, barHeight);
+        // Calcul du ratio de vitesse avec échelle non linéaire (racine carrée)
+        const speedRatio = Math.pow(displaySpeed, exponent) / Math.pow(maxDisplaySpeed, exponent);
+        
+        // Calcul de la largeur de la partie "vide" de la barre
+        const emptyWidth = speedRatio * barWidth;
+        
+        // Détermination de la couleur basée sur la vitesse
+        let overlayColor;
+        const speedPercentage = (displaySpeed / maxDisplaySpeed) * 100;
+        
+        if (speedPercentage < 20) {
+            overlayColor = 'rgba(255, 255, 255, 0.3)';  // Légère transparence pour les faibles vitesses
+        } else if (speedPercentage < 50) {
+            overlayColor = this.colors.orange;           // Orange pour vitesses moyennes
+        } else {
+            overlayColor = this.colors.red;              // Rouge pour vitesses élevées
+        }
+        
+        // Dessiner la partie "vide" en superposant une couleur sur la barre verte
+        ctx.fillStyle = overlayColor;
+        ctx.fillRect(barX, barYSpeed, emptyWidth, barHeight);
     }
 
     renderLandingGuidance(ctx, canvas, rocketModel, universeModel) {
@@ -184,7 +194,7 @@ class UIView {
         ctx.font = '24px Arial';
         ctx.fillStyle = this.colors.success;
         ctx.textAlign = 'center';
-        ctx.fillText('Atterrissage réussi!', canvas.width / 2, 30);
+        ctx.fillText('Vous êtes posé', canvas.width / 2, 30);
         ctx.font = this.font;
         ctx.fillText('Utilisez les propulseurs pour décoller', canvas.width / 2, 60);
     }
