@@ -1,5 +1,8 @@
 class GameController {
-    constructor() {
+    constructor(eventBus) {
+        // EventBus
+        this.eventBus = eventBus;
+        
         // Modèles
         this.rocketModel = null;
         this.universeModel = null;
@@ -11,11 +14,13 @@ class GameController {
         this.particleView = null;
         this.celestialBodyView = null;
         this.traceView = null;
+        this.uiView = null;
         
         // Contrôleurs
         this.inputController = null;
         this.physicsController = null;
         this.particleController = null;
+        this.renderingController = null;
         
         // État du jeu
         this.isRunning = false;
@@ -26,378 +31,395 @@ class GameController {
         // Canvas et contexte
         this.canvas = null;
         this.ctx = null;
+        
+        // Variables pour le glisser-déposer
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.dragStartRocketX = 0;
+        this.dragStartRocketY = 0;
+
+        // Initialiser la caméra
+        this.camera = new CameraModel();
+        
+        // S'abonner aux événements
+        this.subscribeToEvents();
+    }
+    
+    // S'abonner aux événements de l'EventBus
+    subscribeToEvents() {
+        this.eventBus.subscribe('INPUT_KEYDOWN', (data) => this.handleKeyDown(data));
+        this.eventBus.subscribe('INPUT_KEYUP', (data) => this.handleKeyUp(data));
+        this.eventBus.subscribe('INPUT_KEYPRESS', (data) => this.handleKeyPress(data));
+        this.eventBus.subscribe('INPUT_MOUSEDOWN', (data) => this.handleMouseDown(data));
+        this.eventBus.subscribe('INPUT_MOUSEMOVE', (data) => this.handleMouseMove(data));
+        this.eventBus.subscribe('INPUT_MOUSEUP', (data) => this.handleMouseUp(data));
+        this.eventBus.subscribe('INPUT_WHEEL', (data) => this.handleWheel(data));
+    }
+    
+    // Gérer les événements d'entrée
+    handleKeyDown(data) {
+        if (this.isPaused && data.action !== 'pauseGame') return;
+        
+        switch (data.action) {
+            case 'thrustForward':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('main', ROCKET.THRUSTER_POWER.MAIN);
+                this.particleSystemModel.setEmitterActive('main', true);
+                break;
+            case 'thrustBackward':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('rear', ROCKET.THRUSTER_POWER.REAR);
+                this.particleSystemModel.setEmitterActive('rear', true);
+                break;
+            case 'rotateLeft':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('left', ROCKET.THRUSTER_POWER.LEFT);
+                this.particleSystemModel.setEmitterActive('left', true);
+                break;
+            case 'rotateRight':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('right', ROCKET.THRUSTER_POWER.RIGHT);
+                this.particleSystemModel.setEmitterActive('right', true);
+                break;
+            case 'zoomIn':
+                this.camera.setZoom(this.camera.zoom * (1 + RENDER.ZOOM_SPEED));
+                break;
+            case 'zoomOut':
+                this.camera.setZoom(this.camera.zoom / (1 + RENDER.ZOOM_SPEED));
+                break;
+        }
+        
+        // Émettre l'état mis à jour
+        this.emitUpdatedStates();
+    }
+    
+    handleKeyUp(data) {
+        switch (data.action) {
+            case 'thrustForward':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('main', 0);
+                this.particleSystemModel.setEmitterActive('main', false);
+                break;
+            case 'thrustBackward':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('rear', 0);
+                this.particleSystemModel.setEmitterActive('rear', false);
+                break;
+            case 'rotateLeft':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('left', 0);
+                this.particleSystemModel.setEmitterActive('left', false);
+                break;
+            case 'rotateRight':
+                if (!this.rocketModel) return;
+                this.rocketModel.setThrusterPower('right', 0);
+                this.particleSystemModel.setEmitterActive('right', false);
+                break;
+        }
+        
+        // Émettre l'état mis à jour
+        this.emitUpdatedStates();
+    }
+    
+    handleKeyPress(data) {
+        if (this.isPaused && data.action !== 'pauseGame') return;
+        
+        switch (data.action) {
+            case 'pauseGame':
+                this.togglePause();
+                break;
+            case 'resetRocket':
+                this.resetRocket();
+                break;
+            case 'centerCamera':
+                if (this.camera && this.rocketModel) {
+                    this.camera.setTarget(this.rocketModel, 'rocket');
+                }
+                break;
+            case 'toggleForces':
+                if (this.physicsController) {
+                    const showForces = this.physicsController.toggleForceVectors();
+                    console.log(`Affichage des forces: ${showForces ? 'activé' : 'désactivé'}`);
+                }
+                break;
+            case 'slowDown':
+                if (this.physicsController) {
+                    const currentTimeScale = this.physicsController.timeScale;
+                    this.physicsController.setTimeScale(currentTimeScale * 0.5);
+                    console.log(`Vitesse de simulation: ${this.physicsController.timeScale.toFixed(2)}x`);
+                }
+                break;
+            case 'speedUp':
+                if (this.physicsController) {
+                    const currentTimeScale = this.physicsController.timeScale;
+                    this.physicsController.setTimeScale(currentTimeScale * 2.0);
+                    console.log(`Vitesse de simulation: ${this.physicsController.timeScale.toFixed(2)}x`);
+                }
+                break;
+        }
+    }
+    
+    handleMouseDown(data) {
+        if (this.isPaused) return;
+        
+        this.isDragging = true;
+        this.dragStartX = data.x;
+        this.dragStartY = data.y;
+        
+        if (this.camera) {
+            this.dragStartCameraX = this.camera.x;
+            this.dragStartCameraY = this.camera.y;
+        }
+    }
+    
+    handleMouseMove(data) {
+        if (!this.isDragging || this.isPaused) return;
+        
+        const dx = (data.x - this.dragStartX) / this.camera.zoom;
+        const dy = (data.y - this.dragStartY) / this.camera.zoom;
+        
+        if (this.camera) {
+            this.camera.setPosition(
+                this.dragStartCameraX - dx,
+                this.dragStartCameraY - dy
+            );
+        }
+    }
+    
+    handleMouseUp() {
+        this.isDragging = false;
+    }
+    
+    handleWheel(data) {
+        if (this.isPaused) return;
+        
+        if (this.camera) {
+            const zoomFactor = 1 + RENDER.ZOOM_SPEED;
+            if (data.delta > 0) {
+                // Zoom in
+                this.camera.setZoom(this.camera.zoom * zoomFactor);
+            } else {
+                // Zoom out
+                this.camera.setZoom(this.camera.zoom / zoomFactor);
+            }
+        }
+    }
+    
+    // Émettre les états mis à jour pour les vues
+    emitUpdatedStates() {
+        if (this.rocketModel) {
+            // Calculer les vecteurs de gravité et de poussée pour le rendu
+            const gravityVector = this.calculateGravityVector();
+            const thrustVectors = this.calculateThrustVectors();
+            
+            // Émettre l'état de la fusée mis à jour
+            this.eventBus.emit('ROCKET_STATE_UPDATED', {
+                position: { ...this.rocketModel.position },
+                velocity: { ...this.rocketModel.velocity },
+                angle: this.rocketModel.angle,
+                fuel: this.rocketModel.fuel,
+                health: this.rocketModel.health,
+                isLanded: this.rocketModel.isLanded,
+                isDestroyed: this.rocketModel.isDestroyed,
+                thrusters: { ...this.rocketModel.thrusters },
+                gravityVector,
+                thrustVectors
+            });
+        }
+        
+        if (this.universeModel) {
+            // S'assurer que les corps célestes sont envoyés correctement
+            this.eventBus.emit('UNIVERSE_STATE_UPDATED', {
+                celestialBodies: this.universeModel.celestialBodies.map(body => ({
+                    name: body.name,
+                    mass: body.mass,
+                    radius: body.radius,
+                    position: { ...body.position },
+                    velocity: { ...body.velocity },
+                    color: body.color,
+                    atmosphere: { ...body.atmosphere }
+                })),
+                stars: this.universeModel.stars
+            });
+        }
+        
+        if (this.particleSystemModel) {
+            this.eventBus.emit('PARTICLE_SYSTEM_UPDATED', {
+                emitters: this.particleSystemModel.emitters,
+                debrisParticles: this.particleSystemModel.debrisParticles
+            });
+        }
+    }
+    
+    // Calculer le vecteur de gravité pour le rendu
+    calculateGravityVector() {
+        if (!this.rocketModel || !this.universeModel) return null;
+        
+        let totalGravityX = 0;
+        let totalGravityY = 0;
+        
+        for (const body of this.universeModel.celestialBodies) {
+            const dx = body.position.x - this.rocketModel.position.x;
+            const dy = body.position.y - this.rocketModel.position.y;
+            const distanceSquared = dx * dx + dy * dy;
+            const distance = Math.sqrt(distanceSquared);
+            
+            const forceMagnitude = PHYSICS.G * body.mass * this.rocketModel.mass / distanceSquared;
+            
+            const forceX = forceMagnitude * (dx / distance);
+            const forceY = forceMagnitude * (dy / distance);
+            
+            totalGravityX += forceX / this.rocketModel.mass;
+            totalGravityY += forceY / this.rocketModel.mass;
+        }
+        
+        return { x: totalGravityX, y: totalGravityY };
+    }
+    
+    // Calculer les vecteurs de poussée pour le rendu
+    calculateThrustVectors() {
+        if (!this.rocketModel) return null;
+        
+        const thrustVectors = {};
+        
+        for (const thrusterName in this.rocketModel.thrusters) {
+            const thruster = this.rocketModel.thrusters[thrusterName];
+            
+            if (thruster.power > 0) {
+                let thrustAngle = 0;
+                let thrustMagnitude = 0;
+                
+                switch (thrusterName) {
+                    case 'main':
+                        thrustAngle = this.rocketModel.angle + Math.PI/2;
+                        thrustMagnitude = PHYSICS.MAIN_THRUST * (thruster.power / thruster.maxPower);
+                        break;
+                    case 'rear':
+                        thrustAngle = this.rocketModel.angle - Math.PI/2;
+                        thrustMagnitude = PHYSICS.REAR_THRUST * (thruster.power / thruster.maxPower);
+                        break;
+                    case 'left':
+                        thrustAngle = this.rocketModel.angle + 0;
+                        thrustMagnitude = PHYSICS.LATERAL_THRUST * (thruster.power / thruster.maxPower);
+                        break;
+                    case 'right':
+                        thrustAngle = this.rocketModel.angle + Math.PI;
+                        thrustMagnitude = PHYSICS.LATERAL_THRUST * (thruster.power / thruster.maxPower);
+                        break;
+                }
+                
+                thrustVectors[thrusterName] = {
+                    position: { 
+                        x: thruster.position.x, 
+                        y: thruster.position.y 
+                    },
+                    x: -Math.cos(thrustAngle),
+                    y: -Math.sin(thrustAngle),
+                    magnitude: thrustMagnitude
+                };
+            }
+        }
+        
+        return thrustVectors;
     }
     
     // Initialiser le jeu
     init(canvas) {
-        // Référence au canvas
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         
-        // Configurer les modèles
+        // Initialiser les modèles et vues
         this.setupModels();
-        
-        // Configurer les vues
         this.setupViews();
         
         // Configurer les contrôleurs
         this.setupControllers();
         
-        // Configurer les événements
-        this.setupEventHandlers();
+        // Configurer la caméra
+        this.setupCamera();
         
-        // Mettre à jour les instructions
-        this.renderInstructions();
+        // Positionner la fusée à sa position initiale
+        this.resetRocket();
         
         // Démarrer la boucle de jeu
         this.start();
     }
     
+    // Définir les contrôleurs
+    setControllers(controllers) {
+        this.inputController = controllers.inputController;
+        this.renderingController = controllers.renderingController;
+    }
+    
     // Configurer les modèles
     setupModels() {
-        // Créer le modèle de la fusée
-        this.rocketModel = new RocketModel();
-        this.rocketModel.radius = ROCKET.WIDTH / 2; // Utiliser la constante du rayon de la fusée
-        this.rocketModel.fuel = ROCKET.FUEL_MAX; // Initialiser le carburant avec la constante
-        
         // Créer le modèle de l'univers
         this.universeModel = new UniverseModel();
         
-        // Créer le modèle du système de particules
-        this.particleSystemModel = new ParticleSystemModel();
+        // Créer le modèle de la fusée
+        this.rocketModel = new RocketModel();
         
-        // Ajouter des corps célestes de test
-        this.setupCelestialBodies();
-        
-        // Placer la fusée sur le sol de la Terre au démarrage
-        const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
-        if (earth) {
-            // Calculer la position sur la surface de la Terre (au sommet)
-            const surfaceX = earth.position.x;
-            const surfaceY = earth.position.y - earth.radius - this.rocketModel.radius;
-            
-            // Positionner la fusée sur la surface
-            this.rocketModel.setPosition(surfaceX, surfaceY);
-            
-            // Orienter la fusée perpendiculairement à la surface (vers le haut)
-            this.rocketModel.angle = 0; // au lieu de -Math.PI/2
-            
-            // Définir la fusée comme étant posée
-            this.rocketModel.isLanded = true;
-            
-            // Réinitialiser les vitesses
-            this.rocketModel.velocity = { x: 0, y: 0 };
-            this.rocketModel.angularVelocity = 0;
-        } else {
-            // Fallback si la Terre n'est pas trouvée
-            this.rocketModel.setPosition(this.canvas.width / 2, this.canvas.height / 2 - 100);
-        }
-    }
-    
-    // Configurer les corps célestes initiaux
-    setupCelestialBodies() {
-        // Créer une planète Terre avec un rayon deux fois plus grand
+        // Ajouter la Terre au modèle de l'univers
         const earth = new CelestialBodyModel(
-            'Terre', 
-            CELESTIAL_BODY.MASS, // Utiliser la constante pour la masse
-            CELESTIAL_BODY.RADIUS * 2, // Rayon doublé 
-            { x: this.canvas.width / 2, y: this.canvas.height / 2 + CELESTIAL_BODY.ORBIT_DISTANCE }, 
+            'Terre',
+            CELESTIAL_BODY.MASS,
+            CELESTIAL_BODY.RADIUS,
+            { x: this.canvas.width / 2, y: this.canvas.height / 2 + CELESTIAL_BODY.ORBIT_DISTANCE },
             '#3399FF'
         );
-        
-        earth.atmosphere = {
-            exists: true,
-            height: CELESTIAL_BODY.RADIUS * 0.4, // 20% du rayon pour l'atmosphère (ajusté pour le rayon doublé)
-            color: 'rgba(100, 150, 255, 0.2)'
-        };
-        
-        // Ajouter au modèle de l'univers
         this.universeModel.addCelestialBody(earth);
+        
+        // Créer le modèle de système de particules
+        this.particleSystemModel = new ParticleSystemModel();
+        
+        // Émettre les états initiaux
+        this.emitUpdatedStates();
     }
     
     // Configurer les vues
     setupViews() {
-        // Créer la vue des corps célestes
+        // Créer les vues
+        this.rocketView = new RocketView();
+        this.universeView = new UniverseView(this.canvas);
         this.celestialBodyView = new CelestialBodyView();
-        
-        // Créer la vue de l'univers
-        this.universeView = new UniverseView(this.celestialBodyView);
-        this.universeView.setCanvasSize(this.canvas.width, this.canvas.height);
-        
-        // Centrer initialement la caméra sur le centre du canvas
-        this.universeView.centerOn(this.canvas.width / 2, this.canvas.height / 2);
-        this.universeView.setCameraZoom(RENDER.MIN_ZOOM + (RENDER.MAX_ZOOM - RENDER.MIN_ZOOM) / 2); // Zoom initial moyen
-        
-        // Créer la vue des particules
         this.particleView = new ParticleView();
-        
-        // Créer la vue de la trace
         this.traceView = new TraceView();
+        this.uiView = new UIView();
         
-        // Créer la vue de la fusée
-        this.rocketView = new RocketView(this.particleView);
-        // Ajuster les dimensions selon les constantes
-        this.rocketView.width = ROCKET.WIDTH * 2; // Double du rayon pour la largeur
-        this.rocketView.height = ROCKET.HEIGHT * 1.6; // Hauteur proportionnelle
+        // Initialiser le contrôleur de rendu avec les vues
+        if (this.renderingController) {
+            this.renderingController.initViews(
+                this.rocketView,
+                this.universeView,
+                this.celestialBodyView,
+                this.particleView,
+                this.traceView,
+                this.uiView
+            );
+        }
+    }
+    
+    // Configurer la caméra
+    setupCamera() {
+        this.camera.setTarget(this.rocketModel, 'rocket');
+        this.camera.offsetX = this.canvas.width / 2;
+        this.camera.offsetY = this.canvas.height / 2;
     }
     
     // Configurer les contrôleurs
     setupControllers() {
-        // Créer le contrôleur d'entrée
-        this.inputController = new InputController();
-        
-        // Créer le contrôleur de physique
         this.physicsController = new PhysicsController();
+        this.particleController = new ParticleController(this.particleSystemModel);
         
-        // Initialiser la physique avec les modèles existants
+        // Initialiser la physique avec les modèles
         if (this.physicsController && this.rocketModel && this.universeModel) {
             this.physicsController.initPhysics(this.rocketModel, this.universeModel);
         }
         
-        // Créer le contrôleur de particules
-        this.particleController = new ParticleController(this.particleSystemModel);
-        
-        // Configurer les gestionnaires d'entrée
-        this.setupInputHandlers();
-    }
-    
-    // Configurer les gestionnaires d'entrée
-    setupInputHandlers() {
-        // Propulseur principal (avant)
-        this.inputController.onKeyDown('thrustForward', () => {
-            if (!this.rocketModel || this.isPaused) return;
-            // Utiliser la puissance constante définie dans ROCKET.INITIAL_POWER
-            this.rocketModel.setThrusterPower('main', ROCKET.INITIAL_POWER);
-            this.particleSystemModel.setEmitterActive('main', true);
-        });
-        
-        this.inputController.onKeyUp('thrustForward', () => {
-            if (!this.rocketModel) return;
-            this.rocketModel.setThrusterPower('main', 0);
-            this.particleSystemModel.setEmitterActive('main', false);
-        });
-        
-        // Propulseur arrière
-        this.inputController.onKeyDown('thrustBackward', () => {
-            if (!this.rocketModel || this.isPaused) return;
-            this.rocketModel.setThrusterPower('rear', ROCKET.INITIAL_POWER);
-            this.particleSystemModel.setEmitterActive('rear', true);
-        });
-        
-        this.inputController.onKeyUp('thrustBackward', () => {
-            if (!this.rocketModel) return;
-            this.rocketModel.setThrusterPower('rear', 0);
-            this.particleSystemModel.setEmitterActive('rear', false);
-        });
-        
-        // Rotation gauche
-        this.inputController.onKeyDown('rotateLeft', () => {
-            if (!this.rocketModel || this.isPaused) return;
-            this.rocketModel.setThrusterPower('right', ROCKET.INITIAL_POWER);
-            this.particleSystemModel.setEmitterActive('right', true);
-        });
-        
-        this.inputController.onKeyUp('rotateLeft', () => {
-            if (!this.rocketModel) return;
-            this.rocketModel.setThrusterPower('right', 0);
-            this.particleSystemModel.setEmitterActive('right', false);
-        });
-        
-        // Rotation droite
-        this.inputController.onKeyDown('rotateRight', () => {
-            if (!this.rocketModel || this.isPaused) return;
-            this.rocketModel.setThrusterPower('left', ROCKET.INITIAL_POWER);
-            this.particleSystemModel.setEmitterActive('left', true);
-        });
-        
-        this.inputController.onKeyUp('rotateRight', () => {
-            if (!this.rocketModel) return;
-            this.rocketModel.setThrusterPower('left', 0);
-            this.particleSystemModel.setEmitterActive('left', false);
-        });
-        
-        // Actions de caméra
-        this.inputController.onKeyPress('centerCamera', () => {
-            if (!this.universeView || !this.rocketModel) return;
-            this.universeView.centerOn(this.rocketModel.position.x, this.rocketModel.position.y);
-        });
-        
-        this.inputController.onKeyDown('zoomIn', () => {
-            if (!this.universeView) return;
-            this.universeView.setCameraZoom(this.universeView.camera.zoom * (1 + RENDER.ZOOM_SPEED));
-        });
-        
-        this.inputController.onKeyDown('zoomOut', () => {
-            if (!this.universeView) return;
-            this.universeView.setCameraZoom(this.universeView.camera.zoom / (1 + RENDER.ZOOM_SPEED));
-        });
-        
-        // Actions système
-        this.inputController.onKeyPress('pauseGame', () => {
-            this.togglePause();
-        });
-        
-        this.inputController.onKeyPress('resetRocket', () => {
-            this.resetRocket();
-        });
-        
-        // Toggle de la trace
-        this.inputController.onKeyPress('toggleTrace', () => {
-            if (this.traceView) {
-                this.traceView.toggleVisibility();
-                console.log(`Trace ${this.traceView.isVisible ? 'activée' : 'désactivée'}`);
-            }
-        });
-        
-        // Touche pour afficher/masquer les vecteurs de force
-        window.addEventListener('keydown', (event) => {
-            if (event.code === 'KeyV') {
-                // Toggle l'affichage des vecteurs de force
-                const isShowing = this.physicsController.toggleForceVectors();
-                console.log(`Affichage des vecteurs de force: ${isShowing ? 'activé' : 'désactivé'}`);
-            }
-        });
-    }
-    
-    // Configurer les écouteurs d'événements
-    setupEventHandlers() {
-        // Redimensionnement de la fenêtre
-        window.addEventListener('resize', () => {
-            this.resizeCanvas();
-        });
-        
-        // Variables pour le glisser-déposer (drag & drop)
-        let isDragging = false;
-        let dragStartX = 0;
-        let dragStartY = 0;
-        let dragStartRocketX = 0;
-        let dragStartRocketY = 0;
-        
-        // Gestionnaire d'événement mousedown pour commencer le drag
-        this.canvas.addEventListener('mousedown', (event) => {
-            if (this.isPaused || !this.rocketModel || !this.physicsController || !this.physicsController.rocketBody) return;
-            
-            // Récupérer les coordonnées de la souris
-            const rect = this.canvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-            
-            // Convertir les coordonnées de la souris en coordonnées du monde
-            const worldX = (mouseX - this.universeView.camera.offsetX) / this.universeView.camera.zoom + this.universeView.camera.x;
-            const worldY = (mouseY - this.universeView.camera.offsetY) / this.universeView.camera.zoom + this.universeView.camera.y;
-            
-            // Calculer la distance entre la souris et la fusée
-            const dx = worldX - this.rocketModel.position.x;
-            const dy = worldY - this.rocketModel.position.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Si le clic est suffisamment proche de la fusée (en tenant compte du rayon)
-            if (distance <= this.rocketModel.radius * 2) {
-                // Commencer le drag
-                isDragging = true;
-                dragStartX = worldX;
-                dragStartY = worldY;
-                dragStartRocketX = this.rocketModel.position.x;
-                dragStartRocketY = this.rocketModel.position.y;
-                
-                // Mettre la fusée en mode statique temporairement pour le drag
-                this.physicsController.Body.setStatic(this.physicsController.rocketBody, true);
-                
-                // Réinitialiser les vitesses pendant le drag
-                this.rocketModel.velocity = { x: 0, y: 0 };
-                this.rocketModel.angularVelocity = 0;
-                
-                // Empêcher les autres actions pendant le drag
-                event.preventDefault();
-            }
-        });
-        
-        // Gestionnaire d'événement mousemove pour le déplacement
-        this.canvas.addEventListener('mousemove', (event) => {
-            if (!isDragging) return;
-            
-            // Récupérer les coordonnées de la souris
-            const rect = this.canvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-            
-            // Convertir les coordonnées de la souris en coordonnées du monde
-            const worldX = (mouseX - this.universeView.camera.offsetX) / this.universeView.camera.zoom + this.universeView.camera.x;
-            const worldY = (mouseY - this.universeView.camera.offsetY) / this.universeView.camera.zoom + this.universeView.camera.y;
-            
-            // Calculer le déplacement
-            const deltaX = worldX - dragStartX;
-            const deltaY = worldY - dragStartY;
-            
-            // Mettre à jour la position de la fusée
-            const newX = dragStartRocketX + deltaX;
-            const newY = dragStartRocketY + deltaY;
-            
-            // Mettre à jour la position dans le modèle et le corps physique
-            this.rocketModel.setPosition(newX, newY);
-            this.physicsController.Body.setPosition(this.physicsController.rocketBody, { x: newX, y: newY });
-            
-            // La fusée n'est plus considérée comme "posée" si elle est déplacée
-            this.rocketModel.isLanded = false;
-            
-            // Empêcher les autres actions pendant le drag
-            event.preventDefault();
-        });
-        
-        // Gestionnaire d'événement mouseup pour terminer le drag
-        this.canvas.addEventListener('mouseup', () => {
-            if (isDragging) {
-                // Terminer le drag
-                isDragging = false;
-                
-                // Remettre la fusée en mode dynamique
-                this.physicsController.Body.setStatic(this.physicsController.rocketBody, false);
-            }
-        });
-        
-        // Gestionnaire pour s'assurer que le drag se termine si la souris quitte le canvas
-        this.canvas.addEventListener('mouseleave', () => {
-            if (isDragging) {
-                // Terminer le drag
-                isDragging = false;
-                
-                // Remettre la fusée en mode dynamique
-                this.physicsController.Body.setStatic(this.physicsController.rocketBody, false);
-            }
-        });
-        
-        // Zoom avec la molette de souris, toujours centré sur la fusée
-        this.canvas.addEventListener('wheel', (event) => {
-            if (!this.universeView || !this.rocketModel || this.isPaused) return;
-            
-            // Déterminer la direction du zoom
-            const zoomDirection = event.deltaY < 0 ? 1 : -1;
-            
-            // Ajuster le zoom
-            let newZoom = this.universeView.camera.zoom * (1 + zoomDirection * RENDER.ZOOM_SPEED);
-            
-            // Limiter le zoom
-            newZoom = Math.max(RENDER.MIN_ZOOM, Math.min(RENDER.MAX_ZOOM, newZoom));
-            
-            // Définir le nouveau zoom
-            this.universeView.setCameraZoom(newZoom);
-            
-            // Empêcher le comportement par défaut (défilement de la page)
-            event.preventDefault();
-        });
-        
-        // Initialiser la taille du canvas
-        this.resizeCanvas();
-    }
-    
-    // Redimensionner le canvas
-    resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        
-        // Mettre à jour la taille dans les vues
-        if (this.universeView) {
-            this.universeView.setCanvasSize(this.canvas.width, this.canvas.height);
+        // Donner la référence du physicsController au renderingController pour afficher les forces
+        if (this.renderingController && this.physicsController) {
+            this.renderingController.setPhysicsController(this.physicsController);
         }
     }
     
@@ -405,373 +427,128 @@ class GameController {
     start() {
         this.isRunning = true;
         this.lastTimestamp = performance.now();
-        window.requestAnimationFrame(this.gameLoop.bind(this));
+        requestAnimationFrame(this.gameLoop.bind(this));
     }
     
-    // Mettre en pause / reprendre le jeu
+    // Mettre le jeu en pause
     togglePause() {
         this.isPaused = !this.isPaused;
     }
     
-    // Réinitialiser la fusée
-    resetRocket() {
-        if (!this.rocketModel) return;
-        
-        // Récupérer la Terre
-        const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
-        
-        if (earth) {
-            // Calculer la position sur la surface de la Terre (au sommet)
-            const surfaceX = earth.position.x;
-            const surfaceY = earth.position.y - earth.radius - this.rocketModel.radius;
-            
-            // Positionner la fusée sur la surface
-            this.rocketModel.setPosition(surfaceX, surfaceY);
-            
-            // Orienter la fusée perpendiculairement à la surface (vers le haut)
-            this.rocketModel.angle = 0; // au lieu de -Math.PI/2
-        } else {
-            // Fallback si la Terre n'est pas trouvée
-            this.rocketModel.setPosition(this.canvas.width / 2, this.canvas.height / 2 - 100);
-            this.rocketModel.angle = 0;
-        }
-        
-        // Réinitialiser la vitesse
-        this.rocketModel.velocity = { x: 0, y: 0 };
-        this.rocketModel.angularVelocity = 0;
-        
-        // Définir la fusée comme étant posée
-        this.rocketModel.isLanded = true;
-        
-        // Réinitialiser la trace
-        if (this.traceView) {
-            this.traceView.clear();
-        }
-        
-        // Réinitialiser les thrusteurs
-        this.rocketModel.thrusters = {
-            main: { 
-                power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.MAIN,
-                position: { 
-                    x: Math.cos(ROCKET.THRUSTER_POSITIONS.MAIN.angle) * ROCKET.THRUSTER_POSITIONS.MAIN.distance, 
-                    y: Math.sin(ROCKET.THRUSTER_POSITIONS.MAIN.angle) * ROCKET.THRUSTER_POSITIONS.MAIN.distance 
-                } 
-            },
-            rear: { 
-                power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.REAR,
-                position: { 
-                    x: Math.cos(ROCKET.THRUSTER_POSITIONS.REAR.angle) * ROCKET.THRUSTER_POSITIONS.REAR.distance, 
-                    y: Math.sin(ROCKET.THRUSTER_POSITIONS.REAR.angle) * ROCKET.THRUSTER_POSITIONS.REAR.distance 
-                } 
-            },
-            left: { 
-                power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.LEFT,
-                position: { 
-                    x: Math.cos(ROCKET.THRUSTER_POSITIONS.LEFT.angle) * ROCKET.THRUSTER_POSITIONS.LEFT.distance, 
-                    y: Math.sin(ROCKET.THRUSTER_POSITIONS.LEFT.angle) * ROCKET.THRUSTER_POSITIONS.LEFT.distance 
-                } 
-            },
-            right: { 
-                power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.RIGHT,
-                position: { 
-                    x: Math.cos(ROCKET.THRUSTER_POSITIONS.RIGHT.angle) * ROCKET.THRUSTER_POSITIONS.RIGHT.distance, 
-                    y: Math.sin(ROCKET.THRUSTER_POSITIONS.RIGHT.angle) * ROCKET.THRUSTER_POSITIONS.RIGHT.distance 
-                } 
-            }
-        };
-        
-        // Réinitialiser la santé et le carburant
-        this.rocketModel.health = ROCKET.MAX_HEALTH;
-        this.rocketModel.fuel = ROCKET.FUEL_MAX;
-        
-        // Réinitialiser le système de particules
-        if (this.particleSystemModel) {
-            this.particleSystemModel.clearAllParticles();
-        }
-        
-        // Réinitialiser le moteur physique
-        if (this.physicsController) {
-            this.physicsController.resetPhysics(this.rocketModel, this.universeModel);
-        }
-        
-        // Centrer la caméra sur la fusée
-        if (this.universeView) {
-            this.universeView.centerOn(this.rocketModel.position.x, this.rocketModel.position.y);
-            this.universeView.setCameraZoom(RENDER.MIN_ZOOM + (RENDER.MAX_ZOOM - RENDER.MIN_ZOOM) / 2); // Zoom moyen
-        }
-    }
-    
-    // Boucle principale du jeu
+    // La boucle de jeu principale
     gameLoop(timestamp) {
         // Calculer le delta time
-        const deltaTime = (timestamp - this.lastTimestamp) / 1000; // en secondes
+        const deltaTime = Math.min((timestamp - this.lastTimestamp) / 1000, 0.1); // Limiter à 0.1s
         this.lastTimestamp = timestamp;
         
-        // Mettre à jour le temps écoulé
         this.elapsedTime += deltaTime;
         
-        // Mettre à jour les entrées
+        // Mettre à jour l'état de l'entrée
         if (this.inputController) {
             this.inputController.update();
         }
         
-        // Si le jeu n'est pas en pause, mettre à jour la physique
         if (!this.isPaused) {
-            this.update(deltaTime);
-        }
-        
-        // Dessiner le jeu
-        this.render();
-        
-        // Continuer la boucle si le jeu est en cours
-        if (this.isRunning) {
-            window.requestAnimationFrame(this.gameLoop.bind(this));
-        }
-    }
-    
-    // Mettre à jour l'état du jeu
-    update(deltaTime) {
-        // Vérifier que tous les composants sont chargés
-        if (!this.rocketModel || !this.universeModel || !this.physicsController) return;
-        
-        // Appliquer les forces de poussée des réacteurs actifs
-        for (const thrusterName in this.rocketModel.thrusters) {
-            const thruster = this.rocketModel.thrusters[thrusterName];
-            if (thruster.power > 0) {
-                this.physicsController.applyThrusterForce(
-                    this.rocketModel, 
-                    thrusterName, 
-                    thruster.power // Utiliser directement le pourcentage de puissance (0-100)
-                );
+            // Mise à jour de la physique
+            if (this.physicsController) {
+                this.physicsController.update(deltaTime);
+            }
+            
+            // Mise à jour du système de particules
+            if (this.particleController) {
+                this.particleController.update(deltaTime);
+                this.particleController.updateEmitterPositions(this.rocketModel);
+            }
+            
+            // Mise à jour de la caméra
+            if (this.camera) {
+                this.camera.update(deltaTime);
+            }
+            
+            // Mise à jour de la trace de la fusée
+            if (this.renderingController) {
+                this.renderingController.updateTrace();
             }
         }
         
-        // Mettre à jour la physique de la fusée
-        this.physicsController.updateRocketPhysics(this.rocketModel, this.universeModel, deltaTime);
-        
-        // Mettre à jour la physique des corps célestes
-        this.physicsController.updateCelestialBodiesPhysics(this.universeModel, deltaTime);
-        
-        // Mettre à jour la trace de la fusée
-        if (this.traceView && this.rocketModel) {
-            this.traceView.update(this.rocketModel.position);
+        // Rendu
+        if (this.renderingController) {
+            this.renderingController.render(this.ctx, this.canvas, this.camera, this.isPaused);
         }
+        
+        // Émettre les états mis à jour
+        this.emitUpdatedStates();
+        
+        // Planifier la prochaine frame
+        if (this.isRunning) {
+            requestAnimationFrame(this.gameLoop.bind(this));
+        }
+    }
+    
+    // Réinitialiser la fusée
+    resetRocket() {
+        if (!this.rocketModel || !this.universeModel) return;
+        
+        const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
+        if (!earth) return;
+        
+        // Réinitialiser la position
+        this.rocketModel.setPosition(
+            earth.position.x,
+            earth.position.y - CELESTIAL_BODY.RADIUS - 50
+        );
+        
+        // Réinitialiser la vélocité
+        this.rocketModel.setVelocity(0, 0);
+        
+        // Réinitialiser l'angle
+        this.rocketModel.setAngle(0);
+        
+        // Réinitialiser la vélocité angulaire
+        this.rocketModel.setAngularVelocity(0);
+        
+        // Réinitialiser le carburant et la santé
+        this.rocketModel.fuel = ROCKET.FUEL_MAX;
+        this.rocketModel.health = ROCKET.MAX_HEALTH;
+        
+        // Réinitialiser les propulseurs
+        for (const thrusterName in this.rocketModel.thrusters) {
+            this.rocketModel.setThrusterPower(thrusterName, 0);
+            this.particleSystemModel.setEmitterActive(thrusterName, false);
+        }
+        
+        // Mettre à jour l'état physique
+        if (this.physicsController && this.universeModel) {
+            this.physicsController.syncPhysics(this.rocketModel, this.universeModel);
+        }
+        
+        // Effacer la trace
+        if (this.traceView) {
+            this.traceView.clear();
+        }
+        
+        // Réinitialiser les états
+        this.rocketModel.isLanded = false;
+        this.rocketModel.isDestroyed = false;
         
         // Centrer la caméra sur la fusée
-        if (this.universeView && this.rocketModel) {
-            this.universeView.centerOn(this.rocketModel.position.x, this.rocketModel.position.y);
-            this.universeView.applyStarTwinkle(this.ctx, this.universeModel, this.elapsedTime);
+        if (this.camera) {
+            this.camera.setTarget(this.rocketModel, 'rocket');
+            this.camera.x = this.rocketModel.position.x;
+            this.camera.y = this.rocketModel.position.y;
         }
         
-        // Mettre à jour les positions des émetteurs de particules
-        if (this.particleController) {
-            this.particleController.updateEmitterPositions(this.rocketModel);
-            this.particleController.update(deltaTime);
-        }
+        // Émettre l'état mis à jour
+        this.emitUpdatedStates();
     }
     
-    // Dessiner le jeu
-    render() {
-        // Effacer le canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Nettoyer les ressources
+    cleanup() {
+        this.isRunning = false;
         
-        // Obtenir la caméra pour le rendu
-        const camera = this.universeView.camera;
-        
-        // Dessiner l'arrière-plan (étoiles, etc.)
-        this.universeView.renderBackground(this.ctx, this.universeModel);
-        
-        // Dessiner les corps célestes
-        this.universeView.renderCelestialBodies(this.ctx, this.universeModel.celestialBodies);
-        
-        // Dessiner la trace de la fusée
-        if (this.traceView) {
-            this.traceView.render(this.ctx, camera);
+        // Désabonner des événements
+        if (this.eventBus) {
+            // Les événements seront nettoyés par l'EventBus lui-même
         }
-        
-        // Dessiner les particules
-        this.particleView.renderParticles(this.ctx, this.particleSystemModel, camera);
-        
-        // Dessiner la fusée
-        this.rocketView.render(this.ctx, this.rocketModel, camera);
-        
-        // Dessiner les vecteurs de force pour le débogage
-        this.physicsController.drawForceVectors(this.ctx, camera);
-        
-        // Dessiner l'interface utilisateur (HUD)
-        this.renderUI();
-        
-        // Dessiner les instructions
-        this.renderInstructions();
-    }
-    
-    // Dessiner l'interface utilisateur
-    renderUI() {
-        // Si le jeu est en pause, afficher un message
-        if (this.isPaused) {
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            
-            this.ctx.font = '48px Arial';
-            this.ctx.fillStyle = 'white';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText('PAUSE', this.canvas.width / 2, this.canvas.height / 2);
-        }
-        
-        // Afficher les informations sur la fusée
-        if (this.rocketModel) {
-            this.ctx.font = '16px Arial';
-            this.ctx.fillStyle = 'white';
-            this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'top';
-            
-            this.ctx.fillText(`Santé: ${Math.floor(this.rocketModel.health)}%`, 20, 20);
-            this.ctx.fillText(`Carburant: ${Math.floor(this.rocketModel.fuel)}`, 20, 50);
-            
-            // Calculer la vitesse actuelle
-            const velocity = {
-                x: this.rocketModel.velocity.x,
-                y: this.rocketModel.velocity.y
-            };
-            
-            // Calculer le vecteur de direction de la fusée (avant de la fusée)
-            const rocketDirection = {
-                x: Math.sin(this.rocketModel.angle),
-                y: -Math.cos(this.rocketModel.angle)
-            };
-            
-            // Normaliser le vecteur de direction
-            const directionMagnitude = Math.sqrt(rocketDirection.x * rocketDirection.x + rocketDirection.y * rocketDirection.y);
-            if (directionMagnitude > 0) {
-                rocketDirection.x /= directionMagnitude;
-                rocketDirection.y /= directionMagnitude;
-            }
-            
-            // Calculer la vitesse comme produit scalaire (projection de la vitesse sur la direction)
-            // Si positif, la fusée avance vers l'avant; si négatif, elle recule
-            const speedValue = velocity.x * rocketDirection.x + velocity.y * rocketDirection.y;
-            const speed = speedValue.toFixed(1);
-            
-            // Afficher la vitesse avec indication de couleur
-            if (Math.abs(speed) > 1.0) {
-                this.ctx.fillStyle = 'red';
-            } else if (Math.abs(speed) > 0.5) {
-                this.ctx.fillStyle = 'orange';
-            } else {
-                this.ctx.fillStyle = 'green';
-            }
-            this.ctx.fillText(`Vitesse: ${speed} m/s`, 20, 80);
-            this.ctx.fillStyle = 'white'; // Réinitialiser la couleur du texte
-            
-            // Afficher un guide d'orientation pour l'atterrissage quand proche de la Terre
-            if (!this.rocketModel.isLanded) {
-                const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
-                if (earth) {
-                    const dx = this.rocketModel.position.x - earth.position.x;
-                    const dy = this.rocketModel.position.y - earth.position.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const minDistance = this.rocketModel.radius + earth.radius + earth.atmosphere.height;
-                    
-                    // Si la fusée est proche de l'atmosphère terrestre
-                    if (distance < minDistance + 100) {
-                        const surfaceAngle = Math.atan2(dy, dx);
-                        const rocketOrientation = this.rocketModel.angle % (Math.PI * 2);
-                        const isUpright = Math.abs(rocketOrientation - (surfaceAngle - Math.PI/2)) < Math.PI/4 || 
-                                        Math.abs(rocketOrientation - (surfaceAngle - Math.PI/2) - Math.PI*2) < Math.PI/4;
-                        
-                        // N'afficher le guide d'orientation que si la fusée n'est pas posée et en mouvement
-                        if (!this.rocketModel.isLanded && this.rocketModel.velocity.y > 0.1) {
-                            this.ctx.textAlign = 'center';
-                            if (!isUpright) {
-                                this.ctx.fillStyle = 'red';
-                                this.ctx.fillText('Redressez la fusée!', this.canvas.width / 2, 110);
-                            } else {
-                                this.ctx.fillStyle = 'green';
-                                this.ctx.fillText('Orientation correcte', this.canvas.width / 2, 110);
-                            }
-                            
-                            if (Math.abs(speed) > 1.0) {
-                                this.ctx.fillStyle = 'red';
-                                this.ctx.fillText('Ralentissez!', this.canvas.width / 2, 140);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Afficher un message si la fusée est posée
-            if (this.rocketModel.isLanded) {
-                this.ctx.font = '24px Arial';
-                this.ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('Atterrissage réussi!', this.canvas.width / 2, 30);
-                this.ctx.font = '16px Arial';
-                this.ctx.fillText('Utilisez les propulseurs pour décoller', this.canvas.width / 2, 60);
-            }
-        }
-    }
-    
-    // Dessiner les instructions
-    renderInstructions() {
-        const instructionsDiv = document.getElementById('instructions');
-        if (instructionsDiv) {
-            instructionsDiv.innerHTML = `
-                Utilisez les flèches du clavier pour contrôler la fusée<br>
-                ↑ : Propulsion principale | ← → : Rotation<br>
-                ↓ : Propulsion arrière | R : Réinitialiser<br>
-                C : Centrer la caméra | +/- : Zoom | V : Afficher les forces
-            `;
-        }
-    }
-    
-    // Activer/désactiver l'affichage du vecteur de gravité
-    toggleGravityVector() {
-        if (this.rocketView) {
-            this.rocketView.showGravityVector = !this.rocketView.showGravityVector;
-            console.log(`Vecteur de gravité ${this.rocketView.showGravityVector ? 'activé' : 'désactivé'}`);
-        }
-    }
-    
-    // Activer/désactiver l'affichage des vecteurs de poussée
-    toggleThrustVector() {
-        if (this.rocketView) {
-            this.rocketView.showThrustVector = !this.rocketView.showThrustVector;
-            console.log(`Vecteurs de poussée ${this.rocketView.showThrustVector ? 'activés' : 'désactivés'}`);
-        }
-    }
-    
-    // Gérer les entrées clavier
-    handleKeyDown(event) {
-        if (this.isPaused) return;
-        
-        // Contrôles d'application
-        if (event.key === 'r' || event.key === 'R') {
-            this.resetRocket();
-            return;
-        } else if (event.key === 'c' || event.key === 'C') {
-            if (this.rocketModel && this.universeView) {
-                this.universeView.centerOn(this.rocketModel.position.x, this.rocketModel.position.y);
-            }
-            return;
-        } else if (event.key === 'Escape') {
-            this.togglePause();
-            return;
-        } else if (event.key === 'g' || event.key === 'G') {
-            // Activer/désactiver l'affichage du vecteur de gravité
-            this.toggleGravityVector();
-            return;
-        } else if (event.key === 't' || event.key === 'T') {
-            // Activer/désactiver l'affichage des vecteurs de poussée
-            this.toggleThrustVector();
-            return;
-        }
-        
-        // Si la fusée est détruite, ne pas permettre les contrôles
-        if (!this.rocketModel || this.rocketModel.isDestroyed) return;
     }
 } 

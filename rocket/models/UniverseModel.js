@@ -13,19 +13,30 @@ class UniverseModel {
         this.gravitationalConstant = PHYSICS.G;
         
         // Génération des étoiles d'arrière-plan
-        this.generateStars();
+        this.initializeStars();
     }
     
-    generateStars() {
-        this.stars = [];
-        for (let i = 0; i < this.starCount; i++) {
+    initializeStars() {
+        // Créer les étoiles
+        for (let i = 0; i < PARTICLES.STAR_COUNT; i++) {
+            // Position aléatoire dans un cercle autour de l'origine
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * PARTICLES.VISIBLE_RADIUS;
+            
             this.stars.push({
-                x: Math.random() * this.width,
-                y: Math.random() * this.height,
-                size: Math.random() * 2 + 0.5,
-                brightness: Math.random() * 0.5 + 0.5,
-                color: this.getRandomStarColor()
+                x: Math.cos(angle) * distance,
+                y: Math.sin(angle) * distance,
+                brightness: PARTICLES.STAR_BRIGHTNESS_BASE + Math.random() * PARTICLES.STAR_BRIGHTNESS_RANGE,
+                twinkleSpeed: Math.random() * PARTICLES.STAR_TWINKLE_FACTOR
             });
+        }
+    }
+    
+    updateStars(deltaTime) {
+        // Mettre à jour la luminosité des étoiles pour l'effet de scintillement
+        for (const star of this.stars) {
+            star.brightness = PARTICLES.STAR_BRIGHTNESS_BASE + 
+                Math.sin(this.elapsedTime * star.twinkleSpeed) * PARTICLES.STAR_BRIGHTNESS_RANGE;
         }
     }
     
@@ -70,5 +81,17 @@ class UniverseModel {
         }
         
         return { body: nearestBody, distance: minDistance };
+    }
+    
+    update(deltaTime) {
+        this.elapsedTime = (this.elapsedTime || 0) + deltaTime;
+        this.updateStars(deltaTime);
+        
+        // Mettre à jour les corps célestes
+        for (const body of this.celestialBodies) {
+            if (body.update) {
+                body.update(deltaTime);
+            }
+        }
     }
 } 

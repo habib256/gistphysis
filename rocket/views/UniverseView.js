@@ -1,16 +1,9 @@
 class UniverseView {
-    constructor(celestialBodyView) {
-        this.celestialBodyView = celestialBodyView;
-        this.traceView = new TraceView();
-        this.camera = {
-            x: 0,
-            y: 0,
-            zoom: 1.0,
-            width: 0,
-            height: 0,
-            offsetX: 0,
-            offsetY: 0
-        };
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.camera = new CameraModel();
+        this.celestialBodyView = null;
+        this.traceView = null;
     }
     
     // Initialise la taille du canvas
@@ -75,81 +68,71 @@ class UniverseView {
         ctx.translate(-this.camera.x, -this.camera.y);
     }
     
-    // Rendu complet de l'univers (obsolète, utilisez renderBackground et renderCelestialBodies à la place)
-    render(ctx, universeModel) {
-        // Appel aux nouvelles méthodes séparées
-        this.renderBackground(ctx, universeModel);
-        this.renderCelestialBodies(ctx, universeModel.celestialBodies);
-    }
-    
-    // Rendu du fond spatial et des étoiles
-    renderBackground(ctx, universeModel) {
-        // Effacer le canvas et dessiner le fond
-        ctx.fillStyle = RENDER.SPACE_COLOR; // Couleur de fond de l'espace
-        ctx.fillRect(0, 0, this.camera.width, this.camera.height);
-        
-        // Dessiner les étoiles d'arrière-plan
-        this.renderStars(ctx, universeModel);
+    // Rendu du fond spatial (sans les étoiles)
+    renderBackground(ctx, camera) {
+        // Remplir le fond avec la couleur de l'espace
+        ctx.fillStyle = RENDER.SPACE_COLOR;
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     
     // Rendu des étoiles
-    renderStars(ctx, universeModel) {
-        ctx.save();
-        
-        // Appliquer une transformation simplifiée pour les étoiles (effet parallaxe)
-        const parallaxFactor = 0.1; // Facteur de parallaxe pour les étoiles
-        ctx.translate(this.camera.offsetX, this.camera.offsetY);
-        ctx.translate(-this.camera.x * this.camera.zoom * parallaxFactor, -this.camera.y * this.camera.zoom * parallaxFactor);
-        
-        // Dessiner chaque étoile
-        for (const star of universeModel.stars) {
-            // Vérifier si l'étoile est visible à l'écran (calcul simplifié pour les étoiles)
-            const starX = star.x - this.camera.x * parallaxFactor;
-            const starY = star.y - this.camera.y * parallaxFactor;
+    renderStars(ctx, camera, stars) {
+        if (!stars || stars.length === 0) return;
+
+        for (const star of stars) {
+            // Convertir les coordonnées du monde en coordonnées de l'écran
+            const screenPos = {
+                x: (star.x - camera.x) * camera.zoom + camera.offsetX,
+                y: (star.y - camera.y) * camera.zoom + camera.offsetY
+            };
             
-            if (starX < -star.size || starX > this.camera.width / parallaxFactor + star.size ||
-                starY < -star.size || starY > this.camera.height / parallaxFactor + star.size) {
-                continue;
+            // Vérifier si l'étoile est visible à l'écran
+            if (this.isPointVisible(screenPos.x, screenPos.y)) {
+                // Taille fixe pour les étoiles, indépendante du zoom
+                const size = 1;
+                
+                // Dessiner l'étoile
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness || 0.8})`;
+                ctx.beginPath();
+                ctx.arc(screenPos.x, screenPos.y, size, 0, Math.PI * 2);
+                ctx.fill();
             }
-            
-            // Dessiner l'étoile
-            ctx.beginPath();
-            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            ctx.fillStyle = star.color;
-            ctx.globalAlpha = star.brightness;
-            ctx.fill();
         }
-        
-        // Réinitialiser les transformations et l'opacité
-        ctx.restore();
-        ctx.globalAlpha = 1.0;
+    }
+    
+    isPointVisible(x, y) {
+        const margin = RENDER.MARGIN_FACTOR * Math.max(this.canvas.width, this.canvas.height);
+        return x >= -margin && x <= this.canvas.width + margin &&
+               y >= -margin && y <= this.canvas.height + margin;
     }
     
     // Rendu des corps célestes
-    renderCelestialBodies(ctx, celestialBodies) {
-        ctx.save();
-        
-        // Appliquer la transformation de caméra complète pour les corps célestes
-        this.applyCameraTransform(ctx);
-        
-        // Dessiner la trace avant les corps célestes
-        this.traceView.render(ctx);
-        
-        // Dessiner chaque corps céleste
-        for (const body of celestialBodies) {
-            // Utiliser la vue des corps célestes pour le rendu
-            this.celestialBodyView.render(ctx, body);
+    renderCelestialBodies(ctx, camera, celestialBodies) {
+        if (!celestialBodies || celestialBodies.length === 0 || !this.celestialBodyView) {
+            console.log("Pas de corps célestes à afficher ou vue manquante");
+            return;
         }
+
+        //console.log("Rendu de", celestialBodies.length, "corps célestes");
         
-        ctx.restore();
+        for (const body of celestialBodies) {
+            if (!body || !body.position) {
+                console.error("Corps céleste invalide", body);
+                continue;
+            }
+            //console.log("Rendu du corps céleste:", body.name, "à la position", body.position.x, body.position.y);
+            this.celestialBodyView.render(ctx, body, camera);
+        }
     }
     
     // Effet de scintillement pour les étoiles
-    applyStarTwinkle(ctx, universeModel, time) {
+    applyStarTwinkle(ctx, stars, time) {
+        if (!stars) return;
+        
         const twinkleFactor = RENDER.STAR_TWINKLE_FACTOR;
         const twinkleSpeed = RENDER.ZOOM_SPEED * 0.02; // Vitesse de scintillement basée sur ZOOM_SPEED
         
-        for (const star of universeModel.stars) {
+        for (const star of stars) {
             // Calculer un facteur de scintillement basé sur le temps et la position de l'étoile
             const twinkling = Math.sin(time * twinkleSpeed + star.x * 0.01 + star.y * 0.01);
             star.brightness = RENDER.STAR_BRIGHTNESS_BASE + twinkling * twinkleFactor + RENDER.STAR_BRIGHTNESS_RANGE;
@@ -158,17 +141,35 @@ class UniverseView {
 
     // Mettre à jour la trace avec la position de la fusée
     updateTrace(rocketPosition) {
+        if (!this.traceView) return;
+        
         const screenPos = this.worldToScreen(rocketPosition.x, rocketPosition.y);
         this.traceView.update(screenPos);
     }
 
     // Effacer la trace
     clearTrace() {
+        if (!this.traceView) return;
+        
         this.traceView.clear();
     }
 
     // Basculer la visibilité de la trace
     toggleTraceVisibility() {
+        if (!this.traceView) return;
+        
         this.traceView.toggleVisibility();
+    }
+
+    setUniverseModel(model) {
+        this.universeModel = model;
+    }
+
+    setCelestialBodyView(view) {
+        this.celestialBodyView = view;
+    }
+    
+    setTraceView(view) {
+        this.traceView = view;
     }
 } 

@@ -5,16 +5,16 @@
 // Constantes physiques
 const PHYSICS = {
     // Gravité
-    G: 0.01,                // Constante gravitationnelle (augmentée pour un effet plus visible)
+    G: 9.8,                // Constante gravitationnelle 
     
     // Forces des propulseurs
-    MAIN_THRUST: 1000.0,          // Force du propulseur principal (augmentée significativement)
-    LATERAL_THRUST: 50.0,       // Force des propulseurs latéraux (augmentée pour améliorer la rotation)
-    REAR_THRUST: 200.0,          // Force du propulseur arrière (augmentée significativement)
-    ROTATION_SPEED: 200,        // Vitesse de rotation
+    MAIN_THRUST: 150.0,     // Force du propulseur principal (réduite pour un meilleur contrôle)
+    LATERAL_THRUST: 20.0,   // Force des propulseurs latéraux (modérée pour un meilleur contrôle)
+    REAR_THRUST: 100.0,     // Force du propulseur arrière (réduite pour un meilleur contrôle)
+    ROTATION_SPEED: 100,    // Vitesse de rotation (réduite)
     
     // Limites et seuils
-    MAX_SPEED: 10.0,             // Vitesse maximale de la fusée
+    MAX_SPEED: 10.0,        // Vitesse maximale de la fusée
     MAX_COORDINATE: 10000,      // Valeur maximale de coordonnée autorisée
     
     // Collisions
@@ -38,13 +38,21 @@ const RENDER = {
     // Caméra
     CAMERA_SMOOTHING: 0.3,      // Facteur de lissage du mouvement de caméra
     ZOOM_SMOOTHING: 0.1,        // Facteur de lissage du zoom
-    ZOOM_SPEED: 0.1,            // Vitesse de zoom avec la molette
+    ZOOM_SPEED: 0.2,            // Vitesse de zoom avec la molette (doublée)
     MIN_ZOOM: 0.2,              // Zoom minimum
-    MAX_ZOOM: 2.0,              // Zoom maximum
+    MAX_ZOOM: 4.0,              // Zoom maximum (doublé)
     
     // Vecteur de gravité
-    GRAVITY_VECTOR_SCALE: 150000, // Échelle du vecteur de gravité pour le rendu
-    GRAVITY_ARROW_SIZE: 15,      // Taille de la flèche du vecteur de gravité
+    GRAVITY_VECTOR_SCALE: 150,  // Échelle du vecteur de gravité pour le rendu
+    GRAVITY_ARROW_SIZE: 15,     // Taille de la flèche du vecteur de gravité
+    
+    // Vecteurs de visualisation
+    GRAVITY_SCALE_FACTOR: 3000,   // Facteur d'échelle pour rendre le vecteur gravitationnel visible (réduit à 3000)
+    GRAVITY_MAX_LENGTH: 120,        // Longueur maximale du vecteur gravitationnel (augmentée à 120)
+    VELOCITY_SCALE_FACTOR: 50,      // Facteur d'échelle pour le vecteur de vitesse
+    VELOCITY_MAX_LENGTH: 80,        // Longueur maximale du vecteur de vitesse
+    THRUST_SCALE_FACTOR: 0.01,      // Facteur d'échelle pour les vecteurs de poussée
+    THRUST_ARROW_SIZE: 5,           // Taille de la flèche des vecteurs de poussée
     
     // Couleurs et affichage
     SPACE_COLOR: '#000022',     // Couleur de fond de l'espace
@@ -57,7 +65,7 @@ const RENDER = {
 // Constantes de la fusée
 const ROCKET = {
     // Propriétés physiques
-    MASS: 100,                 // Masse de la fusée en kg
+    MASS: 2500,                 // Masse de la fusée en kg
     WIDTH: 30,                  // Largeur de la hitbox
     HEIGHT: 60,                 // Hauteur de la hitbox
     FRICTION: 0.1,              // Friction de la fusée
@@ -74,10 +82,10 @@ const ROCKET = {
     
     // Propulseurs
     THRUSTER_POWER: {
-        MAIN: 100,              // Puissance maximale du propulseur principal
-        REAR: 50,               // Puissance maximale du propulseur arrière
-        LEFT: 20,               // Puissance maximale du propulseur gauche
-        RIGHT: 20               // Puissance maximale du propulseur droit
+        MAIN: 1000,            // Puissance maximale du propulseur principal (fortement réduite)
+        REAR: 200,             // Puissance maximale du propulseur arrière (réduite)
+        LEFT: 20,              // Puissance maximale du propulseur gauche (réduite)
+        RIGHT: 20              // Puissance maximale du propulseur droit (réduite)
     },
     
     // Positionnement des propulseurs
@@ -88,20 +96,14 @@ const ROCKET = {
         RIGHT: { angle: 0, distance: 15 }             // Propulseur droit (orientation corrigée)
     },
     
-    // Contrôles
-    POWER_INCREMENT: 5,         // Incrément de puissance par appui
-    INITIAL_POWER: 60,          // Puissance initiale lors de l'activation (augmentée)
-    POWER_RAMP_TIME: 2000,      // Temps pour atteindre la puissance max (ms)
-    RAPID_REFIRE_TIME: 500      // Temps pour considérer un appui rapide (ms)
 };
 
 // Constantes du corps céleste
 const CELESTIAL_BODY = {
-    MASS: 600000000,             // Masse de l'astre (augmentée 4x)
-    RADIUS: 120,                // Rayon de l'astre
-    ORBIT_DISTANCE: 220,        // Distance orbitale initiale (rayon + 100)
-    ATMOSPHERE_THRESHOLD: 1e23, // Seuil de masse pour avoir une atmosphère
-    ATMOSPHERE_RATIO: 0.05      // Ratio du rayon pour la hauteur de l'atmosphère
+    MASS: 800000000000,             // Masse de l'astre 
+    RADIUS: 720,                  // Rayon de l'astre
+    ORBIT_DISTANCE: 820,          // Distance orbitale initiale (rayon + 100)
+    ATMOSPHERE_RATIO: 0.1625      // Ratio du rayon pour la hauteur de l'atmosphère
 };
 
 // Constantes pour les particules

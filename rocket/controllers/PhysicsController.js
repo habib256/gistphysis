@@ -45,6 +45,11 @@ class PhysicsController {
             right: { x: 0, y: 0 }
         };
         this.gravityForce = { x: 0, y: 0 }; // Pour visualiser la force gravitationnelle
+        
+        // Cache pour les calculs de forces
+        this.forceCache = new Map();
+        this.cacheTimeout = 1000; // Durée de vie du cache en ms
+        this.lastCacheClear = Date.now();
     }
     
     // Initialiser les objets physiques
@@ -77,14 +82,8 @@ class PhysicsController {
                     collisionFilter: {
                         category: 0x0001,
                         mask: 0xFFFFFFFF
-                    },
-                    // Configurer la fusée comme un attracteur également
-                    plugin: {
-                        attractors: [
-                            // Utiliser directement la fonction de gravité de Matter Attractors
-                            MatterAttractors.Attractors.gravity
-                        ]
                     }
+                    // La fusée n'est plus configurée comme attracteur gravitationnel
                 }
             );
             
@@ -95,7 +94,7 @@ class PhysicsController {
                     y: rocketModel.velocity.y 
                 });
                 this.Body.setAngularVelocity(this.rocketBody, rocketModel.angularVelocity);
-                console.log("Fusée configurée comme attracteur gravitationnel");
+                console.log("Fusée initialisée (sans attraction gravitationnelle)");
             }
             
             // Ajouter la fusée au monde
@@ -168,7 +167,10 @@ class PhysicsController {
                             const dy = celestialBody.position.y - this.rocketBody.position.y;
                             const distanceSq = dx * dx + dy * dy;
                             const distance = Math.sqrt(distanceSq);
-                            const forceMagnitude = this.gravitationalConstant * celestialBody.mass * this.rocketBody.mass / distanceSq;
+                            
+                            // Modification: utiliser une relation inverse linéaire (1/r) au lieu de quadratique (1/r²)
+                            // pour que la gravité diminue moins rapidement avec la distance
+                            const forceMagnitude = this.gravitationalConstant * celestialBody.mass * this.rocketBody.mass / distance;
                             
                             this.gravityForce.x = forceMagnitude * (dx / distance);
                             this.gravityForce.y = forceMagnitude * (dy / distance);
@@ -358,14 +360,14 @@ class PhysicsController {
         let thrustForce;
         switch (thrusterName) {
             case 'main': 
-                thrustForce = PHYSICS.MAIN_THRUST * (powerPercentage / 100);
+                thrustForce = PHYSICS.MAIN_THRUST * (powerPercentage / 100) * 1.5;  // Facteur multiplicateur réduit
                 break;
             case 'rear': 
-                thrustForce = PHYSICS.REAR_THRUST * (powerPercentage / 100);
+                thrustForce = PHYSICS.REAR_THRUST * (powerPercentage / 100) * 1.5;  // Facteur multiplicateur réduit
                 break;
             case 'left':
             case 'right': 
-                thrustForce = PHYSICS.LATERAL_THRUST * (powerPercentage / 100);
+                thrustForce = PHYSICS.LATERAL_THRUST * (powerPercentage / 100) * 3;  // Facteur multiplicateur modéré
                 break;
             default:
                 thrustForce = 0;
@@ -405,20 +407,30 @@ class PhysicsController {
         // Pour les propulseurs latéraux, appliquer principalement une rotation
         if (thrusterName === 'left' || thrusterName === 'right') {
             // Appliquer un couple (torque) pour faire tourner la fusée
-            const rotationDirection = thrusterName === 'left' ? 1 : -1; // left = sens horaire, right = sens anti-horaire
+            const rotationDirection = thrusterName === 'left' ? -1 : 1; // left = sens anti-horaire, right = sens horaire
             const torque = rotationDirection * thrustForce * 0.1; // Ajuster le facteur pour contrôler la vitesse de rotation
             
-            // Appliquer le couple directement
-            this.Body.setAngularVelocity(this.rocketBody, this.rocketBody.angularVelocity + torque);
+            // APRÈS: Appliquer une force angulaire appropriée
+            this.Body.applyForce(
+                this.rocketBody,
+                { 
+                    x: this.rocketBody.position.x + (thrusterName === 'left' ? -ROCKET.WIDTH/2 : ROCKET.WIDTH/2), 
+                    y: this.rocketBody.position.y 
+                },
+                { 
+                    x: 0, 
+                    y: thrusterName === 'left' ? thrustForce : thrustForce 
+                }
+            );
             
-            // Stocker les forces pour la visualisation en debug (simplifié pour la visualisation)
+            // Stocker les forces pour la visualisation en debug
             this.thrustForces[thrusterName] = { 
                 x: Math.cos(rocketModel.angle + Math.PI/2) * thrustForce * 0.2, 
                 y: Math.sin(rocketModel.angle + Math.PI/2) * thrustForce * 0.2 
             };
             
             // Afficher les informations de débogage
-            console.log(`Propulseur ${thrusterName}: Couple de rotation ${torque.toFixed(2)} appliqué`);
+            console.log(`Propulseur ${thrusterName}: Force de rotation appliquée`);
             
             return; // Sortir après avoir appliqué la rotation
         }
@@ -445,8 +457,17 @@ class PhysicsController {
         this.thrustForces[thrusterName] = { x: thrustX, y: thrustY };
         
         // Calculer le point d'application de la force (position du propulseur)
-        const leverX = thruster.position.x;
-        const leverY = thruster.position.y;
+        let leverX, leverY;
+        
+        // Pour les propulseurs principaux, utiliser la position définie dans le modèle
+        if (thrusterName === 'main' || thrusterName === 'rear') {
+            leverX = thruster.position.x;
+            leverY = thruster.position.y;
+        } else {
+            // Pour d'autres propulseurs (cas par défaut)
+            leverX = 0;
+            leverY = 0;
+        }
         
         // Calculer le point d'application dans les coordonnées du monde
         const offsetX = Math.cos(rocketModel.angle) * leverX - Math.sin(rocketModel.angle) * leverY;
@@ -461,7 +482,7 @@ class PhysicsController {
         this.Body.applyForce(this.rocketBody, position, { x: thrustX, y: thrustY });
         
         // Afficher les informations de débogage
-        console.log(`Propulseur ${thrusterName}: Force (${thrustX.toFixed(2)}, ${thrustY.toFixed(2)}) appliquée à la position (${position.x.toFixed(2)}, ${position.y.toFixed(2)})`);
+        //console.log(`Propulseur ${thrusterName}: Force (${thrustX.toFixed(2)}, ${thrustY.toFixed(2)}) appliquée à la position (${position.x.toFixed(2)}, ${position.y.toFixed(2)})`);
     }
     
     // Mettre à jour la physique des corps célestes
@@ -525,14 +546,89 @@ class PhysicsController {
             }
         }
         
-        // Dessiner le vecteur de force gravitationnelle avec une flèche
-        if (this.gravityForce && (this.gravityForce.x !== 0 || this.gravityForce.y !== 0)) {
-            const gravityScale = scale * 20; // Échelle augmentée pour la gravité
-            const gravityColor = '#FF00FF'; // Magenta pour la gravité (plus visible)
+        // Dessiner le vecteur de vitesse de la fusée
+        if (this.rocketBody.velocity && (this.rocketBody.velocity.x !== 0 || this.rocketBody.velocity.y !== 0)) {
+            const velocityColor = '#00FFFF'; // Cyan pour la vitesse
+            
+            // Calculer la magnitude de la vitesse
+            const velocityMagnitude = Math.sqrt(
+                this.rocketBody.velocity.x * this.rocketBody.velocity.x + 
+                this.rocketBody.velocity.y * this.rocketBody.velocity.y
+            );
+            
+            // Facteur d'échelle pour la vitesse
+            const velocityScale = 10; // Échelle augmentée pour la vitesse
             
             // Calculer l'extrémité de la flèche
-            const endX = rocketX + this.gravityForce.x * gravityScale * camera.zoom;
-            const endY = rocketY + this.gravityForce.y * gravityScale * camera.zoom;
+            const endX = rocketX + this.rocketBody.velocity.x * velocityScale * camera.zoom;
+            const endY = rocketY + this.rocketBody.velocity.y * velocityScale * camera.zoom;
+            
+            // Dessiner la ligne de la flèche
+            ctx.beginPath();
+            ctx.moveTo(rocketX, rocketY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = velocityColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Dessiner la pointe de la flèche
+            const angle = Math.atan2(this.rocketBody.velocity.y, this.rocketBody.velocity.x);
+            const headLength = 10 * camera.zoom; // Longueur de la pointe de flèche
+            
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(
+                endX - headLength * Math.cos(angle - Math.PI / 6),
+                endY - headLength * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+                endX - headLength * Math.cos(angle + Math.PI / 6),
+                endY - headLength * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fillStyle = velocityColor;
+            ctx.fill();
+            
+            // Afficher la magnitude de la vitesse
+            ctx.font = `${12 * camera.zoom}px Arial`;
+            ctx.fillStyle = velocityColor;
+            ctx.fillText(
+                `V: ${velocityMagnitude.toFixed(1)} m/s`,
+                endX + 5 * camera.zoom,
+                endY - 5 * camera.zoom
+            );
+        }
+        
+        // Dessiner le vecteur de force gravitationnelle avec une flèche
+        if (this.gravityForce && (this.gravityForce.x !== 0 || this.gravityForce.y !== 0)) {
+            const gravityColor = '#FF00FF'; // Magenta pour la gravité (plus visible)
+            
+            // Calculer la magnitude de la force gravitationnelle
+            const forceMagnitude = Math.sqrt(
+                this.gravityForce.x * this.gravityForce.x + 
+                this.gravityForce.y * this.gravityForce.y
+            );
+            
+            // Calculer la direction du vecteur
+            const angle = Math.atan2(this.gravityForce.y, this.gravityForce.x);
+            
+            // Définir une échelle adaptative en fonction de la magnitude
+            // Plus la force est grande, plus l'échelle est petite pour éviter un vecteur trop long
+            const adaptiveScale = 0.0001 * Math.max(1, 500000 / forceMagnitude);
+            let displayLength = forceMagnitude * adaptiveScale * camera.zoom;
+            
+            // Limiter la longueur pour qu'elle reste visible mais pas excessive
+            const maxLength = RENDER.GRAVITY_MAX_LENGTH * camera.zoom;
+            if (displayLength > maxLength) {
+                displayLength = maxLength;
+            } else if (displayLength < 30 * camera.zoom) {
+                // Longueur minimale pour que le vecteur soit toujours visible
+                displayLength = 30 * camera.zoom;
+            }
+            
+            // Calculer l'extrémité de la flèche
+            const endX = rocketX + Math.cos(angle) * displayLength;
+            const endY = rocketY + Math.sin(angle) * displayLength;
             
             // Dessiner la ligne de la flèche
             ctx.beginPath();
@@ -543,7 +639,6 @@ class PhysicsController {
             ctx.stroke();
             
             // Dessiner la pointe de la flèche
-            const angle = Math.atan2(this.gravityForce.y, this.gravityForce.x);
             const headLength = 10 * camera.zoom; // Longueur de la pointe de flèche
             
             ctx.beginPath();
@@ -560,19 +655,34 @@ class PhysicsController {
             ctx.fillStyle = gravityColor;
             ctx.fill();
             
-            // Calculer la magnitude de la force gravitationnelle
-            const forceMagnitude = Math.sqrt(
-                this.gravityForce.x * this.gravityForce.x + 
-                this.gravityForce.y * this.gravityForce.y
+            // Modifier la position du texte pour qu'il soit toujours visible
+            // Position décalée dans le sens contraire du vecteur pour éviter le chevauchement
+            const textOffsetX = -Math.cos(angle) * 20 * camera.zoom;
+            const textOffsetY = -Math.sin(angle) * 20 * camera.zoom;
+            
+            // Afficher la magnitude de la force avec un fond semi-transparent pour garantir la lisibilité
+            ctx.font = `${12 * camera.zoom}px Arial`;
+            
+            // Créer un fond pour le texte
+            const text = `G: ${forceMagnitude.toFixed(1)}`;
+            const textWidth = ctx.measureText(text).width;
+            const textHeight = 14 * camera.zoom;
+            const padding = 4 * camera.zoom;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(
+                endX + textOffsetX - padding,
+                endY + textOffsetY - textHeight,
+                textWidth + padding * 2,
+                textHeight + padding * 2
             );
             
-            // Afficher la magnitude de la force
-            ctx.font = `${12 * camera.zoom}px Arial`;
+            // Dessiner le texte
             ctx.fillStyle = gravityColor;
             ctx.fillText(
-                `G: ${forceMagnitude.toFixed(1)}`,
-                endX + 5 * camera.zoom,
-                endY - 5 * camera.zoom
+                text,
+                endX + textOffsetX,
+                endY + textOffsetY
             );
         }
     }
@@ -581,5 +691,70 @@ class PhysicsController {
     toggleForceVectors() {
         this.showForces = !this.showForces;
         return this.showForces;
+    }
+
+    // Calculer et mettre en cache la force gravitationnelle
+    calculateGravitationalForce(body1, body2) {
+        const cacheKey = `${body1.id}-${body2.id}`;
+        const cachedForce = this.forceCache.get(cacheKey);
+        
+        if (cachedForce && Date.now() - cachedForce.timestamp < this.cacheTimeout) {
+            return cachedForce.force;
+        }
+        
+        const dx = body2.position.x - body1.position.x;
+        const dy = body2.position.y - body1.position.y;
+        const distanceSq = dx * dx + dy * dy;
+        const distance = Math.sqrt(distanceSq);
+        
+        // Modification: utiliser une relation inverse linéaire (1/r) au lieu de quadratique (1/r²)
+        const forceMagnitude = this.gravitationalConstant * body2.mass * body1.mass / distance;
+        const force = {
+            x: forceMagnitude * (dx / distance),
+            y: forceMagnitude * (dy / distance)
+        };
+        
+        this.forceCache.set(cacheKey, {
+            force,
+            timestamp: Date.now()
+        });
+        
+        return force;
+    }
+
+    // Nettoyer le cache périodiquement
+    clearCacheIfNeeded() {
+        if (Date.now() - this.lastCacheClear > this.cacheTimeout) {
+            this.forceCache.clear();
+            this.lastCacheClear = Date.now();
+        }
+    }
+
+    // Mettre à jour la physique
+    update(deltaTime) {
+        this.clearCacheIfNeeded();
+        
+        // Si le modèle de fusée ou le corps physique n'existe pas, sortir
+        if (!this.rocketModel || !this.rocketBody) return;
+        
+        // Mettre à jour la physique de la fusée
+        this.updateRocketPhysics(this.rocketModel, null, deltaTime);
+        
+        // Afficher les informations de débogage
+        if (this.rocketBody) {
+            //console.log(`Position: (${this.rocketBody.position.x.toFixed(2)}, ${this.rocketBody.position.y.toFixed(2)}), Vélocité: (${this.rocketBody.velocity.x.toFixed(2)}, ${this.rocketBody.velocity.y.toFixed(2)})`);
+        }
+    }
+    
+    // Synchroniser la physique avec le modèle de fusée
+    syncPhysics(rocketModel, universeModel) {
+        // Si le corps physique de la fusée existe, le supprimer
+        if (this.rocketBody) {
+            this.Composite.remove(this.engine.world, this.rocketBody);
+            this.rocketBody = null;
+        }
+        
+        // Réinitialiser la physique avec le modèle de fusée mis à jour
+        this.initPhysics(rocketModel, universeModel);
     }
 } 

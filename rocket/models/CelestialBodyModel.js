@@ -41,8 +41,9 @@ class CelestialBodyModel {
         const distanceSquared = dx * dx + dy * dy;
         const distance = Math.sqrt(distanceSquared);
         
-        // Formule de la gravitation universelle: F = G * (m1 * m2) / r²
-        const forceMagnitude = this.gravitationalConstant * this.mass * otherBody.mass / distanceSquared;
+        // Formule de la gravitation universelle modifiée: F = G * (m1 * m2) / r au lieu de F = G * (m1 * m2) / r²
+        // pour une diminution plus lente de la gravité avec la distance
+        const forceMagnitude = this.gravitationalConstant * this.mass * otherBody.mass / distance;
         
         // Direction de la force (vecteur unitaire)
         const forceX = forceMagnitude * (dx / distance);

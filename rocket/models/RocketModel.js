@@ -15,15 +15,23 @@ class RocketModel {
         this.thrusters = {
             main: { 
                 power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.MAIN, 
+                maxPower: ROCKET.THRUSTER_POWER.MAIN,
                 position: { 
                     x: Math.cos(ROCKET.THRUSTER_POSITIONS.MAIN.angle) * ROCKET.THRUSTER_POSITIONS.MAIN.distance, 
                     y: Math.sin(ROCKET.THRUSTER_POSITIONS.MAIN.angle) * ROCKET.THRUSTER_POSITIONS.MAIN.distance 
                 } 
             },
+            rear: { 
+                power: 0, 
+                maxPower: ROCKET.THRUSTER_POWER.REAR,
+                position: { 
+                    x: Math.cos(ROCKET.THRUSTER_POSITIONS.REAR.angle) * ROCKET.THRUSTER_POSITIONS.REAR.distance, 
+                    y: Math.sin(ROCKET.THRUSTER_POSITIONS.REAR.angle) * ROCKET.THRUSTER_POSITIONS.REAR.distance 
+                } 
+            },
             left: { 
                 power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.LEFT, 
+                maxPower: ROCKET.THRUSTER_POWER.LEFT,
                 position: { 
                     x: Math.cos(ROCKET.THRUSTER_POSITIONS.LEFT.angle) * ROCKET.THRUSTER_POSITIONS.LEFT.distance, 
                     y: Math.sin(ROCKET.THRUSTER_POSITIONS.LEFT.angle) * ROCKET.THRUSTER_POSITIONS.LEFT.distance 
@@ -31,18 +39,10 @@ class RocketModel {
             },
             right: { 
                 power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.RIGHT, 
+                maxPower: ROCKET.THRUSTER_POWER.RIGHT,
                 position: { 
                     x: Math.cos(ROCKET.THRUSTER_POSITIONS.RIGHT.angle) * ROCKET.THRUSTER_POSITIONS.RIGHT.distance, 
                     y: Math.sin(ROCKET.THRUSTER_POSITIONS.RIGHT.angle) * ROCKET.THRUSTER_POSITIONS.RIGHT.distance 
-                } 
-            },
-            rear: { 
-                power: 0, 
-                maxPower: ROCKET.THRUSTER_POWER.REAR, 
-                position: { 
-                    x: Math.cos(ROCKET.THRUSTER_POSITIONS.REAR.angle) * ROCKET.THRUSTER_POSITIONS.REAR.distance, 
-                    y: Math.sin(ROCKET.THRUSTER_POSITIONS.REAR.angle) * ROCKET.THRUSTER_POSITIONS.REAR.distance 
                 } 
             }
         };

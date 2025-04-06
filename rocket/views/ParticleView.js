@@ -84,19 +84,6 @@ class ParticleView {
         ctx.restore();
     }
     
-    // Méthode pour rendre un système de particules (obsolète, utilisez renderParticles à la place)
-    renderSystem(ctx, particleSystem) {
-        console.warn("ParticleView.renderSystem est obsolète. Utilisez renderParticles avec la caméra à la place.");
-        // Dessiner les particules d'émetteurs
-        for (const emitterName in particleSystem.emitters) {
-            const emitter = particleSystem.emitters[emitterName];
-            this.render(ctx, emitter.particles);
-        }
-        
-        // Dessiner les particules de débris
-        this.render(ctx, particleSystem.debrisParticles);
-    }
-    
     // Active/désactive l'effet de flou
     setBlurEffect(enabled) {
         this.useBlur = enabled;

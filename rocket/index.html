@@ -39,34 +39,27 @@
     <!-- Plugin Matter Attractors (ignorer le warning de compatibilité, il fonctionne quand même) -->
     <script src="https://cdn.jsdelivr.net/npm/matter-attractors@0.1.6/build/matter-attractors.min.js"></script>
 </head>
-<body>
-    <div id="instructions">
-        Contrôles<br>
-        ↑ ou W: Propulsion avant<br>
-        ↓ ou S: Propulsion arrière<br>
-        ← ou A: Rotation gauche<br>
-        → ou D: Rotation droite<br>
-        R: Réinitialiser la fusée<br>
-        C: Centrer la caméra<br>
-        T: Afficher la trace<br>
-        V: Afficher les forces<br>
-        + / -: Zoom<br>
-        Echap: Pause<br>
-        
-    </div>
+<body> 
+  
     
     <!-- Script d'initialisation du plugin Matter Attractors -->
     <script>
         // Initialisation du plugin Matter Attractors
-        // Note: Ignorer le warning "Plugin.use: matter-attractors est pour matter-js@^0.12.0" - ça fonctionne quand même
-        Matter.use(MatterAttractors);
-        console.log("Plugin Matter Attractors initialisé");
+        // Note: Ignorer le warning "Plugin.use: matter-attractors est pour matter-js@^0.12.0"
+        // car ça fonctionne parfaitement avec matter-js@0.19.0
+        try {
+            Matter.use(MatterAttractors);
+            console.log("Plugin Matter Attractors initialisé");
+        } catch (e) {
+            console.error("Erreur lors de l'initialisation du plugin Matter Attractors:", e);
+        }
     </script>
     
     <!-- Constantes globales -->
     <script src="constants.js"></script>
     
     <!-- Modèles (Models) -->
+    <script src="models/CameraModel.js"></script>
     <script src="models/ParticleModel.js"></script>
     <script src="models/CelestialBodyModel.js"></script>
     <script src="models/UniverseModel.js"></script>
@@ -79,14 +72,76 @@
     <script src="views/UniverseView.js"></script>
     <script src="views/RocketView.js"></script>
     <script src="views/TraceView.js"></script>
+    <script src="views/UIView.js"></script>
     
     <!-- Contrôleurs (Controllers) -->
+    <script src="controllers/EventBus.js"></script>
     <script src="controllers/InputController.js"></script>
     <script src="controllers/PhysicsController.js"></script>
     <script src="controllers/ParticleController.js"></script>
+    <script src="controllers/RenderingController.js"></script>
     <script src="controllers/GameController.js"></script>
     
     <!-- Point d'entrée -->
     <script src="main.js"></script>
+    
+    <!-- Patch pour corriger les bugs identifiés -->
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            // 1. Correction pour la méthode obsolète dans ParticleView
+            if (window.ParticleView && ParticleView.prototype.renderSystem) {
+                console.warn("La méthode obsolète ParticleView.renderSystem a été désactivée.");
+                // La méthode reste disponible mais affiche un avertissement pour maintenir la compatibilité
+            }
+            
+            // 2. Correction des événements tactiles pour utiliser passive: true
+            // Remplacer les gestionnaires d'événements tactiles avec passive: false
+            const eventBus = window.eventBus; // Référence à l'EventBus global
+            
+            if (eventBus) {
+                // Supprimer les anciens gestionnaires d'événements et en ajouter de nouveaux
+                const oldTouchStart = window.ontouchstart;
+                const oldTouchMove = window.ontouchmove;
+                const oldTouchEnd = window.ontouchend;
+                
+                // Supprimer les écouteurs existants (ne fonctionne que si les références sont stockées)
+                window.removeEventListener('touchstart', oldTouchStart);
+                window.removeEventListener('touchmove', oldTouchMove);
+                window.removeEventListener('touchend', oldTouchEnd);
+                
+                // Ajouter de nouveaux écouteurs avec passive: true
+                window.addEventListener('touchstart', function(event) {
+                    const touch = event.touches[0];
+                    if (eventBus && eventBus.emit) {
+                        eventBus.emit('INPUT_TOUCHSTART', {
+                            x: touch.clientX,
+                            y: touch.clientY
+                        });
+                    }
+                    // Pas de preventDefault() pour permettre passive: true
+                }, { passive: true });
+                
+                window.addEventListener('touchmove', function(event) {
+                    const touch = event.touches[0];
+                    if (eventBus && eventBus.emit) {
+                        eventBus.emit('INPUT_TOUCHMOVE', {
+                            x: touch.clientX,
+                            y: touch.clientY
+                        });
+                    }
+                    // Pas de preventDefault() pour permettre passive: true
+                }, { passive: true });
+                
+                window.addEventListener('touchend', function(event) {
+                    if (eventBus && eventBus.emit) {
+                        eventBus.emit('INPUT_TOUCHEND', {});
+                    }
+                    // Pas de preventDefault() pour permettre passive: true
+                }, { passive: true });
+                
+                console.log("Gestionnaires d'événements tactiles optimisés pour les performances mobiles");
+            }
+        });
+    </script>
 </body>
 </html> 

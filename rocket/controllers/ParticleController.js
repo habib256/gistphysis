@@ -1,10 +1,50 @@
 class ParticleController {
     constructor(particleSystemModel) {
+        if (!particleSystemModel) {
+            throw new Error('ParticleSystemModel est requis pour initialiser ParticleController');
+        }
         this.particleSystemModel = particleSystemModel;
+        console.log('ParticleController initialisé avec:', this.particleSystemModel);
+        console.log('Émetteurs:', this.particleSystemModel.emitters);
+        
+        this.particlePool = [];
+        this.maxParticles = 1000; // Limite maximale de particules
+        this.initializeParticlePool();
+    }
+    
+    // Initialiser le pool de particules
+    initializeParticlePool() {
+        for (let i = 0; i < this.maxParticles; i++) {
+            this.particlePool.push({
+                position: { x: 0, y: 0 },
+                velocity: { x: 0, y: 0 },
+                life: 0,
+                maxLife: 0,
+                size: 0,
+                color: '',
+                isActive: false
+            });
+        }
+    }
+    
+    // Obtenir une particule du pool
+    getParticle() {
+        for (let particle of this.particlePool) {
+            if (!particle.isActive) {
+                particle.isActive = true;
+                return particle;
+            }
+        }
+        return null; // Pool plein
     }
     
     // Mettre à jour les particules et créer de nouvelles particules si nécessaire
     update(deltaTime) {
+        if (!this.particleSystemModel || !this.particleSystemModel.emitters) {
+            console.error('Erreur: ParticleSystemModel non initialisé correctement');
+            return;
+        }
+        
         // Mettre à jour chaque émetteur
         for (const emitterName in this.particleSystemModel.emitters) {
             const emitter = this.particleSystemModel.emitters[emitterName];
@@ -25,17 +65,16 @@ class ParticleController {
     // Mettre à jour les positions et l'état des particules
     updateParticles(particles, deltaTime) {
         for (let i = particles.length - 1; i >= 0; i--) {
-            // Mettre à jour la particule
-            const isAlive = particles[i].update(deltaTime);
+            const particle = particles[i];
+            const isAlive = particle.update();
             
-            // Supprimer la particule si elle est morte
             if (!isAlive) {
                 particles.splice(i, 1);
             }
         }
     }
     
-    // Émettre de nouvelles particules depuis un émetteur
+    // Émettre des particules
     emitParticles(emitter) {
         // Calculer le nombre de particules à émettre en fonction du niveau de puissance
         const particleCount = Math.max(1, Math.floor(emitter.particleCountPerEmit * (emitter.powerLevel / 100)));
@@ -59,7 +98,7 @@ class ParticleController {
             // Calculer la taille de la particule
             const size = 2 + Math.random() * 2 * (emitter.powerLevel / 100);
             
-            // Créer une nouvelle particule
+            // Créer une nouvelle particule avec ParticleModel
             const particle = new ParticleModel(
                 emitter.position.x,
                 emitter.position.y,
@@ -71,7 +110,6 @@ class ParticleController {
                 emitter.colorEnd
             );
             
-            // Ajouter la particule à l'émetteur
             emitter.particles.push(particle);
         }
     }
@@ -114,40 +152,34 @@ class ParticleController {
     
     // Mettre à jour les positions des émetteurs en fonction de la position de la fusée
     updateEmitterPositions(rocketModel) {
+        if (!rocketModel || !this.particleSystemModel || !this.particleSystemModel.emitters) {
+            console.error('Erreur: Modèles non initialisés correctement');
+            return;
+        }
+        
         const pos = rocketModel.position;
         const angle = rocketModel.angle;
         const radius = this.particleSystemModel.radius;
         
-        // Réacteur principal (arrière de la fusée)
-        this.particleSystemModel.updateEmitterPosition(
-            'main',
-            pos.x - Math.sin(angle) * 30,
-            pos.y + Math.cos(angle) * 30
-        );
-        this.particleSystemModel.updateEmitterAngle('main', angle + Math.PI/2);
-
-        // Réacteur arrière (avant de la fusée)
-        this.particleSystemModel.updateEmitterPosition(
-            'rear',
-            pos.x + Math.sin(angle) * 30,
-            pos.y - Math.cos(angle) * 30
-        );
-        this.particleSystemModel.updateEmitterAngle('rear', angle - Math.PI/2);
-
-        // Réacteur gauche
-        this.particleSystemModel.updateEmitterPosition(
-            'left',
-            pos.x - Math.cos(angle) * radius,
-            pos.y - Math.sin(angle) * radius
-        );
-        this.particleSystemModel.updateEmitterAngle('left', angle + Math.PI);
-
-        // Réacteur droit
-        this.particleSystemModel.updateEmitterPosition(
-            'right',
-            pos.x + Math.cos(angle) * radius,
-            pos.y + Math.sin(angle) * radius
-        );
-        this.particleSystemModel.updateEmitterAngle('right', angle);
+        // Vérifier que les émetteurs existent avant de les mettre à jour
+        if (this.particleSystemModel.emitters.main) {
+            this.particleSystemModel.updateEmitterPosition('main', pos.x - Math.sin(angle) * 30, pos.y + Math.cos(angle) * 30);
+            this.particleSystemModel.updateEmitterAngle('main', angle + Math.PI/2);
+        }
+        
+        if (this.particleSystemModel.emitters.rear) {
+            this.particleSystemModel.updateEmitterPosition('rear', pos.x + Math.sin(angle) * 30, pos.y - Math.cos(angle) * 30);
+            this.particleSystemModel.updateEmitterAngle('rear', angle - Math.PI/2);
+        }
+        
+        if (this.particleSystemModel.emitters.left) {
+            this.particleSystemModel.updateEmitterPosition('left', pos.x - Math.cos(angle) * radius, pos.y - Math.sin(angle) * radius);
+            this.particleSystemModel.updateEmitterAngle('left', angle + Math.PI);
+        }
+        
+        if (this.particleSystemModel.emitters.right) {
+            this.particleSystemModel.updateEmitterPosition('right', pos.x + Math.cos(angle) * radius, pos.y + Math.sin(angle) * radius);
+            this.particleSystemModel.updateEmitterAngle('right', angle);
+        }
     }
 } 
