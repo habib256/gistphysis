@@ -81,7 +81,7 @@ const ROCKET = {
     // Propulseurs - Forces
     MAIN_THRUST: 5500.0,         // Force du propulseur principal 
     LATERAL_THRUST: 20.0,       // Force des propulseurs latéraux 
-    REAR_THRUST: 1000.0,         // Force du propulseur arrière
+    REAR_THRUST: 3000.0,         // Force du propulseur arrière
     
     // Propulseurs - Puissance maximale
     THRUSTER_POWER: {
