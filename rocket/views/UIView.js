@@ -126,7 +126,7 @@ class UIView {
         const displaySpeed = Math.min(Math.abs(speed), maxDisplaySpeed);
         
         // Log de débogage
-        console.log(`Vitesse: ${speed.toFixed(2)}, Vitesse affichée: ${displaySpeed.toFixed(2)}`);
+        //console.log(`Vitesse: ${speed.toFixed(2)}, Vitesse affichée: ${displaySpeed.toFixed(2)}`);
         
         // Si la vitesse est quasi-nulle, on garde la barre vide
         if (displaySpeed < threshold) {
@@ -144,7 +144,7 @@ class UIView {
         const speedPercentage = (displaySpeed / maxDisplaySpeed) * 100;
         
         // Log de débogage
-        console.log(`Pourcentage de vitesse: ${speedPercentage.toFixed(2)}%`);
+        //console.log(`Pourcentage de vitesse: ${speedPercentage.toFixed(2)}%`);
         
         if (speedPercentage < 20) {
             barColor = this.colors.green;    // Vert pour vitesses faibles
