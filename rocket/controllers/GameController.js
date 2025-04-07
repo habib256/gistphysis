@@ -55,6 +55,9 @@ class GameController {
         this.eventBus.subscribe('INPUT_MOUSEMOVE', (data) => this.handleMouseMove(data));
         this.eventBus.subscribe('INPUT_MOUSEUP', (data) => this.handleMouseUp(data));
         this.eventBus.subscribe('INPUT_WHEEL', (data) => this.handleWheel(data));
+        
+        // Événement pour les vecteurs (une seule méthode)
+        this.eventBus.subscribe('toggleVectors', () => this.toggleVectors());
     }
     
     // Gérer les événements d'entrée
@@ -143,6 +146,9 @@ class GameController {
                     console.log(`Affichage des forces: ${showForces ? 'activé' : 'désactivé'}`);
                 }
                 break;
+            case 'toggleVectors':
+                this.toggleVectors();
+                break;
             case 'slowDown':
                 if (this.physicsController) {
                     const currentTimeScale = this.physicsController.timeScale;
@@ -156,9 +162,6 @@ class GameController {
                     this.physicsController.setTimeScale(currentTimeScale * 2.0);
                     console.log(`Vitesse de simulation: ${this.physicsController.timeScale.toFixed(2)}x`);
                 }
-                break;
-            case 'toggleThrusterPositions':
-                this.toggleTraceVisibility();
                 break;
             case 'increaseThrustMultiplier':
                 this.adjustThrustMultiplier(2.0); // Doubler
@@ -604,9 +607,9 @@ class GameController {
 
     // Active ou désactive l'affichage des positions des propulseurs
     toggleThrusterPositions() {
-        const isVisible = this.rocketView.showThrusterPositions;
-        this.rocketView.setShowThrusterPositions(!isVisible);
-        console.log(`Affichage des positions des propulseurs: ${!isVisible ? 'activé' : 'désactivé'}`);
+        if (this.rocketView) {
+            this.rocketView.setShowThrusterPositions(!this.rocketView.showThrusterPositions);
+        }
     }
 
     // Ajuster le multiplicateur de poussée
@@ -633,6 +636,21 @@ class GameController {
         if (this.traceView) {
             this.traceView.toggleVisibility();
             console.log(`Affichage de la trace: ${this.traceView.isVisible ? 'activé' : 'désactivé'}`);
+        }
+    }
+
+    // Activer/désactiver tous les vecteurs (gravité, poussée et vitesse)
+    toggleVectors() {
+        if (this.rocketView) {
+            // Définir une valeur commune pour tous les vecteurs
+            const newValue = !(this.rocketView.showGravityVector || this.rocketView.showThrustVector || this.rocketView.showVelocityVector);
+            
+            // Appliquer à tous les vecteurs
+            this.rocketView.showGravityVector = newValue;
+            this.rocketView.showThrustVector = newValue;
+            this.rocketView.showVelocityVector = newValue;
+            
+            console.log(`Affichage des vecteurs: ${newValue ? 'activé' : 'désactivé'}`);
         }
     }
 } 

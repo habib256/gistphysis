@@ -5,6 +5,7 @@ class InputController {
         'ArrowDown': 'thrustBackward',
         'ArrowLeft': 'rotateRight',
         'ArrowRight': 'rotateLeft',
+
         'Space': 'boost',
         'KeyW': 'thrustForward',
         'KeyS': 'thrustBackward',
@@ -12,8 +13,7 @@ class InputController {
         'KeyD': 'rotateRight',
         'KeyR': 'resetRocket',
         'KeyC': 'centerCamera',
-        'KeyV': 'toggleForces',
-        'KeyP': 'toggleThrusterPositions',
+        'KeyV': 'toggleVectors',
         'Equal': 'zoomIn',
         'Minus': 'zoomOut',
         'BracketLeft': 'slowDown',
@@ -39,31 +39,34 @@ class InputController {
             p: false,           // Augmenter le multiplicateur de poussée
             m: false,           // Diminuer le multiplicateur de poussée
             c: false,           // Centrer la caméra
-            f: false,           // Afficher les forces
+            v: false,           // Afficher les vecteurs
             o: false,           // Ralentir la simulation
             i: false,           // Accélérer la simulation
-            t: false            // Afficher les positions des propulseurs
         };
         
         // Mapping des touches aux actions
         this.keyMap = {
-            ArrowUp: 'thrustForward',
-            ArrowDown: 'thrustBackward',
+            // Touches fléchées
+            'ArrowUp': 'thrustForward',
+            'ArrowDown': 'thrustBackward',
             ArrowLeft: 'rotateRight',
             ArrowRight: 'rotateLeft',
-            w: 'thrustForward',
-            s: 'thrustBackward',
-            a: 'rotateLeft',
-            d: 'rotateRight',
-            ' ': 'pauseGame',   // Espace
-            r: 'resetRocket',
-            c: 'centerCamera',
-            f: 'toggleForces',
-            o: 'slowDown',      // Ralentir 
-            i: 'speedUp',       // Accélérer
-            t: 'toggleThrusterPositions',
-            p: 'increaseThrustMultiplier',
-            m: 'decreaseThrustMultiplier'
+            
+            // Touches WASD alternatives
+            'w': 'thrustForward',
+            's': 'thrustBackward',
+            'a': 'rotateLeft',
+            'd': 'rotateRight',
+            
+            // Autres touches
+            ' ': 'pauseGame',           // Espace
+            'r': 'resetRocket',
+            'c': 'centerCamera',
+            'v': 'toggleVectors',
+            'o': 'slowDown',            // Ralentir 
+            'i': 'speedUp',             // Accélérer
+            'p': 'increaseThrustMultiplier',
+            'm': 'decreaseThrustMultiplier'
         };
         
         // Initialiser les événements du clavier

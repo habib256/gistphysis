@@ -11,6 +11,7 @@ class RocketView {
         // Affichage des vecteurs
         this.showGravityVector = false; // Option pour activer/désactiver l'affichage
         this.showThrustVector = false;  // Option pour afficher les vecteurs de poussée
+        this.showVelocityVector = false; // Option pour afficher le vecteur de vitesse
         this.showThrusterPositions = false; // Option pour afficher la position des propulseurs
     }
     
@@ -64,6 +65,11 @@ class RocketView {
         // Dessiner le vecteur de poussée des propulseurs
         if (this.showThrustVector && rocketState.thrustVectors) {
             this.renderThrustVectors(ctx, rocketState);
+        }
+        
+        // Dessiner le vecteur de vitesse
+        if (this.showVelocityVector && rocketState.velocity) {
+            this.renderVelocityVector(ctx, rocketState);
         }
         
         ctx.restore();
