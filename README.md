@@ -13,7 +13,7 @@ Bienvenue dans **gistphysis** - Un laboratoire d'applications interactives !
   _(Cliquez pour lancer l'application Systèmes Solaire)_
 
 - [Lancer Rocket](https://habib256.github.io/gistphysis/rocket/index.html)  
-  _(Cliquez pour lancer l'application Systèmes Solaire)_
+  _(Cliquez pour lancer l'application Rocket)_
 
 > **Note :** Pour une expérience optimale, utilisez un navigateur moderne ! 🌐
 
