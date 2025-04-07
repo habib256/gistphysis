@@ -96,6 +96,22 @@ class RocketModel {
         this.health = Math.max(0, this.health - amount);
         if (this.health <= 0) {
             this.isDestroyed = true;
+            
+            // Désactiver tous les propulseurs
+            for (const thrusterName in this.thrusters) {
+                this.setThrusterPower(thrusterName, 0);
+            }
+            
+            // Jouer le son de crash
+            try {
+                const crashSound = new Audio('assets/sound/crash.mp3');
+                crashSound.volume = 1.0; // Volume maximum
+                crashSound.play().catch(error => {
+                    console.error("Erreur lors de la lecture du son de crash:", error);
+                });
+            } catch (error) {
+                console.error("Erreur lors de la lecture du fichier crash.mp3:", error);
+            }
         }
     }
 } 

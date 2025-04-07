@@ -1,5 +1,8 @@
 class PhysicsController {
-    constructor() {
+    constructor(eventBus) {
+        // Stocker le bus d'événements
+        this.eventBus = eventBus;
+        
         // Récupérer les modules Matter.js
         this.Engine = Matter.Engine;
         this.Render = Matter.Render;
@@ -225,6 +228,9 @@ class PhysicsController {
                     // Calculer la vitesse d'impact à partir du vecteur de vélocité relative et de la normale
                     const impactVelocity = Math.sqrt(relVelX * relVelX + relVelY * relVelY);
                     
+                    // Définir le seuil pour une collision importante
+                    const COLLISION_THRESHOLD = 2.5; // m/s
+                    
                     // Détecter un atterrissage en douceur (vitesse faible)
                     if (impactVelocity < 1.0 && otherBody.label === 'Terre') {
                         this.rocketModel.isLanded = true;
@@ -235,10 +241,18 @@ class PhysicsController {
                     } else {
                         // Collision normale, appliquer des dégâts en fonction de la vitesse d'impact
                         const impactDamage = impactVelocity * PHYSICS.IMPACT_DAMAGE_FACTOR;
-                        this.rocketModel.applyDamage(impactDamage);
                         
-                        if (otherBody.label === 'Terre') {
-                            console.log(`Collision avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Dégâts=${impactDamage.toFixed(2)}`);
+                        // Si c'est une collision avec la Terre et que la vitesse d'impact dépasse le seuil
+                        if (otherBody.label === 'Terre' && impactVelocity > COLLISION_THRESHOLD) {
+                            // Appliquer les dégâts immédiatement au même seuil que le son
+                            this.rocketModel.applyDamage(impactDamage);
+                            
+                            // Jouer le son de collision importante
+                            this.playCollisionSound(impactVelocity);
+                            
+                            console.log(`Collision IMPORTANTE avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Dégâts=${impactDamage.toFixed(2)}`);
+                        } else if (otherBody.label === 'Terre') {
+                            console.log(`Collision avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Pas de dégâts`);
                         }
                     }
                 }
@@ -338,6 +352,28 @@ class PhysicsController {
                 }
             }
         });
+    }
+    
+    // Jouer le son de collision en fonction de la vitesse d'impact
+    playCollisionSound(impactVelocity) {
+        try {
+            // Créer un élément audio pour jouer le son de collision
+            const collisionSound = new Audio('assets/sound/collision.mp3');
+            
+            // Ajuster le volume en fonction de la vitesse d'impact
+            // Plus la collision est violente, plus le son est fort
+            const maxVolume = 1.0;
+            const minVolume = 0.3;
+            const volumeScale = Math.min((impactVelocity - 2.5) / 10, 1); // Normaliser entre 0 et 1
+            collisionSound.volume = minVolume + volumeScale * (maxVolume - minVolume);
+            
+            // Jouer le son sans attendre la promesse
+            collisionSound.play().catch(error => {
+                console.error("Erreur lors de la lecture du son de collision:", error);
+            });
+        } catch (error) {
+            console.error("Erreur lors de la lecture du fichier collision.mp3:", error);
+        }
     }
     
     // Mettre à jour la physique de la fusée
@@ -458,6 +494,11 @@ class PhysicsController {
     // Mettre à jour et appliquer toutes les forces des propulseurs
     updateThrusters(rocketModel) {
         if (!this.rocketBody) return;
+        
+        // Si la fusée est détruite, aucun propulseur ne fonctionne
+        if (rocketModel.isDestroyed) {
+            return;
+        }
         
         // Pour chaque propulseur, vérifier s'il est actif et appliquer la force correspondante
         for (const thrusterName in rocketModel.thrusters) {

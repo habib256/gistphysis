@@ -6,7 +6,8 @@ class UIView {
             red: 'red',
             orange: 'orange',
             green: 'green',
-            success: 'rgba(0, 255, 0, 0.8)'
+            success: 'rgba(0, 255, 0, 0.8)',
+            danger: 'rgba(255, 0, 0, 0.8)'
         };
     }
 
@@ -204,6 +205,15 @@ class UIView {
         ctx.fillText('Utilisez les propulseurs pour décoller', canvas.width / 2, 60);
     }
 
+    renderCrashed(ctx, canvas) {
+        ctx.font = '24px Arial';
+        ctx.fillStyle = this.colors.danger;
+        ctx.textAlign = 'center';
+        ctx.fillText('Vous êtes crashé', canvas.width / 2, 30);
+        ctx.font = 'bold 28px Arial';
+        ctx.fillText('THE END', canvas.width / 2, 70);
+    }
+
     render(ctx, canvas, rocketModel, universeModel, isPaused) {
         if (isPaused) {
             this.renderPause(ctx, canvas);
@@ -214,7 +224,9 @@ class UIView {
             this.renderRocketInfo(ctx, rocketModel);
             this.renderLandingGuidance(ctx, canvas, rocketModel, universeModel);
             
-            if (rocketModel.isLanded) {
+            if (rocketModel.isDestroyed) {
+                this.renderCrashed(ctx, canvas);
+            } else if (rocketModel.isLanded) {
                 this.renderLandingSuccess(ctx, canvas);
             }
         }

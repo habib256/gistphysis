@@ -4,6 +4,10 @@ class RocketView {
         this.rocketImage = new Image();
         this.rocketImage.src = 'assets/image/rocket.png'; // Chemin de l'image de la fusée
         
+        // Ajouter l'image de la fusée crashée
+        this.rocketCrashedImage = new Image();
+        this.rocketCrashedImage.src = 'assets/image/rocket_crashed.png'; // Chemin de l'image de la fusée crashée
+        
         // Dimensions de l'image basées sur les constantes
         this.width = ROCKET.WIDTH * 2; // Double de la largeur pour l'affichage
         this.height = ROCKET.HEIGHT * 1.6; // Hauteur proportionnelle
@@ -35,12 +39,15 @@ class RocketView {
         // Pivoter selon l'angle de la fusée
         ctx.rotate(rocketState.angle);
         
+        // Sélectionner l'image en fonction de l'état de la fusée
+        const currentImage = rocketState.isDestroyed ? this.rocketCrashedImage : this.rocketImage;
+        
         // Dessiner la fusée
-        if (this.rocketImage.complete && this.rocketImage.naturalWidth > 0) {
+        if (currentImage.complete && currentImage.naturalWidth > 0) {
             // Si l'image est chargée, l'utiliser
             try {
                 ctx.drawImage(
-                    this.rocketImage, 
+                    currentImage, 
                     -this.width / 2, 
                     -this.height / 2, 
                     this.width, 
@@ -57,19 +64,21 @@ class RocketView {
         
         ctx.restore(); // Restaurer le contexte sans la rotation pour les vecteurs
         
-        // Dessiner les vecteurs si activés (APRÈS la fusée)
-        if (this.showGravityVector && rocketState.gravityVector) {
-            this.renderGravityVector(ctx, rocketState);
-        }
-        
-        // Dessiner le vecteur de poussée des propulseurs
-        if (this.showThrustVector && rocketState.thrustVectors) {
-            this.renderThrustVectors(ctx, rocketState);
-        }
-        
-        // Dessiner le vecteur de vitesse
-        if (this.showVelocityVector && rocketState.velocity) {
-            this.renderVelocityVector(ctx, rocketState);
+        // Dessiner les vecteurs si activés (APRÈS la fusée) et si la fusée n'est pas détruite
+        if (!rocketState.isDestroyed) {
+            if (this.showGravityVector && rocketState.gravityVector) {
+                this.renderGravityVector(ctx, rocketState);
+            }
+            
+            // Dessiner le vecteur de poussée des propulseurs
+            if (this.showThrustVector && rocketState.thrustVectors) {
+                this.renderThrustVectors(ctx, rocketState);
+            }
+            
+            // Dessiner le vecteur de vitesse
+            if (this.showVelocityVector && rocketState.velocity) {
+                this.renderVelocityVector(ctx, rocketState);
+            }
         }
         
         ctx.restore();

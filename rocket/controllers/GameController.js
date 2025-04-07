@@ -42,6 +42,9 @@ class GameController {
         // Initialiser la caméra
         this.camera = new CameraModel();
         
+        // Timer pour réinitialisation auto après crash
+        this.crashResetTimer = null;
+        
         // S'abonner aux événements
         this.subscribeToEvents();
     }
@@ -58,6 +61,9 @@ class GameController {
         
         // Événement pour les vecteurs (une seule méthode)
         this.eventBus.subscribe('toggleVectors', () => this.toggleVectors());
+        
+        // Événement pour les mises à jour d'état de la fusée
+        this.eventBus.subscribe('ROCKET_STATE_UPDATED', (data) => this.handleRocketStateUpdated(data));
     }
     
     // Gérer les événements d'entrée
@@ -530,13 +536,20 @@ class GameController {
     resetRocket() {
         if (!this.rocketModel || !this.universeModel) return;
         
+        // Annuler le timer de réinitialisation automatique s'il est actif
+        if (this.crashResetTimer) {
+            clearTimeout(this.crashResetTimer);
+            this.crashResetTimer = null;
+            console.log("Timer de réinitialisation automatique annulé");
+        }
+        
         const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
         if (!earth) return;
         
         // Réinitialiser la position - Placer légèrement plus haut pour éviter les collisions immédiates
         this.rocketModel.setPosition(
             earth.position.x,
-            earth.position.y - CELESTIAL_BODY.RADIUS - 60  // Réduit de 100 à 60 pour placer la fusée plus bas
+            earth.position.y - CELESTIAL_BODY.RADIUS - 20  // Réduit de 60 à 20 pour placer la fusée beaucoup plus bas
         );
         
         // Réinitialiser la vélocité
@@ -581,7 +594,7 @@ class GameController {
         }
         
         // Réinitialiser les états
-        this.rocketModel.isLanded = false;
+        this.rocketModel.isLanded = true; // Définir comme posée dès le départ
         this.rocketModel.isDestroyed = false;
         
         // Centrer la caméra sur la fusée
@@ -651,6 +664,21 @@ class GameController {
             this.rocketView.showVelocityVector = newValue;
             
             console.log(`Affichage des vecteurs: ${newValue ? 'activé' : 'désactivé'}`);
+        }
+    }
+
+    // Gérer les mises à jour d'état de la fusée
+    handleRocketStateUpdated(data) {
+        // Vérifier si la fusée vient d'être détruite
+        if (data.isDestroyed && this.rocketModel && !this.crashResetTimer) {
+            console.log("Fusée détruite, réinitialisation dans 5 secondes...");
+            
+            // Programmer la réinitialisation automatique après 5 secondes
+            this.crashResetTimer = setTimeout(() => {
+                console.log("Réinitialisation automatique après crash");
+                this.resetRocket();
+                this.crashResetTimer = null;
+            }, 5000);
         }
     }
 } 

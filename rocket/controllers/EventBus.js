@@ -13,10 +13,20 @@ class EventBus {
         return () => this.unsubscribe(eventType, callback);
     }
     
+    // Alias pour subscribe, compatible avec la syntaxe utilisée dans PhysicsController
+    on(eventType, callback) {
+        return this.subscribe(eventType, callback);
+    }
+    
     unsubscribe(eventType, callback) {
         if (this.listeners.has(eventType)) {
             this.listeners.get(eventType).delete(callback);
         }
+    }
+    
+    // Alias pour unsubscribe, compatible avec la syntaxe utilisée dans PhysicsController
+    off(eventType, callback) {
+        this.unsubscribe(eventType, callback);
     }
     
     emit(eventType, data) {
