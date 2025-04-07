@@ -12,6 +12,9 @@ Bienvenue dans **gistphysis** - Un laboratoire d'applications interactives !
 - [Lancer Système Solaire](https://habib256.github.io/gistphysis/SystemeSolaire/index.html)  
   _(Cliquez pour lancer l'application Systèmes Solaire)_
 
+- [Lancer Rocket](https://habib256.github.io/gistphysis/Rocket/index.html)  
+  _(Cliquez pour lancer l'application Systèmes Solaire)_
+
 > **Note :** Pour une expérience optimale, utilisez un navigateur moderne ! 🌐
 
 ## 📖 À propos
