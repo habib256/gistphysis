@@ -258,13 +258,22 @@ class PhysicsController {
                     
                     // Si c'est une collision avec la Terre, considérer l'atterrissage
                     if (otherBody.label === 'Terre') {
-                        // Définir isLanded si pas déjà défini
-                        if (!this.rocketModel.isLanded) {
+                        // Vérifier la distance au sol
+                        const distanceToGround = Math.abs(this.rocketBody.position.y - otherBody.position.y) - otherBody.radius;
+                        const isCloseToGround = distanceToGround < ROCKET.HEIGHT * 1.5;
+                        
+                        // Définir isLanded si pas déjà défini et si on est proche du sol
+                        if (!this.rocketModel.isLanded && isCloseToGround) {
                             this.rocketModel.isLanded = true;
-                            // Synchroniser immédiatement la vitesse
+                            console.log("Fusée posée");
+                            
+                            // Réinitialiser la vitesse dans le modèle
                             this.rocketModel.setVelocity(0, 0);
                             this.rocketModel.setAngularVelocity(0);
-                            this.syncPhysicsWithModel(this.rocketModel);
+                            
+                            // Réinitialiser la vitesse dans le corps physique
+                            this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
+                            this.Body.setAngularVelocity(this.rocketBody, 0);
                         }
                         
                         // Stabiliser la fusée: fixer l'angle à 0 (verticale) si proche de 0
@@ -273,26 +282,31 @@ class PhysicsController {
                             this.Body.setAngularVelocity(this.rocketBody, 0);
                         }
                         
-                        // Vérifier si un propulseur est actif
-                        const mainThrusterActive = this.rocketModel.thrusters.main.power > 0;
+                        // Vérifier si un propulseur est actif avec suffisamment de puissance
+                        const mainThrusterActive = this.rocketModel.thrusters.main.power > 50; // Seuil de puissance minimum
                         
                         // Ne pas amortir les mouvements si la fusée essaie de décoller
                         if (!mainThrusterActive) {
-                            // Forcer la vitesse à zéro dans les deux systèmes
-                            this.rocketModel.setVelocity(0, 0);
-                            this.rocketModel.setAngularVelocity(0);
-                            this.syncPhysicsWithModel(this.rocketModel);
+                            // Forcer la vitesse à zéro
+                            this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
+                            this.Body.setAngularVelocity(this.rocketBody, 0);
                         } else {
-                            // Si le propulseur principal est actif, forcer le décollage
+                            // Si le propulseur principal est actif avec suffisamment de puissance, forcer le décollage
                             this.rocketModel.isLanded = false;
                             
                             // Appliquer une forte impulsion vers le haut pour garantir le décollage
-                            const impulseY = -2.0;
+                            const impulseY = -5.0; // Force augmentée
                             this.Body.applyForce(
                                 this.rocketBody,
                                 this.rocketBody.position,
                                 { x: 0, y: impulseY }
                             );
+                            
+                            // Ajouter une vitesse initiale vers le haut
+                            this.Body.setVelocity(this.rocketBody, { x: 0, y: -2.0 });
+                            
+                            // Désactiver temporairement les contraintes physiques
+                            this.Body.setStatic(this.rocketBody, false);
                             
                             console.log("Décollage forcé avec le propulseur principal");
                         }
@@ -310,15 +324,16 @@ class PhysicsController {
                 
                 // Si la fusée quitte le contact avec un corps
                 if (pair.bodyA === this.rocketBody || pair.bodyB === this.rocketBody) {
-                    // La fusée n'est plus posée si elle s'éloigne d'un corps
                     const otherBody = pair.bodyA === this.rocketBody ? pair.bodyB : pair.bodyA;
                     
                     if (otherBody.label === 'Terre' && this.rocketModel.isLanded) {
-                        // Transition de posé à vol
-                        this.rocketModel.isLanded = false;
-                        // Synchroniser la vitesse
-                        this.syncModelWithPhysics(this.rocketModel);
-                        console.log("Décollage détecté");
+                        // Vérifier la distance au sol avant de confirmer le décollage
+                        const distanceToGround = Math.abs(this.rocketBody.position.y - otherBody.position.y) - otherBody.radius;
+                        if (distanceToGround > ROCKET.HEIGHT * 2) {
+                            // Transition de posé à vol
+                            this.rocketModel.isLanded = false;
+                            console.log("Décollage confirmé");
+                        }
                     }
                 }
             }
@@ -339,31 +354,35 @@ class PhysicsController {
         if (rocketModel.isLanded) {
             // Stabiliser la fusée au sol lorsqu'elle est posée
             if (this.rocketBody && rocketModel.thrusters.main.power === 0) {
-                // Forcer la vitesse à zéro dans les deux systèmes
-                rocketModel.setVelocity(0, 0);
-                rocketModel.setAngularVelocity(0);
-                this.syncPhysicsWithModel(rocketModel);
+                // Forcer la vitesse à zéro
+                this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
+                this.Body.setAngularVelocity(this.rocketBody, 0);
                 
                 // Stabiliser l'angle à 0 (verticale)
                 this.Body.setAngle(this.rocketBody, 0);
             }
             
             // Si le propulseur principal est activé avec assez de puissance, permettre le décollage
-            if (rocketModel.thrusters.main.power > 0) {
+            if (rocketModel.thrusters.main.power > 50) { // Seuil de puissance minimum
+                // Forcer le décollage immédiat si le propulseur principal est actif
                 rocketModel.isLanded = false;
                 
+                // Appliquer une forte impulsion vers le haut pour garantir le décollage
                 if (this.rocketBody) {
-                    // Appliquer une impulsion vers le haut
-                    const impulseY = -3.0;
+                    const impulseY = -5.0; // Force augmentée
                     this.Body.applyForce(this.rocketBody, 
                         this.rocketBody.position, 
                         { x: 0, y: impulseY }
                     );
                     
-                    // Synchroniser la vitesse initiale
-                    rocketModel.setVelocity(0, -1.0);
-                    this.syncPhysicsWithModel(rocketModel);
+                    // Ajouter une vitesse initiale vers le haut
+                    this.Body.setVelocity(this.rocketBody, { x: 0, y: -2.0 });
+                    
+                    // Désactiver temporairement les contraintes physiques
+                    this.Body.setStatic(this.rocketBody, false);
                 }
+                
+                console.log("Décollage immédiat avec propulseur principal");
             }
         }
         
