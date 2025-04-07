@@ -51,11 +51,17 @@ class CelestialBodyView {
         const screenRadius = body.radius * camera.zoom;
         const screenAtmosphereHeight = body.atmosphere.height * camera.zoom;
         
-        // Dessiner le cercle de l'atmosphère
+        // Dessiner le cercle de l'atmosphère avec un remplissage
         ctx.beginPath();
         ctx.arc(screenPos.x, screenPos.y, screenRadius + screenAtmosphereHeight, 0, Math.PI * 2);
-        ctx.strokeStyle = body.atmosphere.color || 'rgba(100, 150, 255, 0.2)';
-        ctx.lineWidth = 2;
+        
+        // Ajouter un remplissage semi-transparent
+        ctx.fillStyle = body.atmosphere.color || 'rgba(25, 35, 80, 0.2)';
+        ctx.fill();
+        
+        // Ajouter un contour
+        ctx.strokeStyle = body.atmosphere.color || 'rgba(25, 35, 80, 0.4)';
+        ctx.lineWidth = 1;
         ctx.stroke();
     }
     

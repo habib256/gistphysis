@@ -17,7 +17,7 @@ class CelestialBodyModel {
         this.atmosphere = {
             exists: mass > CELESTIAL_BODY.ATMOSPHERE_THRESHOLD, // Présence d'atmosphère pour les corps massifs
             height: radius * CELESTIAL_BODY.ATMOSPHERE_RATIO, // Hauteur de l'atmosphère
-            color: 'rgba(255, 255, 255, 0.2)'
+            color: 'rgba(25, 35, 80, 0.4)'  // Bleu très sombre semi-transparent
         };
         
         // Caractéristiques supplémentaires

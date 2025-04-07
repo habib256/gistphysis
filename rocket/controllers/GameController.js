@@ -671,14 +671,14 @@ class GameController {
     handleRocketStateUpdated(data) {
         // Vérifier si la fusée vient d'être détruite
         if (data.isDestroyed && this.rocketModel && !this.crashResetTimer) {
-            console.log("Fusée détruite, réinitialisation dans 5 secondes...");
+            console.log("Fusée détruite, réinitialisation dans 15 secondes...");
             
-            // Programmer la réinitialisation automatique après 5 secondes
+            // Programmer la réinitialisation automatique après 15 secondes
             this.crashResetTimer = setTimeout(() => {
                 console.log("Réinitialisation automatique après crash");
                 this.resetRocket();
                 this.crashResetTimer = null;
-            }, 5000);
+            }, 15000);
         }
     }
 } 

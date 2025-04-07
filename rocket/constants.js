@@ -105,7 +105,8 @@ const CELESTIAL_BODY = {
     MASS: 200000000000,             // Masse de l'astre 
     RADIUS: 720,                  // Rayon de l'astre
     ORBIT_DISTANCE: 820,          // Distance orbitale initiale (rayon + 100)
-    ATMOSPHERE_RATIO: 0.1625      // Ratio du rayon pour la hauteur de l'atmosphère
+    ATMOSPHERE_RATIO: 0.1666,     // Ratio du rayon pour la hauteur de l'atmosphère (120/720 ≈ 0.1666)
+    ATMOSPHERE_THRESHOLD: 1000000  // Seuil de masse pour avoir une atmosphère
 };
 
 // Constantes pour les particules
