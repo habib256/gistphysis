@@ -113,45 +113,50 @@ class UIView {
         const barX = 100;
         const barYSpeed = y + 5;
         
-        // Fond de la barre (vert complet = vitesse 0)
-        ctx.fillStyle = this.colors.green;
+        // Fond de la barre (gris clair)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.fillRect(barX, barYSpeed, barWidth, barHeight);
         
         // Paramètres pour l'échelle exponentielle
-        const maxDisplaySpeed = 10.0;       // Vitesse maximale à afficher
-        const threshold = 0.3;              // Seuil pour la vitesse "nulle"
-        const exponent = 0.5;               // Exposant pour l'échelle (0.5 = racine carrée, comportement logarithmique)
+        const maxDisplaySpeed = 80000.0;        // Réduit la vitesse maximale à afficher
+        const threshold = 0.1;              // Seuil pour la vitesse "nulle"
+        const exponent = 0.5;               // Exposant pour l'échelle (racine carrée)
         
         // Limiter la vitesse à la plage d'affichage
         const displaySpeed = Math.min(Math.abs(speed), maxDisplaySpeed);
         
-        // Si la vitesse est quasi-nulle, on garde la barre verte complète
+        // Log de débogage
+        console.log(`Vitesse: ${speed.toFixed(2)}, Vitesse affichée: ${displaySpeed.toFixed(2)}`);
+        
+        // Si la vitesse est quasi-nulle, on garde la barre vide
         if (displaySpeed < threshold) {
-            // Rien à faire, la barre reste verte et pleine
             return;
         }
         
         // Calcul du ratio de vitesse avec échelle non linéaire (racine carrée)
         const speedRatio = Math.pow(displaySpeed, exponent) / Math.pow(maxDisplaySpeed, exponent);
         
-        // Calcul de la largeur de la partie "vide" de la barre
-        const emptyWidth = speedRatio * barWidth;
+        // Calcul de la largeur de la partie "pleine" de la barre
+        const filledWidth = speedRatio * barWidth;
         
         // Détermination de la couleur basée sur la vitesse
-        let overlayColor;
+        let barColor;
         const speedPercentage = (displaySpeed / maxDisplaySpeed) * 100;
         
+        // Log de débogage
+        console.log(`Pourcentage de vitesse: ${speedPercentage.toFixed(2)}%`);
+        
         if (speedPercentage < 20) {
-            overlayColor = 'rgba(255, 255, 255, 0.3)';  // Légère transparence pour les faibles vitesses
+            barColor = this.colors.green;    // Vert pour vitesses faibles
         } else if (speedPercentage < 50) {
-            overlayColor = this.colors.orange;           // Orange pour vitesses moyennes
+            barColor = this.colors.orange;   // Orange pour vitesses moyennes
         } else {
-            overlayColor = this.colors.red;              // Rouge pour vitesses élevées
+            barColor = this.colors.red;      // Rouge pour vitesses élevées
         }
         
-        // Dessiner la partie "vide" en superposant une couleur sur la barre verte
-        ctx.fillStyle = overlayColor;
-        ctx.fillRect(barX, barYSpeed, emptyWidth, barHeight);
+        // Dessiner la partie "pleine" de la barre
+        ctx.fillStyle = barColor;
+        ctx.fillRect(barX, barYSpeed, filledWidth, barHeight);
     }
 
     renderLandingGuidance(ctx, canvas, rocketModel, universeModel) {

@@ -94,14 +94,14 @@ class PhysicsController {
                 }
             );
             
-            // Définir explicitement les propriétés de vélocité initiales
+            // Synchronisation initiale
             if (this.rocketBody) {
                 this.Body.setVelocity(this.rocketBody, { 
                     x: rocketModel.velocity.x, 
                     y: rocketModel.velocity.y 
                 });
                 this.Body.setAngularVelocity(this.rocketBody, rocketModel.angularVelocity);
-                //console.log("Fusée initialisée avec attraction gravitationnelle standard (1/r²)");
+                this.Body.setAngle(this.rocketBody, rocketModel.angle);
             }
             
             // Ajouter la fusée au monde
@@ -227,9 +227,11 @@ class PhysicsController {
                     
                     // Détecter un atterrissage en douceur (vitesse faible)
                     if (impactVelocity < 1.0 && otherBody.label === 'Terre') {
-                        // Signaler un atterrissage
                         this.rocketModel.isLanded = true;
-                        console.log("Contact avec la surface détecté, vitesse: " + impactVelocity.toFixed(2));
+                        // Synchroniser immédiatement la vitesse
+                        this.rocketModel.setVelocity(0, 0);
+                        this.rocketModel.setAngularVelocity(0);
+                        this.syncPhysicsWithModel(this.rocketModel);
                     } else {
                         // Collision normale, appliquer des dégâts en fonction de la vitesse d'impact
                         const impactDamage = impactVelocity * PHYSICS.IMPACT_DAMAGE_FACTOR;
@@ -259,7 +261,10 @@ class PhysicsController {
                         // Définir isLanded si pas déjà défini
                         if (!this.rocketModel.isLanded) {
                             this.rocketModel.isLanded = true;
-                            console.log("Fusée posée");
+                            // Synchroniser immédiatement la vitesse
+                            this.rocketModel.setVelocity(0, 0);
+                            this.rocketModel.setAngularVelocity(0);
+                            this.syncPhysicsWithModel(this.rocketModel);
                         }
                         
                         // Stabiliser la fusée: fixer l'angle à 0 (verticale) si proche de 0
@@ -273,27 +278,15 @@ class PhysicsController {
                         
                         // Ne pas amortir les mouvements si la fusée essaie de décoller
                         if (!mainThrusterActive) {
-                            // Amortir les mouvements pendant le contact avec le sol
-                            const currentVelocity = this.rocketBody.velocity;
-                            
-                            // Ajouter un amortissement plus fort pour la vitesse horizontale, mais garder la vitesse verticale
-                            this.Body.setVelocity(this.rocketBody, { 
-                                x: currentVelocity.x * 0.8,  // Amortissement horizontal
-                                y: currentVelocity.y 
-                            });
-                            
-                            // Réduire progressivement l'angle et la vitesse angulaire
-                            const currentAngle = this.rocketBody.angle;
-                            if (Math.abs(currentAngle) > 0.01) {
-                                this.Body.setAngle(this.rocketBody, currentAngle * 0.9);
-                            } else {
-                                this.Body.setAngle(this.rocketBody, 0);
-                            }
+                            // Forcer la vitesse à zéro dans les deux systèmes
+                            this.rocketModel.setVelocity(0, 0);
+                            this.rocketModel.setAngularVelocity(0);
+                            this.syncPhysicsWithModel(this.rocketModel);
                         } else {
                             // Si le propulseur principal est actif, forcer le décollage
                             this.rocketModel.isLanded = false;
                             
-                            // Appliquer une impulsion vers le haut pour aider au décollage
+                            // Appliquer une forte impulsion vers le haut pour garantir le décollage
                             const impulseY = -2.0;
                             this.Body.applyForce(
                                 this.rocketBody,
@@ -301,7 +294,7 @@ class PhysicsController {
                                 { x: 0, y: impulseY }
                             );
                             
-                           // console.log("Décollage forcé avec le propulseur principal");
+                            console.log("Décollage forcé avec le propulseur principal");
                         }
                     }
                 }
@@ -323,6 +316,8 @@ class PhysicsController {
                     if (otherBody.label === 'Terre' && this.rocketModel.isLanded) {
                         // Transition de posé à vol
                         this.rocketModel.isLanded = false;
+                        // Synchroniser la vitesse
+                        this.syncModelWithPhysics(this.rocketModel);
                         console.log("Décollage détecté");
                     }
                 }
@@ -344,44 +339,31 @@ class PhysicsController {
         if (rocketModel.isLanded) {
             // Stabiliser la fusée au sol lorsqu'elle est posée
             if (this.rocketBody && rocketModel.thrusters.main.power === 0) {
-                // Ajouter une petite force vers le bas pour garder la fusée stable au sol
-                this.Body.setAngularVelocity(this.rocketBody, 0);
+                // Forcer la vitesse à zéro dans les deux systèmes
+                rocketModel.setVelocity(0, 0);
+                rocketModel.setAngularVelocity(0);
+                this.syncPhysicsWithModel(rocketModel);
                 
-                // Réduire la vitesse horizontale jusqu'à zéro progressivement quand posée
-                if (Math.abs(this.rocketBody.velocity.x) > 0.01) {
-                    const dampingFactor = 0.9;
-                    const newVelocity = { 
-                        x: this.rocketBody.velocity.x * dampingFactor, 
-                        y: this.rocketBody.velocity.y
-                    };
-                    this.Body.setVelocity(this.rocketBody, newVelocity);
-                } else {
-                    // Si la vitesse est suffisamment basse, fixer à zéro pour une stabilité parfaite
-                    this.Body.setVelocity(this.rocketBody, { x: 0, y: this.rocketBody.velocity.y });
-                }
+                // Stabiliser l'angle à 0 (verticale)
+                this.Body.setAngle(this.rocketBody, 0);
             }
             
-            // Si le propulseur principal est activé avec assez de puissance, permettre le décollage immédiatement
+            // Si le propulseur principal est activé avec assez de puissance, permettre le décollage
             if (rocketModel.thrusters.main.power > 0) {
-                // Forcer le décollage immédiat si le propulseur principal est actif
                 rocketModel.isLanded = false;
                 
-                // Appliquer une forte impulsion vers le haut pour garantir le décollage
                 if (this.rocketBody) {
-                    const impulseY = -3.0; // Impulsion vers le haut considérablement augmentée
+                    // Appliquer une impulsion vers le haut
+                    const impulseY = -3.0;
                     this.Body.applyForce(this.rocketBody, 
                         this.rocketBody.position, 
                         { x: 0, y: impulseY }
                     );
                     
-                    // Ajouter une vitesse initiale vers le haut pour garantir le décollage
-                    this.Body.setVelocity(this.rocketBody, { x: 0, y: -1.0 });
-                    
-                    // Désactiver temporairement les contraintes physiques pour permettre le décollage
-                    this.Body.setStatic(this.rocketBody, false);
+                    // Synchroniser la vitesse initiale
+                    rocketModel.setVelocity(0, -1.0);
+                    this.syncPhysicsWithModel(rocketModel);
                 }
-                
-                console.log("Décollage immédiat avec propulseur principal");
             }
         }
         
@@ -391,16 +373,8 @@ class PhysicsController {
         // Mettre à jour le moteur physique
         this.Engine.update(this.engine, deltaTime * this.timeScale);
         
-        // Mettre à jour le modèle de la fusée à partir du corps physique
-        // Vérifier que le corps physique existe avant de faire les mises à jour
-        if (this.rocketBody) {
-            rocketModel.position.x = this.rocketBody.position.x;
-            rocketModel.position.y = this.rocketBody.position.y;
-            rocketModel.angle = this.rocketBody.angle;
-            rocketModel.velocity.x = this.rocketBody.velocity.x;
-            rocketModel.velocity.y = this.rocketBody.velocity.y;
-            rocketModel.angularVelocity = this.rocketBody.angularVelocity;
-        }
+        // Synchroniser le modèle avec le corps physique après la mise à jour
+        this.syncModelWithPhysics(rocketModel);
     }
     
     // Calculer les exigences de poussée pour le décollage
@@ -865,5 +839,35 @@ class PhysicsController {
         
         // Réinitialiser la physique avec le modèle de fusée mis à jour
         this.initPhysics(rocketModel, universeModel);
+    }
+
+    // Méthode pour synchroniser le modèle avec le corps physique
+    syncModelWithPhysics(rocketModel) {
+        if (!this.rocketBody) return;
+        
+        // Mettre à jour le modèle avec les valeurs du corps physique
+        rocketModel.position.x = this.rocketBody.position.x;
+        rocketModel.position.y = this.rocketBody.position.y;
+        rocketModel.angle = this.rocketBody.angle;
+        rocketModel.velocity.x = this.rocketBody.velocity.x;
+        rocketModel.velocity.y = this.rocketBody.velocity.y;
+        rocketModel.angularVelocity = this.rocketBody.angularVelocity;
+    }
+
+    // Méthode pour synchroniser le corps physique avec le modèle
+    syncPhysicsWithModel(rocketModel) {
+        if (!this.rocketBody) return;
+        
+        // Mettre à jour le corps physique avec les valeurs du modèle
+        this.Body.setPosition(this.rocketBody, {
+            x: rocketModel.position.x,
+            y: rocketModel.position.y
+        });
+        this.Body.setAngle(this.rocketBody, rocketModel.angle);
+        this.Body.setVelocity(this.rocketBody, {
+            x: rocketModel.velocity.x,
+            y: rocketModel.velocity.y
+        });
+        this.Body.setAngularVelocity(this.rocketBody, rocketModel.angularVelocity);
     }
 } 
