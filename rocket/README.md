@@ -15,6 +15,11 @@ Ce projet est une simulation web de fusée qui permet aux utilisateurs de contr�
 - **Interface utilisateur intuitive** avec affichage des paramètres clés
 - **Système de trace** pour visualiser la trajectoire de la fusée
 - **Caméra dynamique** avec zoom et suivi
+- **Système de dommages et santé** pour la fusée lors des collisions
+- **Gestion de carburant** avec consommation différente selon les propulseurs
+- **Atmosphère des corps célestes** visible au-delà d'un certain seuil de masse
+- **Système lunaire** avec orbite autour de la planète principale
+- **Effets visuels améliorés** comme le scintillement des étoiles et les dégradés de couleurs pour les propulseurs
 
 ## 🎮 Contrôles
 
@@ -39,6 +44,7 @@ Le projet est structuré selon le modèle MVC (Modèle-Vue-Contrôleur) :
 - `ParticleModel.js` : Système de particules
 - `RocketModel.js` : Modèle de la fusée et ses propriétés
 - `UniverseModel.js` : Univers et environnement
+- `ParticleSystemModel.js` : Gestion des émetteurs de particules pour les propulseurs
 
 ### Vues
 - `CelestialBodyView.js` : Rendu des corps célestes
@@ -80,11 +86,13 @@ Le projet est structuré selon le modèle MVC (Modèle-Vue-Contrôleur) :
 
 Le fichier `constants.js` contient de nombreux paramètres que vous pouvez ajuster pour modifier le comportement de la simulation :
 
-- Forces gravitationnelles
-- Propriétés de la fusée
-- Paramètres des corps célestes
-- Configuration visuelle
-- Etc.
+- Forces gravitationnelles (`PHYSICS.G`)
+- Propriétés de la fusée (`ROCKET.MASS`, `ROCKET.THRUSTER_POWER`, etc.)
+- Paramètres des corps célestes (`CELESTIAL_BODY.MASS`, `CELESTIAL_BODY.MOON`)
+- Configuration visuelle (`RENDER.SPACE_COLOR`, `PARTICLES.EMITTER`)
+- Limites physiques (`PHYSICS.MAX_SPEED`, `PHYSICS.MAX_COORDINATE`)
+- Échelle temporelle (`PHYSICS.TIME_SCALE_MIN`, `PHYSICS.TIME_SCALE_MAX`)
+- Comportement des collisions (`PHYSICS.COLLISION_DAMPING`, `PHYSICS.IMPACT_DAMAGE_FACTOR`)
 
 ## 📈 Perspectives futures
 
@@ -93,6 +101,8 @@ Le fichier `constants.js` contient de nombreux paramètres que vous pouvez ajust
 - Davantage de corps célestes
 - Effets visuels améliorés
 - Mode multijoueur
+- Ajustement dynamique de la difficulté basé sur les performances
+- Système de récompenses et de progression
 
 ## 📜 Licence
 

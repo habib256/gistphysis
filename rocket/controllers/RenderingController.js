@@ -82,6 +82,17 @@ class RenderingController {
     }
     
     updateUniverseState(state) {
+        // Assurer que les corps célestes sont correctement préparés pour le rendu
+        if (state.celestialBodies) {
+            // Parcourir les corps célestes pour vérifier les lunes
+            for (const body of state.celestialBodies) {
+                // Si un corps a une lune, s'assurer qu'elle est également accessible pour le rendu
+                if (body.moon && !state.celestialBodies.includes(body.moon)) {
+                    console.log(`Ajout de la lune de ${body.name} à la liste des corps pour le rendu`);
+                }
+            }
+        }
+        
         this.universeState = {
             ...this.universeState,
             ...state
@@ -148,8 +159,25 @@ class RenderingController {
     
     // Mettre à jour la trace de la fusée
     updateTrace() {
-        if (this.traceView && this.rocketState.position) {
-            this.traceView.update(this.rocketState.position);
+        if (!this.traceView || !this.rocketState.position) return;
+        
+        // Vérifier si la fusée est détruite et attachée à la lune
+        const isAttachedToMoon = this.rocketState.isDestroyed && this.rocketState.attachedTo === 'Lune';
+        
+        // Si la fusée est attachée à la lune, on a besoin de la position de la lune
+        let moonPosition = null;
+        if (isAttachedToMoon && this.universeState.celestialBodies) {
+            // Trouver la lune dans l'univers
+            const moon = this.universeState.celestialBodies.find(body => body.name === 'Lune');
+            if (moon) {
+                moonPosition = moon.position;
+                
+                // Mettre à jour les traces existantes pour qu'elles suivent la lune
+                this.traceView.updateTracesForMoon(moonPosition);
+            }
         }
+        
+        // Ajouter le point à la trace avec l'information d'attachement à la lune
+        this.traceView.update(this.rocketState.position, isAttachedToMoon, moonPosition);
     }
 } 

@@ -106,7 +106,16 @@ const CELESTIAL_BODY = {
     RADIUS: 720,                  // Rayon de l'astre
     ORBIT_DISTANCE: 820,          // Distance orbitale initiale (rayon + 100)
     ATMOSPHERE_RATIO: 0.1666,     // Ratio du rayon pour la hauteur de l'atmosphère (120/720 ≈ 0.1666)
-    ATMOSPHERE_THRESHOLD: 1000000  // Seuil de masse pour avoir une atmosphère
+    ATMOSPHERE_THRESHOLD: 1000000,  // Seuil de masse pour avoir une atmosphère
+    
+    // Propriétés de la lune
+    MOON: {
+        MASS: 5000000000,            // Masse de la lune (25 fois moins que la planète)
+        RADIUS: 180,                 // Rayon de la lune
+        ORBIT_DISTANCE: 2500,        // Distance orbitale depuis la planète
+        ORBIT_SPEED: 0.005,         // Vitesse orbitale de la lune
+        INITIAL_ANGLE: - Math.PI / 4   // Angle initial de la lune sur son orbite
+    }
 };
 
 // Constantes pour les particules

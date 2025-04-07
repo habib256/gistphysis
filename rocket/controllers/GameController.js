@@ -240,6 +240,9 @@ class GameController {
                 health: this.rocketModel.health,
                 isLanded: this.rocketModel.isLanded,
                 isDestroyed: this.rocketModel.isDestroyed,
+                landedOn: this.rocketModel.landedOn,
+                attachedTo: this.rocketModel.attachedTo,
+                relativePosition: this.rocketModel.relativePosition ? {...this.rocketModel.relativePosition} : null,
                 thrusters: { ...this.rocketModel.thrusters },
                 gravityVector,
                 thrustVectors
@@ -388,7 +391,9 @@ class GameController {
             // L'atmosphère est déjà défini dans le constructeur de CelestialBodyModel
             // Pas besoin d'appeler setAtmosphere
             
+            console.log("Ajout de la Terre à l'univers...");
             this.universeModel.addCelestialBody(earth);
+            console.log("La Terre a-t-elle une lune?", earth.moon ? "OUI" : "NON");
             
             // Créer la fusée à une position initiale plus éloignée pour éviter les collisions
             this.rocketModel = new RocketModel();
@@ -680,5 +685,29 @@ class GameController {
                 this.crashResetTimer = null;
             }, 15000);
         }
+    }
+
+    // Mettre à jour la trace de la fusée
+    updateTrace() {
+        if (!this.rocketModel || !this.traceView) return;
+        
+        // Vérifier si la fusée est détruite et attachée à la lune
+        const isAttachedToMoon = this.rocketModel.isDestroyed && this.rocketModel.attachedTo === 'Lune';
+        
+        // Si la fusée est attachée à la lune, on a besoin de la position de la lune
+        let moonPosition = null;
+        if (isAttachedToMoon) {
+            // Trouver la lune dans l'univers
+            const moon = this.universeModel.celestialBodies.find(body => body.name === 'Lune');
+            if (moon) {
+                moonPosition = moon.position;
+                
+                // Mettre à jour les traces existantes pour qu'elles suivent la lune
+                this.traceView.updateTracesForMoon(moonPosition);
+            }
+        }
+        
+        // Ajouter le point à la trace avec l'information d'attachement à la lune
+        this.traceView.update(this.rocketModel.position, isAttachedToMoon, moonPosition);
     }
 } 

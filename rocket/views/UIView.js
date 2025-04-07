@@ -7,8 +7,10 @@ class UIView {
             orange: 'orange',
             green: 'green',
             success: 'rgba(0, 255, 0, 0.8)',
-            danger: 'rgba(255, 0, 0, 0.8)'
+            danger: 'rgba(255, 0, 0, 0.8)',
+            moon: 'rgba(200, 200, 200, 0.9)' // Couleur pour les infos de la lune
         };
+        this.showMoonInfo = true; // Option pour afficher les informations de la lune
     }
 
     renderPause(ctx, canvas) {
@@ -196,11 +198,15 @@ class UIView {
         }
     }
 
-    renderLandingSuccess(ctx, canvas) {
+    renderLandingSuccess(ctx, canvas, rocketModel) {
         ctx.font = '24px Arial';
         ctx.fillStyle = this.colors.success;
         ctx.textAlign = 'center';
-        ctx.fillText('Vous êtes posé', canvas.width / 2, 30);
+        
+        // Adapter le message en fonction de l'astre où on a atterri
+        const landedOn = rocketModel.landedOn || 'un corps céleste';
+        ctx.fillText(`Vous êtes posé sur ${landedOn}`, canvas.width / 2, 30);
+        
         ctx.font = this.font;
         ctx.fillText('Utilisez les propulseurs pour décoller', canvas.width / 2, 60);
     }
@@ -214,6 +220,38 @@ class UIView {
         ctx.fillText('THE END', canvas.width / 2, 70);
     }
 
+    renderMoonInfo(ctx, canvas, rocketModel, universeModel) {
+        if (!this.showMoonInfo) return;
+        
+        const earth = universeModel.celestialBodies.find(body => body.name === 'Terre');
+        if (!earth || !earth.moon) return;
+        
+        const moon = earth.moon;
+        
+        // Calculer la distance entre la fusée et la lune
+        const dx = rocketModel.position.x - moon.position.x;
+        const dy = rocketModel.position.y - moon.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Afficher les informations de distance uniquement si la fusée est proche de la lune
+        const proximityThreshold = moon.radius * 10;
+        if (distance < proximityThreshold) {
+            ctx.font = '14px Arial';
+            ctx.fillStyle = this.colors.moon;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`Distance de la Lune: ${Math.floor(distance)} m`, canvas.width - 20, 20);
+            
+            // Si très proche, afficher une alerte
+            if (distance < moon.radius * 3) {
+                ctx.font = '18px Arial';
+                ctx.fillStyle = this.colors.orange;
+                ctx.textAlign = 'center';
+                ctx.fillText('Proximité lunaire!', canvas.width / 2, 40);
+            }
+        }
+    }
+
     render(ctx, canvas, rocketModel, universeModel, isPaused) {
         if (isPaused) {
             this.renderPause(ctx, canvas);
@@ -223,12 +261,19 @@ class UIView {
         if (rocketModel) {
             this.renderRocketInfo(ctx, rocketModel);
             this.renderLandingGuidance(ctx, canvas, rocketModel, universeModel);
+            this.renderMoonInfo(ctx, canvas, rocketModel, universeModel);
             
             if (rocketModel.isDestroyed) {
                 this.renderCrashed(ctx, canvas);
             } else if (rocketModel.isLanded) {
-                this.renderLandingSuccess(ctx, canvas);
+                this.renderLandingSuccess(ctx, canvas, rocketModel);
             }
         }
+    }
+    
+    // Basculer l'affichage des informations lunaires
+    toggleMoonInfo() {
+        this.showMoonInfo = !this.showMoonInfo;
+        return this.showMoonInfo;
     }
 } 

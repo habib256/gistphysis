@@ -1,109 +1,92 @@
 class TraceView {
     constructor() {
-        this.points = [];
-        this.maxPoints = 30000;
-        this.color = 'rgba(255, 255, 255, 0.5)';
-        this.lineWidth = 2;
+        this.traces = [];
+        this.maxPoints = 500; // Nombre maximum de points dans la trace
         this.isVisible = true;
+        
+        // Pour suivre le mouvement avec la lune
+        this.moonRelativeTraces = []; // Traces relatives à la lune
+        this.attachedToMoon = false; // Si la trace est attachée à la lune
     }
-
-    update(position) {
+    
+    update(position, isAttachedToMoon = false, moonPosition = null) {
         if (!this.isVisible) return;
         
-        this.points.push({
-            x: position.x,
-            y: position.y
-        });
-
-        if (this.points.length > this.maxPoints) {
-            this.points.shift();
+        // Si l'état d'attachement change, réinitialiser les traces
+        if (this.attachedToMoon !== isAttachedToMoon) {
+            this.traces = [];
+            this.moonRelativeTraces = [];
+            this.attachedToMoon = isAttachedToMoon;
+        }
+        
+        // Ajouter le point à la trace
+        this.traces.push({ ...position });
+        
+        // Si attaché à la lune, calculer et stocker la position relative
+        if (isAttachedToMoon && moonPosition) {
+            // Calculer la position relative à la lune
+            const relativePosition = {
+                x: position.x - moonPosition.x,
+                y: position.y - moonPosition.y
+            };
+            this.moonRelativeTraces.push(relativePosition);
+        }
+        
+        // Limiter le nombre de points
+        if (this.traces.length > this.maxPoints) {
+            this.traces.shift();
+            if (this.moonRelativeTraces.length > 0) {
+                this.moonRelativeTraces.shift();
+            }
         }
     }
-
-    clear() {
-        this.points = [];
-    }
-
+    
     render(ctx, camera) {
-        if (!this.isVisible || this.points.length < 2) return;
-
+        if (!this.isVisible || this.traces.length < 2) return;
+        
         ctx.save();
+        
+        ctx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = this.lineWidth;
         
-        // Appliquer les transformations de la caméra
-        const firstPoint = {
-            x: (this.points[0].x - camera.x) * camera.zoom + camera.offsetX,
-            y: (this.points[0].y - camera.y) * camera.zoom + camera.offsetY
-        };
-        
-        ctx.moveTo(firstPoint.x, firstPoint.y);
-        
-        // Appliquer la transformation pour chaque point
-        for (let i = 1; i < this.points.length; i++) {
-            const transformedPoint = {
-                x: (this.points[i].x - camera.x) * camera.zoom + camera.offsetX,
-                y: (this.points[i].y - camera.y) * camera.zoom + camera.offsetY
-            };
-            ctx.lineTo(transformedPoint.x, transformedPoint.y);
+        // Tracer la ligne entre les points
+        for (let i = 0; i < this.traces.length; i++) {
+            const point = this.traces[i];
+            const screenPos = camera.worldToScreen(point.x, point.y);
+            
+            if (i === 0) {
+                ctx.moveTo(screenPos.x, screenPos.y);
+            } else {
+                ctx.lineTo(screenPos.x, screenPos.y);
+            }
         }
         
         ctx.stroke();
         ctx.restore();
     }
-
+    
+    // Mise à jour des positions des traces relatives à la lune
+    updateTracesForMoon(moonPosition) {
+        if (!this.attachedToMoon || this.moonRelativeTraces.length === 0) return;
+        
+        // Mettre à jour toutes les positions absolues des traces basées sur la position actuelle de la lune
+        for (let i = 0; i < this.traces.length; i++) {
+            if (i < this.moonRelativeTraces.length) {
+                const relativePos = this.moonRelativeTraces[i];
+                this.traces[i].x = moonPosition.x + relativePos.x;
+                this.traces[i].y = moonPosition.y + relativePos.y;
+            }
+        }
+    }
+    
     toggleVisibility() {
         this.isVisible = !this.isVisible;
+        return this.isVisible;
     }
-
-    setColor(color) {
-        this.color = color;
-    }
-
-    setLineWidth(width) {
-        this.lineWidth = width;
-    }
-
-    setMaxPoints(max) {
-        this.maxPoints = max;
-        while (this.points.length > this.maxPoints) {
-            this.points.shift();
-        }
-    }
-
-    getPointCount() {
-        return this.points.length;
-    }
-
-    getTotalLength() {
-        let length = 0;
-        for (let i = 1; i < this.points.length; i++) {
-            const dx = this.points[i].x - this.points[i-1].x;
-            const dy = this.points[i].y - this.points[i-1].y;
-            length += Math.sqrt(dx * dx + dy * dy);
-        }
-        return length;
-    }
-
-    getExtremes() {
-        if (this.points.length === 0) return null;
-
-        let minX = this.points[0].x;
-        let maxX = this.points[0].x;
-        let minY = this.points[0].y;
-        let maxY = this.points[0].y;
-
-        for (const point of this.points) {
-            minX = Math.min(minX, point.x);
-            maxX = Math.max(maxX, point.x);
-            minY = Math.min(minY, point.y);
-            maxY = Math.max(maxY, point.y);
-        }
-
-        return {
-            min: { x: minX, y: minY },
-            max: { x: maxX, y: maxY }
-        };
+    
+    clear() {
+        this.traces = [];
+        this.moonRelativeTraces = [];
     }
 } 

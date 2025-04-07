@@ -29,6 +29,7 @@ class PhysicsController {
         // Variables pour stocker les objets physiques
         this.rocketBody = null;
         this.celestialBodies = [];
+        this.moonBodies = [];  // Pour stocker les références aux lunes
         this.rocketModel = null;
         
         // Conserver les paramètres supplémentaires
@@ -63,6 +64,7 @@ class PhysicsController {
         // Vider le monde physique
         this.Composite.clear(this.engine.world);
         this.celestialBodies = [];
+        this.moonBodies = [];  // Pour stocker les références aux lunes
         this.rocketModel = rocketModel;
         
         try {
@@ -120,7 +122,7 @@ class PhysicsController {
                 // Options de base pour le corps céleste
                 const options = {
                     mass: body.mass,
-                    isStatic: true, // Les corps célestes ne bougent pas dans cette simplification
+                    isStatic: true, // Tous les corps célestes sont statiques pour éviter les problèmes
                     label: body.name,
                     collisionFilter: {
                         category: 0x0002,
@@ -130,16 +132,19 @@ class PhysicsController {
                     friction: 0.05
                 };
                 
-                // Ajouter les propriétés d'attracteur spécifiquement pour la Terre
-                if (body.name === 'Terre') {
-                    // Configurer l'attracteur standard de Matter Attractors pour la Terre
+                // Ajouter les propriétés d'attracteur spécifiquement pour la Terre et la Lune
+                if (body.name === 'Terre' || body.name === 'Lune') {
+                    // Configurer l'attracteur standard de Matter Attractors
                     options.plugin = {
                         attractors: [
                             // Utiliser l'attracteur standard de Matter Attractors (relation en 1/r²)
                             MatterAttractors.Attractors.gravity
                         ]
                     };
-                   // console.log("Terre configurée comme attracteur gravitationnel standard (1/r²)");
+                    
+                    if (body.name === 'Lune') {
+                        console.log("Lune configurée comme attracteur gravitationnel");
+                    }
                 }
                 
                 // Créer le corps céleste
@@ -153,11 +158,20 @@ class PhysicsController {
                 // Ajouter au monde et à notre liste
                 if (celestialBody) {
                     this.Composite.add(this.engine.world, celestialBody);
-                    this.celestialBodies.push({
-                        body: celestialBody,
-                        model: body
-                    });
-                   // console.log(`Corps physique de ${body.name} créé et ajouté au monde${body.name === 'Terre' ? ' avec attraction gravitationnelle standard (1/r²)' : ''}`);
+                    
+                    if (body.name === 'Lune') {
+                        // La lune est gérée différemment mais a un corps physique pour les collisions
+                        this.moonBodies.push({
+                            body: celestialBody,
+                            model: body
+                        });
+                        console.log("Corps physique de la Lune créé et ajouté au monde pour collisions");
+                    } else {
+                        this.celestialBodies.push({
+                            body: celestialBody,
+                            model: body
+                        });
+                    }
                 }
             }
             
@@ -168,9 +182,9 @@ class PhysicsController {
                 
                 // Si la fusée est présente, calculer la force gravitationnelle totale pour la visualisation
                 if (this.rocketBody) {
+                    // Force de la Terre
                     for (let i = 0; i < this.celestialBodies.length; i++) {
                         const celestialBody = this.celestialBodies[i].body;
-                        // Ne calculer que si c'est la Terre (seul corps avec attraction)
                         if (celestialBody.label === 'Terre') {
                             // Calculer le vecteur pour la visualisation
                             const dx = celestialBody.position.x - this.rocketBody.position.x;
@@ -185,7 +199,27 @@ class PhysicsController {
                             this.gravityForce.y = forceMagnitude * (dy / distance);
                         }
                     }
+                    
+                    // Ajouter la force de la Lune
+                    for (let i = 0; i < this.moonBodies.length; i++) {
+                        const moonBody = this.moonBodies[i].body;
+                        // Calculer le vecteur pour la visualisation
+                        const dx = moonBody.position.x - this.rocketBody.position.x;
+                        const dy = moonBody.position.y - this.rocketBody.position.y;
+                        const distanceSq = dx * dx + dy * dy;
+                        const distance = Math.sqrt(distanceSq);
+                        
+                        // Force plus faible pour la Lune (masse plus petite)
+                        const forceMagnitude = this.gravitationalConstant * moonBody.mass * this.rocketBody.mass / distanceSq;
+                        
+                        // Ajouter à la force totale
+                        this.gravityForce.x += forceMagnitude * (dx / distance);
+                        this.gravityForce.y += forceMagnitude * (dy / distance);
+                    }
                 }
+                
+                // Mettre à jour la position de la lune dans le modèle 
+                this.updateMoons(0.016);
             });
             
             // Configurer les événements de collision avec Matter.js
@@ -217,9 +251,13 @@ class PhysicsController {
                 const pair = pairs[i];
                 
                 // Vérifier si la fusée est impliquée dans la collision
+                if (!pair.bodyA || !pair.bodyB) continue; // Ignorer si un des corps n'existe pas
+                
                 if (pair.bodyA === this.rocketBody || pair.bodyB === this.rocketBody) {
                     const rocketBody = pair.bodyA === this.rocketBody ? pair.bodyA : pair.bodyB;
                     const otherBody = pair.bodyA === this.rocketBody ? pair.bodyB : pair.bodyA;
+                    
+                    if (!rocketBody || !otherBody) continue; // Vérification supplémentaire
                     
                     // Calculer la vitesse d'impact
                     const relVelX = rocketBody.velocity.x - (otherBody.isStatic ? 0 : otherBody.velocity.x);
@@ -232,26 +270,44 @@ class PhysicsController {
                     const COLLISION_THRESHOLD = 2.5; // m/s
                     
                     // Détecter un atterrissage en douceur (vitesse faible)
-                    if (impactVelocity < 1.0 && otherBody.label === 'Terre') {
+                    if (impactVelocity < 1.0 && (otherBody.label === 'Terre' || otherBody.label === 'Lune')) {
                         this.rocketModel.isLanded = true;
+                        this.rocketModel.landedOn = otherBody.label; // Indiquer la planète ou la lune sur laquelle on a atterri
+                        
                         // Synchroniser immédiatement la vitesse
                         this.rocketModel.setVelocity(0, 0);
                         this.rocketModel.setAngularVelocity(0);
                         this.syncPhysicsWithModel(this.rocketModel);
+                        
+                        console.log(`Atterrissage réussi sur ${otherBody.label}`);
                     } else {
                         // Collision normale, appliquer des dégâts en fonction de la vitesse d'impact
                         const impactDamage = impactVelocity * PHYSICS.IMPACT_DAMAGE_FACTOR;
                         
-                        // Si c'est une collision avec la Terre et que la vitesse d'impact dépasse le seuil
-                        if (otherBody.label === 'Terre' && impactVelocity > COLLISION_THRESHOLD) {
-                            // Appliquer les dégâts immédiatement au même seuil que le son
+                        // Si c'est une collision avec un corps céleste et que la vitesse d'impact dépasse le seuil
+                        if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && impactVelocity > COLLISION_THRESHOLD) {
+                            // Mémoriser d'abord sur quel corps la collision a eu lieu
+                            this.rocketModel.landedOn = otherBody.label;
+                            
+                            // Appliquer les dégâts immédiatement
                             this.rocketModel.applyDamage(impactDamage);
+                            
+                            // Si la fusée est détruite par cette collision et qu'elle est sur la Lune
+                            if (this.rocketModel.isDestroyed && this.rocketModel.attachedTo === 'Lune') {
+                                // Trouver le modèle de la lune pour calculer la position relative
+                                const luneModel = this.moonBodies.find(moon => moon.model.name === 'Lune')?.model;
+                                if (luneModel) {
+                                    // Calculer et stocker la position relative
+                                    this.rocketModel.updateRelativePosition(luneModel);
+                                    console.log("Position relative à la lune calculée pour les débris");
+                                }
+                            }
                             
                             // Jouer le son de collision importante
                             this.playCollisionSound(impactVelocity);
                             
                             console.log(`Collision IMPORTANTE avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Dégâts=${impactDamage.toFixed(2)}`);
-                        } else if (otherBody.label === 'Terre') {
+                        } else if (otherBody.label === 'Terre' || otherBody.label === 'Lune') {
                             console.log(`Collision avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Pas de dégâts`);
                         }
                     }
@@ -266,12 +322,15 @@ class PhysicsController {
             for (let i = 0; i < pairs.length; i++) {
                 const pair = pairs[i];
                 
+                // Vérifier si les corps existent
+                if (!pair.bodyA || !pair.bodyB) continue;
+                
                 // Si la fusée est impliquée dans la collision
                 if (pair.bodyA === this.rocketBody || pair.bodyB === this.rocketBody) {
                     const otherBody = pair.bodyA === this.rocketBody ? pair.bodyB : pair.bodyA;
                     
-                    // Si c'est une collision avec la Terre, considérer l'atterrissage
-                    if (otherBody.label === 'Terre') {
+                    // Si c'est une collision avec un corps céleste, considérer l'atterrissage
+                    if (otherBody.label === 'Terre' || otherBody.label === 'Lune') {
                         // Vérifier la distance au sol
                         const distanceToGround = Math.abs(this.rocketBody.position.y - otherBody.position.y) - otherBody.radius;
                         const isCloseToGround = distanceToGround < ROCKET.HEIGHT * 1.5;
@@ -279,7 +338,8 @@ class PhysicsController {
                         // Définir isLanded si pas déjà défini et si on est proche du sol
                         if (!this.rocketModel.isLanded && isCloseToGround) {
                             this.rocketModel.isLanded = true;
-                            console.log("Fusée posée");
+                            this.rocketModel.landedOn = otherBody.label;
+                            console.log(`Fusée posée sur ${otherBody.label}`);
                             
                             // Réinitialiser la vitesse dans le modèle
                             this.rocketModel.setVelocity(0, 0);
@@ -307,6 +367,7 @@ class PhysicsController {
                         } else {
                             // Si le propulseur principal est actif avec suffisamment de puissance, forcer le décollage
                             this.rocketModel.isLanded = false;
+                            this.rocketModel.landedOn = null;
                             
                             // Appliquer une forte impulsion vers le haut pour garantir le décollage
                             const impulseY = -5.0; // Force augmentée
@@ -322,7 +383,7 @@ class PhysicsController {
                             // Désactiver temporairement les contraintes physiques
                             this.Body.setStatic(this.rocketBody, false);
                             
-                            console.log("Décollage forcé avec le propulseur principal");
+                            console.log(`Décollage de ${otherBody.label} avec le propulseur principal`);
                         }
                     }
                 }
@@ -336,17 +397,21 @@ class PhysicsController {
             for (let i = 0; i < pairs.length; i++) {
                 const pair = pairs[i];
                 
+                // Vérifier si les corps existent
+                if (!pair.bodyA || !pair.bodyB) continue;
+                
                 // Si la fusée quitte le contact avec un corps
                 if (pair.bodyA === this.rocketBody || pair.bodyB === this.rocketBody) {
                     const otherBody = pair.bodyA === this.rocketBody ? pair.bodyB : pair.bodyA;
                     
-                    if (otherBody.label === 'Terre' && this.rocketModel.isLanded) {
+                    if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && this.rocketModel.isLanded) {
                         // Vérifier la distance au sol avant de confirmer le décollage
                         const distanceToGround = Math.abs(this.rocketBody.position.y - otherBody.position.y) - otherBody.radius;
                         if (distanceToGround > ROCKET.HEIGHT * 2) {
                             // Transition de posé à vol
                             this.rocketModel.isLanded = false;
-                            console.log("Décollage confirmé");
+                            this.rocketModel.landedOn = null;
+                            console.log(`Décollage de ${otherBody.label} confirmé`);
                         }
                     }
                 }
@@ -425,11 +490,25 @@ class PhysicsController {
         // Appliquer les forces des propulseurs actifs
         this.updateThrusters(rocketModel);
         
+        // Si la fusée est détruite et attachée à la lune, mettre à jour sa position
+        // pour qu'elle suive le mouvement de la lune
+        if (rocketModel.isDestroyed && rocketModel.attachedTo === 'Lune') {
+            // Trouver le modèle de la lune
+            const luneModel = this.moonBodies.find(moon => moon.model.name === 'Lune')?.model;
+            if (luneModel) {
+                // Mettre à jour la position absolue de la fusée en fonction de la position de la lune
+                rocketModel.updateAbsolutePosition(luneModel);
+            }
+        }
+        
         // Mettre à jour le moteur physique
         this.Engine.update(this.engine, deltaTime * this.timeScale);
         
         // Synchroniser le modèle avec le corps physique après la mise à jour
-        this.syncModelWithPhysics(rocketModel);
+        // sauf si la fusée est détruite et attachée à la lune
+        if (!(rocketModel.isDestroyed && rocketModel.attachedTo === 'Lune')) {
+            this.syncModelWithPhysics(rocketModel);
+        }
     }
     
     // Calculer les exigences de poussée pour le décollage
@@ -630,8 +709,8 @@ class PhysicsController {
     
     // Mettre à jour la physique des corps célestes
     updateCelestialBodiesPhysics(universeModel, deltaTime) {
-        // Pour cette simplification, nous ne permettons pas aux corps célestes de bouger
-        // Mais nous pourrions implémenter leurs mouvements si nécessaire
+        // Pas besoin de mise à jour physique des corps célestes
+        // Les lunes sont mises à jour manuellement dans updateMoons
     }
     
     // Définir l'échelle de temps de la simulation
@@ -929,5 +1008,32 @@ class PhysicsController {
             y: rocketModel.velocity.y
         });
         this.Body.setAngularVelocity(this.rocketBody, rocketModel.angularVelocity);
+    }
+
+    // Méthode pour mettre à jour la position des lunes manuellement
+    updateMoons(deltaTime) {
+        // Trouver le corps parent (la Terre)
+        const earthBody = this.celestialBodies.find(body => body.model.name === 'Terre');
+        
+        if (!earthBody || !earthBody.model) return;
+        
+        // Pour chaque lune, mettre à jour son corps physique
+        for (const moon of this.moonBodies) {
+            if (!moon.model || !moon.body) continue;
+            
+            // Si la lune est attachée à un corps parent, utiliser updateMoon de ce corps 
+            for (const celestialBody of this.celestialBodies) {
+                if (celestialBody.model.moon === moon.model && celestialBody.model.updateMoon) {
+                    // Mettre à jour la position dans le modèle
+                    celestialBody.model.updateMoon(deltaTime);
+                    
+                    // Mettre à jour le corps physique de la lune pour qu'il suive le modèle
+                    this.Body.setPosition(moon.body, {
+                        x: moon.model.position.x,
+                        y: moon.model.position.y
+                    });
+                }
+            }
+        }
     }
 } 
