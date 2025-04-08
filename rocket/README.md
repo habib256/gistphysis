@@ -40,7 +40,6 @@ Ce projet est une simulation web de fusée qui permet aux utilisateurs de contr�
 - **P / M** : Ajuster la puissance des propulseurs
 - **T** : Afficher/masquer la trace
 - **V** : Afficher/masquer les vecteurs de force
-- **F** : Afficher/masquer les forces appliquées
 
 ## 🧰 Architecture
 

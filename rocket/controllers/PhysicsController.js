@@ -276,7 +276,7 @@ class PhysicsController {
                     const COLLISION_THRESHOLD = 2.5; // m/s
                     
                     // Détecter un atterrissage en douceur (vitesse faible)
-                    if (impactVelocity < 1.0 && (otherBody.label === 'Terre' || otherBody.label === 'Lune')) {
+                    if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && this.isRocketLanded(this.rocketModel, otherBody)) {
                         this.rocketModel.isLanded = true;
                         this.rocketModel.landedOn = otherBody.label; // Indiquer la planète ou la lune sur laquelle on a atterri
                         
@@ -337,12 +337,8 @@ class PhysicsController {
                     
                     // Si c'est une collision avec un corps céleste, considérer l'atterrissage
                     if (otherBody.label === 'Terre' || otherBody.label === 'Lune') {
-                        // Vérifier la distance au sol
-                        const distanceToGround = Math.abs(this.rocketBody.position.y - otherBody.position.y) - otherBody.radius;
-                        const isCloseToGround = distanceToGround < ROCKET.HEIGHT * 1.5;
-                        
-                        // Définir isLanded si pas déjà défini et si on est proche du sol
-                        if (!this.rocketModel.isLanded && isCloseToGround) {
+                        // Utiliser la méthode améliorée pour détecter l'atterrissage
+                        if (!this.rocketModel.isLanded && this.isRocketLanded(this.rocketModel, otherBody)) {
                             this.rocketModel.isLanded = true;
                             this.rocketModel.landedOn = otherBody.label;
                             console.log(`Fusée posée sur ${otherBody.label}`);
@@ -411,10 +407,9 @@ class PhysicsController {
                     const otherBody = pair.bodyA === this.rocketBody ? pair.bodyB : pair.bodyA;
                     
                     if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && this.rocketModel.isLanded) {
-                        // Vérifier la distance au sol avant de confirmer le décollage
-                        const distanceToGround = Math.abs(this.rocketBody.position.y - otherBody.position.y) - otherBody.radius;
-                        if (distanceToGround > ROCKET.HEIGHT * 2) {
-                            // Transition de posé à vol
+                        // Utiliser une méthode plus précise pour vérifier si on est toujours posé
+                        // Si on n'est plus posé, mettre à jour l'état
+                        if (!this.isRocketLanded(this.rocketModel, otherBody)) {
                             this.rocketModel.isLanded = false;
                             this.rocketModel.landedOn = null;
                             console.log(`Décollage de ${otherBody.label} confirmé`);
@@ -552,6 +547,12 @@ class PhysicsController {
         
         // Appliquer les forces des propulseurs actifs
         this.updateThrusters(rocketModel);
+        
+        // Vérifier périodiquement l'état d'atterrissage (environ 10 fois par seconde)
+        if (universeModel && (!this._lastLandedCheck || Date.now() - this._lastLandedCheck > 100)) {
+            this._lastLandedCheck = Date.now();
+            this.checkRocketLandedStatus(rocketModel, universeModel);
+        }
         
         // Si la fusée est détruite et attachée à la lune, mettre à jour sa position
         // pour qu'elle suive le mouvement de la lune
@@ -1044,8 +1045,11 @@ class PhysicsController {
         // Si le modèle de fusée ou le corps physique n'existe pas, sortir
         if (!this.rocketModel || !this.rocketBody) return;
         
+        // Récupérer l'universeModel depuis le gameController si disponible
+        const universeModel = this.gameController ? this.gameController.universeModel : null;
+        
         // Mettre à jour la physique de la fusée
-        this.updateRocketPhysics(this.rocketModel, null, deltaTime);
+        this.updateRocketPhysics(this.rocketModel, universeModel, deltaTime);
         
         // Afficher les informations de débogage
         if (this.rocketBody) {
@@ -1139,5 +1143,147 @@ class PhysicsController {
             }
         }
         return this.assistedControls;
+    }
+
+    // Nouvelle méthode pour vérifier si la fusée est posée sur un corps céleste
+    isRocketLanded(rocketModel, otherBody) {
+        if (!this.rocketBody || !otherBody) return false;
+        
+        // Calculer le vecteur de la fusée au corps céleste
+        const dx = otherBody.position.x - this.rocketBody.position.x;
+        const dy = otherBody.position.y - this.rocketBody.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculer l'angle entre la fusée et la surface
+        const surfaceAngle = Math.atan2(dy, dx);
+        const rocketOrientation = this.rocketBody.angle % (Math.PI * 2);
+        
+        // Calculer la différence angulaire (en tenant compte des sauts à 2π)
+        let angleDiff = Math.abs(rocketOrientation - (surfaceAngle - Math.PI/2));
+        // Normaliser la différence d'angle pour qu'elle soit entre 0 et π
+        angleDiff = angleDiff > Math.PI ? Math.PI * 2 - angleDiff : angleDiff;
+        
+        // Vérifier si la fusée est orientée perpendiculairement à la surface (tolérance de 30 degrés)
+        const isCorrectlyOriented = angleDiff < Math.PI/6;
+        
+        // Rayon total = rayon de l'astre + moitié de la hauteur de la fusée + marge
+        const totalRadius = otherBody.radius + ROCKET.HEIGHT/2 + 5;
+        
+        // Vérifier si la fusée est à la bonne distance de la surface
+        const distanceToSurface = distance - totalRadius;
+        // Utiliser Math.abs pour éviter les problèmes avec des valeurs négatives
+        const isCloseToSurface = Math.abs(distanceToSurface) < 10; // Seuil en pixels
+        
+        // Vérifier si la vitesse est suffisamment basse
+        const velocity = this.rocketBody.velocity;
+        const speedSquared = velocity.x * velocity.x + velocity.y * velocity.y;
+        const speed = Math.sqrt(speedSquared);
+        const hasLowVelocity = speed < 0.8;
+        
+        // Vérifier si la vitesse angulaire est suffisamment basse
+        const angularVelocity = Math.abs(this.rocketBody.angularVelocity);
+        const hasLowAngularVelocity = angularVelocity < 0.05;
+        
+        // DÉTECTION DE CRASH 1: Fusée couchée sur le sol et immobile
+        const isLyingDown = (angleDiff > Math.PI/3) && isCloseToSurface && hasLowVelocity && hasLowAngularVelocity;
+        
+        // DÉTECTION DE CRASH 2: Fusée non verticale en contact avec le sol (orientation > 45° par rapport à la normale)
+        // et soit en mouvement rapide, soit avec rotation rapide
+        const isBadAngle = angleDiff > Math.PI/4; // Plus de 45° d'inclinaison par rapport à la normale
+        const isMovingFast = speed > 1.0;
+        const isRotatingFast = angularVelocity > 0.2;
+        const isRollingOrTumbling = isCloseToSurface && isBadAngle && (isMovingFast || isRotatingFast);
+        
+        // Si la fusée est couchée ou est en train de rouler/culbuter sur la surface, déclencher un crash
+        if ((isLyingDown || isRollingOrTumbling) && !rocketModel.isDestroyed) {
+            console.log(`Crash détecté sur ${otherBody.label}! ${isLyingDown ? 'Fusée couchée' : 'Fusée en mouvement anormal'}`);
+            console.log(`Vitesse: ${speed.toFixed(2)}, Rotation: ${angularVelocity.toFixed(2)}, Angle: ${(angleDiff * 180 / Math.PI).toFixed(2)}°`);
+            
+            // Appliquer des dégâts pour détruire la fusée
+            const crashDamage = 100; // Dommages suffisants pour détruire la fusée
+            rocketModel.applyDamage(crashDamage);
+            
+            // Mémoriser où la fusée a été détruite
+            rocketModel.landedOn = otherBody.label;
+            
+            // Jouer le son de collision importante
+            this.playCollisionSound(5.0); // Valeur arbitraire pour le son
+            
+            return false; // Ne pas considérer comme "posé" mais comme "crashé"
+        }
+        
+        // Enregistrer les valeurs pour le débogage - protection contre NaN
+        const formattedDistance = isNaN(distance) ? "N/A" : distance.toFixed(2);
+        const formattedDistanceToSurface = isNaN(distanceToSurface) ? "N/A" : distanceToSurface.toFixed(2);
+        
+        console.log(`Diagnostic atterrissage sur ${otherBody.label}:
+            - Distance: ${formattedDistance}, Distance à la surface: ${formattedDistanceToSurface}
+            - Angle fusée: ${rocketOrientation.toFixed(2)}, Angle surface: ${surfaceAngle.toFixed(2)}
+            - Différence d'angle: ${angleDiff.toFixed(2)} rad (${(angleDiff * 180 / Math.PI).toFixed(2)}°)
+            - Vitesse: ${speed.toFixed(2)}, Vitesse angulaire: ${angularVelocity.toFixed(4)}
+            - Orientation correcte: ${isCorrectlyOriented}, Proche de la surface: ${isCloseToSurface}, Vitesse basse: ${hasLowVelocity}, Rotation basse: ${hasLowAngularVelocity}
+            - RÉSULTAT: ${isCorrectlyOriented && isCloseToSurface && hasLowVelocity && hasLowAngularVelocity ? "POSÉ" : "NON POSÉ"}`);
+        
+        return isCorrectlyOriented && isCloseToSurface && hasLowVelocity && hasLowAngularVelocity;
+    }
+
+    // Vérifier périodiquement l'état de la fusée par rapport aux corps célestes
+    checkRocketLandedStatus(rocketModel, universeModel) {
+        // Ne vérifier que si la fusée n'est pas détruite
+        if (rocketModel.isDestroyed) return;
+        
+        // Parcourir tous les corps célestes
+        for (const body of universeModel.celestialBodies) {
+            // Créer un objet avec les propriétés nécessaires pour isRocketLanded
+            const celestialBodyObject = {
+                position: { x: body.position.x, y: body.position.y },
+                radius: body.radius,
+                label: body.name
+            };
+            
+            // Si la fusée est actuellement considérée comme posée sur ce corps
+            if (rocketModel.isLanded && rocketModel.landedOn === body.name) {
+                // Vérifier si elle est toujours posée
+                if (!this.isRocketLanded(rocketModel, celestialBodyObject)) {
+                    // Si elle n'est plus posée, mettre à jour l'état
+                    rocketModel.isLanded = false;
+                    rocketModel.landedOn = null;
+                    console.log(`État de décollage détecté lors de la vérification périodique de ${body.name}`);
+                }
+            } 
+            // Si la fusée n'est pas considérée comme posée mais qu'elle l'est en réalité
+            else if (!rocketModel.isLanded) {
+                // Vérifier la distance pour éviter de tester des corps trop éloignés
+                const dx = body.position.x - rocketModel.position.x;
+                const dy = body.position.y - rocketModel.position.y;
+                const distanceSquared = dx * dx + dy * dy;
+                const maxDistanceCheck = (body.radius + ROCKET.HEIGHT * 2) * (body.radius + ROCKET.HEIGHT * 2);
+                
+                // Ne vérifier que si la fusée est suffisamment proche du corps
+                if (distanceSquared <= maxDistanceCheck) {
+                    // Vérifier si la fusée est posée
+                    if (this.isRocketLanded(rocketModel, celestialBodyObject)) {
+                        // Mettre à jour l'état
+                        rocketModel.isLanded = true;
+                        rocketModel.landedOn = body.name;
+                        
+                        // Réinitialiser la vitesse
+                        rocketModel.setVelocity(0, 0);
+                        rocketModel.setAngularVelocity(0);
+                        if (this.rocketBody) {
+                            this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
+                            this.Body.setAngularVelocity(this.rocketBody, 0);
+                        }
+                        
+                        console.log(`État d'atterrissage détecté lors de la vérification périodique sur ${body.name}`);
+                    }
+                }
+            }
+        }
+    }
+
+    // Stocker la référence vers GameController
+    setGameController(gameController) {
+        this.gameController = gameController;
     }
 } 

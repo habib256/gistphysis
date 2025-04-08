@@ -460,12 +460,14 @@ class GameController {
     
     // Configurer les contrôleurs
     setupControllers() {
-        this.physicsController = new PhysicsController();
+        this.physicsController = new PhysicsController(this.eventBus);
         this.particleController = new ParticleController(this.particleSystemModel);
         
         // Initialiser la physique avec les modèles
         if (this.physicsController && this.rocketModel && this.universeModel) {
             this.physicsController.initPhysics(this.rocketModel, this.universeModel);
+            // Donner une référence au gameController pour accéder à l'universeModel
+            this.physicsController.setGameController(this);
         }
         
         // Donner la référence du physicsController au renderingController pour afficher les forces

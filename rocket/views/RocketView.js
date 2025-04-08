@@ -142,13 +142,9 @@ class RocketView {
             ctx.fillStyle = "#FFFF00";
             ctx.font = "12px Arial";
             ctx.textAlign = "center";
-            ctx.fillText("G", dirX * vectorLength + dirX * 15, dirY * vectorLength + dirY * 15);
+            ctx.fillText("G(Terre)", dirX * vectorLength + dirX * 15, dirY * vectorLength + dirY * 15);
             
-            // Afficher la valeur de l'accélération gravitationnelle
-            ctx.font = "10px Arial";
-            ctx.fillText(`${(gravityMagnitude * 1000).toFixed(4)} mm/s²`, 
-                dirX * vectorLength + dirX * 25, 
-                dirY * vectorLength + dirY * 25);
+            // Nous ne voulons plus afficher la valeur numérique
         }
         
         // Ajouter également le vecteur de vitesse pour référence
@@ -206,11 +202,7 @@ class RocketView {
             ctx.textAlign = "center";
             ctx.fillText("V", dirX * vectorLength + dirX * 15, dirY * vectorLength + dirY * 15);
             
-            // Afficher la valeur de la vitesse
-            ctx.font = "10px Arial";
-            ctx.fillText(`${velocityMagnitude.toFixed(2)} m/s`, 
-                dirX * vectorLength + dirX * 25, 
-                dirY * vectorLength + dirY * 25);
+            // Ne plus afficher la valeur de la vitesse
         }
     }
     
@@ -398,15 +390,9 @@ class RocketView {
             ctx.fillStyle = "#E0A0FF";
             ctx.font = "12px Arial";
             ctx.textAlign = "center";
-            ctx.fillText("Luna", dirX * vectorLength + dirX * 20, dirY * vectorLength + dirY * 15);
+            ctx.fillText("G(Lune)", dirX * vectorLength + dirX * 20, dirY * vectorLength + dirY * 15);
             
-            // Afficher la distance à la Lune si disponible
-            if (rocketState.lunarDistance) {
-                ctx.font = "10px Arial";
-                ctx.fillText(`${rocketState.lunarDistance.toFixed(0)} m`, 
-                    dirX * vectorLength + dirX * 20, 
-                    dirY * vectorLength + dirY * 30);
-            }
+            // Ne plus afficher la distance à la Lune
         }
         
         ctx.restore();
