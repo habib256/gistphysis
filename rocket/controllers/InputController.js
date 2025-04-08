@@ -16,8 +16,6 @@ class InputController {
         'KeyV': 'toggleVectors',
         'Equal': 'zoomIn',
         'Minus': 'zoomOut',
-        'BracketLeft': 'slowDown',
-        'BracketRight': 'speedUp',
         'Escape': 'pauseGame'
     };
 
@@ -40,8 +38,6 @@ class InputController {
             p: false,           // Diminuer le multiplicateur de poussée
             c: false,           // Centrer la caméra
             v: false,           // Afficher les vecteurs
-            o: false,           // Ralentir la simulation
-            i: false,           // Accélérer la simulation
         };
         
         // Mapping des touches aux actions
@@ -64,8 +60,6 @@ class InputController {
             'c': 'centerCamera',
             'v': 'toggleVectors',
             't': 'toggleTraces',        // Afficher/masquer les traces
-            'o': 'slowDown',            // Ralentir 
-            'i': 'speedUp',             // Accélérer
             'p': 'increaseThrustMultiplier',
             'm': 'decreaseThrustMultiplier'
         };

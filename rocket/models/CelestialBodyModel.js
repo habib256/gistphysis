@@ -15,8 +15,8 @@ class CelestialBodyModel {
         // Apparence
         this.color = color || '#FFFFFF';
         this.atmosphere = {
-            // La Lune n'a pas d'atmosphère, indépendamment de sa masse
-            exists: name !== 'Lune' && mass > CELESTIAL_BODY.ATMOSPHERE_THRESHOLD,
+            // Seule la Terre a une atmosphère, indépendamment de la masse
+            exists: name === 'Terre',
             height: radius * CELESTIAL_BODY.ATMOSPHERE_RATIO, // Hauteur de l'atmosphère
             color: 'rgba(25, 35, 80, 0.4)'  // Bleu très sombre semi-transparent
         };
@@ -72,9 +72,6 @@ class CelestialBodyModel {
             moonPosition,
             '#CCCCCC' // Couleur grise pour la lune
         );
-        
-        // S'assurer que la lune n'a pas d'atmosphère
-        moon.atmosphere.exists = false;
         
         // Donner à la lune une vitesse orbitale initiale
         moon.velocity = {

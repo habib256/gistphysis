@@ -799,7 +799,8 @@ class PhysicsController {
     
     // Définir l'échelle de temps de la simulation
     setTimeScale(scale) {
-        this.timeScale = Math.max(PHYSICS.TIME_SCALE_MIN, Math.min(PHYSICS.TIME_SCALE_MAX, scale));
+        // Toujours fixer l'échelle de temps à 1.0 - fonctionnalité désactivée
+        this.timeScale = 1.0;
     }
     
     // Réinitialiser le moteur physique

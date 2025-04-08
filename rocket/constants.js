@@ -18,10 +18,6 @@ const PHYSICS = {
     IMPACT_DAMAGE_FACTOR: 10,   // Facteur de dommages lors des impacts
     RESTITUTION: 0.2,           // Coefficient de restitution (rebond)
     
-    // Simulation
-    TIME_SCALE_MIN: 0.1,        // Échelle de temps minimale
-    TIME_SCALE_MAX: 10.0,       // Échelle de temps maximale
-    
     // Multiplicateur de propulsion
     // Ajustez cette valeur pour augmenter la puissance de tous les propulseurs
     THRUST_MULTIPLIER: 10.0,    // Multiplicateur global pour toutes les forces de propulsion
@@ -113,7 +109,6 @@ const CELESTIAL_BODY = {
     RADIUS: 720,                  // Rayon de l'astre
     ORBIT_DISTANCE: 820,          // Distance orbitale initiale (rayon + 100)
     ATMOSPHERE_RATIO: 0.1666,     // Ratio du rayon pour la hauteur de l'atmosphère (120/720 ≈ 0.1666)
-    ATMOSPHERE_THRESHOLD: 1000000,  // Seuil de masse pour avoir une atmosphère
     
     // Propriétés de la lune
     MOON: {

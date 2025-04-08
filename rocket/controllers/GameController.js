@@ -158,20 +158,6 @@ class GameController {
             case 'toggleTraces':
                 this.toggleTraceVisibility();
                 break;
-            case 'slowDown':
-                if (this.physicsController) {
-                    const currentTimeScale = this.physicsController.timeScale;
-                    this.physicsController.setTimeScale(currentTimeScale * 0.5);
-                    console.log(`Vitesse de simulation: ${this.physicsController.timeScale.toFixed(2)}x`);
-                }
-                break;
-            case 'speedUp':
-                if (this.physicsController) {
-                    const currentTimeScale = this.physicsController.timeScale;
-                    this.physicsController.setTimeScale(currentTimeScale * 2.0);
-                    console.log(`Vitesse de simulation: ${this.physicsController.timeScale.toFixed(2)}x`);
-                }
-                break;
             case 'increaseThrustMultiplier':
                 this.adjustThrustMultiplier(2.0); // Doubler
                 break;

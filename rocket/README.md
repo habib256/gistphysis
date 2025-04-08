@@ -20,9 +20,12 @@ Ce projet est une simulation web de fusée qui permet aux utilisateurs de contr�
 - **Caméra dynamique** avec zoom et suivi
 - **Système de dommages et santé** pour la fusée lors des collisions
 - **Gestion de carburant** avec consommation différente selon les propulseurs
-- **Atmosphère des corps célestes** visible au-delà d'un certain seuil de masse
+
 - **Système lunaire** avec orbite autour de la planète principale
 - **Effets visuels améliorés** comme le scintillement des étoiles et les dégradés de couleurs pour les propulseurs
+- **Contrôles assistés** pour faciliter la navigation et la stabilisation de la fusée
+- **Effets sonores** pour les collisions et événements importants
+- **Visualisation des vecteurs de force** pour comprendre les forces en jeu
 
 ## 🎮 Contrôles
 
@@ -36,6 +39,8 @@ Ce projet est une simulation web de fusée qui permet aux utilisateurs de contr�
 - **Echap** : Pause
 - **P / M** : Ajuster la puissance des propulseurs
 - **T** : Afficher/masquer la trace
+- **V** : Afficher/masquer les vecteurs de force
+- **F** : Afficher/masquer les forces appliquées
 
 ## 🧰 Architecture
 
@@ -96,6 +101,8 @@ Le fichier `constants.js` contient de nombreux paramètres que vous pouvez ajust
 - Limites physiques (`PHYSICS.MAX_SPEED`, `PHYSICS.MAX_COORDINATE`)
 - Échelle temporelle (`PHYSICS.TIME_SCALE_MIN`, `PHYSICS.TIME_SCALE_MAX`)
 - Comportement des collisions (`PHYSICS.COLLISION_DAMPING`, `PHYSICS.IMPACT_DAMAGE_FACTOR`)
+- Contrôles assistés (`PHYSICS.ASSISTED_CONTROLS`)
+- Multiplicateur de poussée (`PHYSICS.THRUST_MULTIPLIER`)
 
 ## 📈 Perspectives futures
 
@@ -106,6 +113,7 @@ Le fichier `constants.js` contient de nombreux paramètres que vous pouvez ajust
 - Mode multijoueur
 - Ajustement dynamique de la difficulté basé sur les performances
 - Système de récompenses et de progression
+- Intégration de systèmes planétaires complets
 
 ## 📜 Licence
 
