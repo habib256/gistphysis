@@ -147,25 +147,62 @@ class RocketModel {
     
     // Calcule et met à jour la position relative par rapport à un corps céleste
     updateRelativePosition(celestialBody) {
-        if (!celestialBody || !this.attachedTo) return;
+        if (!celestialBody) return;
         
-        if (!this.relativePosition) {
-            // Calculer la position relative si elle n'existe pas encore
+        // Vérifier si on est posé sur le corps céleste ou attaché à lui (après destruction)
+        const isRelatedToBody = (this.landedOn === celestialBody.name) || (this.attachedTo === celestialBody.name);
+        
+        if (isRelatedToBody) {
+            // Calculer la position relative
             this.relativePosition = {
                 x: this.position.x - celestialBody.position.x,
                 y: this.position.y - celestialBody.position.y,
-                angle: this.angle // Conserver l'angle aussi
+                angle: this.angle, // Conserver l'angle aussi
+                // Calculer la distance et l'angle de la fusée par rapport au corps céleste
+                distance: Math.sqrt(
+                    Math.pow(this.position.x - celestialBody.position.x, 2) + 
+                    Math.pow(this.position.y - celestialBody.position.y, 2)
+                ),
+                angleToBody: Math.atan2(
+                    this.position.y - celestialBody.position.y,
+                    this.position.x - celestialBody.position.x
+                )
             };
         }
     }
     
     // Met à jour la position absolue en fonction de la position du corps céleste auquel on est attaché
     updateAbsolutePosition(celestialBody) {
-        if (!celestialBody || !this.relativePosition || !this.attachedTo) return;
+        if (!celestialBody || !this.relativePosition) return;
         
-        // Mettre à jour la position absolue en fonction de la position relative
-        this.position.x = celestialBody.position.x + this.relativePosition.x;
-        this.position.y = celestialBody.position.y + this.relativePosition.y;
-        // L'angle reste le même car les débris ne tournent pas avec la lune
+        // Vérifier si on est posé sur le corps céleste ou attaché à lui (après destruction)
+        const isRelatedToBody = (this.landedOn === celestialBody.name) || (this.attachedTo === celestialBody.name);
+        
+        if (isRelatedToBody) {
+            if (this.isDestroyed) {
+                // Si la fusée est détruite, garder la même position relative fixe
+                this.position.x = celestialBody.position.x + this.relativePosition.x;
+                this.position.y = celestialBody.position.y + this.relativePosition.y;
+                // L'angle reste le même car les débris ne tournent pas avec la lune
+            } else {
+                // Si la fusée est posée, maintenir la même distance et l'angle par rapport au corps
+                const distance = this.relativePosition.distance;
+                const angle = celestialBody.rotationAngle ? 
+                    // Si le corps a un angle de rotation, l'utiliser pour calculer la nouvelle position
+                    this.relativePosition.angleToBody + celestialBody.rotationAngle : 
+                    // Sinon, utiliser l'angle de base
+                    this.relativePosition.angleToBody;
+                
+                // Calculer la nouvelle position
+                this.position.x = celestialBody.position.x + Math.cos(angle) * distance;
+                this.position.y = celestialBody.position.y + Math.sin(angle) * distance;
+                
+                // Mettre à jour l'angle de la fusée pour qu'elle reste perpendiculaire au rayon du corps céleste
+                if (this.landedOn === celestialBody.name) {
+                    // L'angle correcte est l'angle vers le corps céleste + 90 degrés (π/2)
+                    this.angle = angle + Math.PI/2;
+                }
+            }
+        }
     }
 } 

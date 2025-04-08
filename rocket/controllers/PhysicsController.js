@@ -37,6 +37,12 @@ class PhysicsController {
         this.gravitationalConstant = PHYSICS.G * 0.3; // Réduire l'intensité de l'attraction gravitationnelle
         this.collisionDamping = PHYSICS.COLLISION_DAMPING;
         
+        // Contrôles assistés - utilise les constantes
+        this.assistedControls = true; // Activés par défaut
+        this.angularDamping = PHYSICS.ASSISTED_CONTROLS.NORMAL_ANGULAR_DAMPING;
+        this.assistedAngularDamping = PHYSICS.ASSISTED_CONTROLS.ASSISTED_ANGULAR_DAMPING;
+        this.rotationStabilityFactor = PHYSICS.ASSISTED_CONTROLS.ROTATION_STABILITY_FACTOR;
+        
         // Visualisation des forces (pour le débogage)
         this.showForces = false;
         this.thrustForces = {
@@ -83,7 +89,7 @@ class PhysicsController {
                     isStatic: false,
                     label: 'rocket',
                     frictionAir: 0.1, // Ajouter de la friction dans l'air pour ralentir naturellement
-                    angularDamping: 0.2, // Ajouter de l'amortissement angulaire pour arrêter la rotation
+                    angularDamping: this.assistedControls ? this.assistedAngularDamping : this.angularDamping, // Amortissement angulaire selon le mode
                     sleepThreshold: -1, // Désactiver le repos pour le corps de la fusée
                     collisionFilter: {
                         category: 0x0001,
@@ -446,6 +452,24 @@ class PhysicsController {
         // Si la fusée n'est pas initialisée, la créer
         if (!this.rocketBody) {
             this.initPhysics(rocketModel, universeModel);
+            // Appliquer l'amortissement angulaire initial
+            const damping = this.assistedControls ? this.assistedAngularDamping : this.angularDamping;
+            this.rocketBody.angularDamping = damping;
+        }
+        
+        // Appliquer la stabilisation de rotation lorsque les contrôles assistés sont activés
+        if (this.assistedControls && this.rocketBody && !rocketModel.isLanded) {
+            // Vérifier si aucun propulseur de rotation n'est actif
+            const leftActive = rocketModel.thrusters.left.power > 0;
+            const rightActive = rocketModel.thrusters.right.power > 0;
+            
+            // Si aucun propulseur de rotation n'est actif, stabiliser lentement la rotation
+            if (!leftActive && !rightActive && Math.abs(this.rocketBody.angularVelocity) > 0.001) {
+                // Appliquer une force opposée à la rotation actuelle pour la ralentir plus rapidement
+                const stabilizationForce = -this.rocketBody.angularVelocity * this.rotationStabilityFactor;
+                this.Body.setAngularVelocity(this.rocketBody, 
+                    this.rocketBody.angularVelocity + stabilizationForce);
+            }
         }
         
         // Calculer et afficher les exigences de poussée pour le décollage
@@ -470,12 +494,22 @@ class PhysicsController {
                             x: rocketModel.position.x,
                             y: rocketModel.position.y
                         });
+                        
                         // Maintenir l'orientation verticale par rapport à la surface de la Lune
                         const angleToLune = Math.atan2(
                             rocketModel.position.y - luneModel.position.y,
                             rocketModel.position.x - luneModel.position.x
                         );
-                        this.Body.setAngle(this.rocketBody, angleToLune - Math.PI/2);
+                        
+                        // Orientation verticale : la fusée pointe vers l'extérieur de la lune
+                        const correctAngle = angleToLune + Math.PI/2;
+                        this.Body.setAngle(this.rocketBody, correctAngle);
+                        
+                        // Mettre à jour l'angle dans le modèle aussi
+                        rocketModel.angle = correctAngle;
+                        
+                        // Réinitialiser la vitesse angulaire
+                        this.Body.setAngularVelocity(this.rocketBody, 0);
                     }
                 }
             }
@@ -722,6 +756,27 @@ class PhysicsController {
         
         // Appliquer la force au corps physique
         this.Body.applyForce(this.rocketBody, position, { x: thrustX, y: thrustY });
+        
+        // Si nous sommes en train d'appliquer la poussée du propulseur principal et que la fusée est posée sur la Lune
+        // Forcer le passage à l'état "non posé" pour permettre le décollage
+        if (thrusterName === 'main' && rocketModel.landedOn === 'Lune' && thrustForce > 0) {
+            // Indiquer que la fusée n'est plus posée
+            rocketModel.isLanded = false;
+            rocketModel.landedOn = null;
+            
+            // Appliquer une impulsion supplémentaire dans la direction appropriée
+            // Utiliser l'angle actuel de la fusée pour déterminer la direction de l'impulsion
+            const impulseForce = 5.0; // Force d'impulsion plus grande pour s'échapper de la Lune
+            const impulseX = -Math.cos(rocketModel.angle + Math.PI/2) * impulseForce;
+            const impulseY = -Math.sin(rocketModel.angle + Math.PI/2) * impulseForce;
+            
+            this.Body.applyForce(this.rocketBody, this.rocketBody.position, {
+                x: impulseX,
+                y: impulseY
+            });
+            
+            console.log("Décollage de la Lune initié !");
+        }
         
         // Stocker les vecteurs de poussée pour la visualisation dans RocketView
         if (!this.rocketBody.thrustVectors) {
@@ -1064,5 +1119,24 @@ class PhysicsController {
                 }
             }
         }
+    }
+
+    // Activer/désactiver les contrôles assistés
+    toggleAssistedControls() {
+        this.assistedControls = !this.assistedControls;
+        if (this.rocketBody) {
+            // Appliquer l'amortissement angulaire approprié directement sur la propriété du corps
+            this.rocketBody.angularDamping = this.assistedControls ? this.assistedAngularDamping : this.angularDamping;
+            
+            // Afficher un message détaillé dans la console
+            console.log(`Contrôles assistés: ${this.assistedControls ? 'ACTIVÉS' : 'DÉSACTIVÉS'}`);
+            console.log(`Amortissement angulaire: ${this.rocketBody.angularDamping.toFixed(2)} (${this.assistedControls ? '10x plus fort' : 'normal'})`);
+            
+            if (this.assistedControls) {
+                console.log("Stabilisation automatique de la rotation activée");
+                console.log("Les rotations seront plus lentes et la fusée se stabilisera plus facilement");
+            }
+        }
+        return this.assistedControls;
     }
 } 

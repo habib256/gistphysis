@@ -1,5 +1,5 @@
 class UIView {
-    constructor() {
+    constructor(eventBus) {
         this.font = '16px Arial';
         this.colors = {
             white: 'white',
@@ -11,6 +11,16 @@ class UIView {
             moon: 'rgba(200, 200, 200, 0.9)' // Couleur pour les infos de la lune
         };
         this.showMoonInfo = true; // Option pour afficher les informations de la lune
+        this.assistedControlsActive = true; // Activés par défaut
+        
+        // Gestionnaire d'événements
+        this.eventBus = eventBus;
+        
+        // État du jeu
+        this.isPaused = false;
+        
+        // Police et style
+        this.fontFamily = RENDER.FONT_FAMILY;
     }
 
     renderPause(ctx, canvas) {
@@ -252,6 +262,43 @@ class UIView {
         }
     }
 
+    // Rendre le bouton des contrôles assistés
+    renderAssistedControlsButton(ctx, canvas) {
+        // Position et dimensions du bouton
+        const buttonWidth = 180;
+        const buttonHeight = 30;
+        const buttonX = canvas.width / 2 - buttonWidth / 2;
+        const buttonY = canvas.height - 40; // Position en bas de l'écran
+
+        // Dessiner le fond du bouton
+        ctx.fillStyle = this.assistedControlsActive ? 'rgba(0, 150, 0, 0.7)' : 'rgba(50, 50, 150, 0.7)';
+        ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+        // Dessiner le contour du bouton
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+        // Texte du bouton
+        ctx.font = '14px Arial';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+            this.assistedControlsActive ? "Contrôles assistés: ON" : "Contrôles assistés: OFF", 
+            buttonX + buttonWidth / 2, 
+            buttonY + buttonHeight / 2
+        );
+        
+        // Retourner les coordonnées du bouton pour la détection de clic
+        return {
+            x: buttonX,
+            y: buttonY,
+            width: buttonWidth,
+            height: buttonHeight
+        };
+    }
+
     render(ctx, canvas, rocketModel, universeModel, isPaused) {
         if (isPaused) {
             this.renderPause(ctx, canvas);
@@ -262,6 +309,9 @@ class UIView {
             this.renderRocketInfo(ctx, rocketModel);
             this.renderLandingGuidance(ctx, canvas, rocketModel, universeModel);
             this.renderMoonInfo(ctx, canvas, rocketModel, universeModel);
+            
+            // Rendre le bouton des contrôles assistés
+            this.assistedControlsButtonBounds = this.renderAssistedControlsButton(ctx, canvas);
             
             if (rocketModel.isDestroyed) {
                 this.renderCrashed(ctx, canvas);
@@ -275,5 +325,24 @@ class UIView {
     toggleMoonInfo() {
         this.showMoonInfo = !this.showMoonInfo;
         return this.showMoonInfo;
+    }
+    
+    // Basculer les contrôles assistés
+    toggleAssistedControls() {
+        this.assistedControlsActive = !this.assistedControlsActive;
+        return this.assistedControlsActive;
+    }
+    
+    // Vérifier si un point est dans les limites du bouton des contrôles assistés
+    isPointInAssistedControlsButton(x, y) {
+        if (!this.assistedControlsButtonBounds) return false;
+        
+        const bounds = this.assistedControlsButtonBounds;
+        return (
+            x >= bounds.x && 
+            x <= bounds.x + bounds.width && 
+            y >= bounds.y && 
+            y <= bounds.y + bounds.height
+        );
     }
 } 

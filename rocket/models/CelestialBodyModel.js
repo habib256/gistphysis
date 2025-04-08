@@ -105,6 +105,9 @@ class CelestialBodyModel {
         // Mise à jour de l'angle en fonction de la vitesse orbitale
         angle += CELESTIAL_BODY.MOON.ORBIT_SPEED * deltaTime;
         
+        // Stocker l'angle de rotation dans le modèle de la lune
+        this.moon.rotationAngle = angle;
+        
         // Mettre à jour la position de la lune
         this.moon.position = {
             x: this.position.x + Math.cos(angle) * distance,

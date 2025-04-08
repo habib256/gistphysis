@@ -155,6 +155,9 @@ class GameController {
             case 'toggleVectors':
                 this.toggleVectors();
                 break;
+            case 'toggleTraces':
+                this.toggleTraceVisibility();
+                break;
             case 'slowDown':
                 if (this.physicsController) {
                     const currentTimeScale = this.physicsController.timeScale;
@@ -205,8 +208,13 @@ class GameController {
         }
     }
     
-    handleMouseUp() {
+    handleMouseUp(data) {
         this.isDragging = false;
+        
+        // Vérifier si le clic est sur le bouton des contrôles assistés
+        if (this.uiView && this.uiView.isPointInAssistedControlsButton(data.x, data.y)) {
+            this.toggleAssistedControls();
+        }
     }
     
     handleWheel(data) {
@@ -231,6 +239,9 @@ class GameController {
             const gravityVector = this.calculateGravityVector();
             const thrustVectors = this.calculateThrustVectors();
             
+            // Calculer le vecteur d'attraction lunaire
+            const lunarAttraction = this.calculateLunarAttractionVector();
+            
             // Émettre l'état de la fusée mis à jour
             this.eventBus.emit('ROCKET_STATE_UPDATED', {
                 position: { ...this.rocketModel.position },
@@ -245,7 +256,9 @@ class GameController {
                 relativePosition: this.rocketModel.relativePosition ? {...this.rocketModel.relativePosition} : null,
                 thrusters: { ...this.rocketModel.thrusters },
                 gravityVector,
-                thrustVectors
+                thrustVectors,
+                lunarAttractionVector: lunarAttraction ? lunarAttraction.vector : null,
+                lunarDistance: lunarAttraction ? lunarAttraction.distance : null
             });
         }
         
@@ -473,6 +486,13 @@ class GameController {
         if (this.renderingController && this.physicsController) {
             this.renderingController.setPhysicsController(this.physicsController);
         }
+        
+        // Synchroniser les contrôles assistés entre le PhysicsController et le UIView
+        if (this.physicsController && this.uiView) {
+            // S'assurer que l'UIView reflète l'état du PhysicsController
+            this.uiView.assistedControlsActive = this.physicsController.assistedControls;
+            console.log(`Contrôles assistés initialisés: ${this.physicsController.assistedControls ? 'activés' : 'désactivés'}`);
+        }
     }
     
     // Démarrer la boucle de jeu
@@ -541,34 +561,24 @@ class GameController {
     resetRocket() {
         if (!this.rocketModel || !this.universeModel) return;
         
-        // Annuler le timer de réinitialisation automatique s'il est actif
-        if (this.crashResetTimer) {
-            clearTimeout(this.crashResetTimer);
-            this.crashResetTimer = null;
-            console.log("Timer de réinitialisation automatique annulé");
-        }
-        
+        // Calculer la position initiale
         const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
         if (!earth) return;
         
-        // Réinitialiser la position - Placer légèrement plus haut pour éviter les collisions immédiates
-        this.rocketModel.setPosition(
-            earth.position.x,
-            earth.position.y - CELESTIAL_BODY.RADIUS - 20  // Réduit de 60 à 20 pour placer la fusée beaucoup plus bas
-        );
+        // Position sur Terre (sur sa surface)
+        const rocketX = earth.position.x;
+        const rocketY = earth.position.y - (earth.radius + ROCKET.HEIGHT / 2 + 5);
         
-        // Réinitialiser la vélocité
+        // Réinitialiser la fusée
+        this.rocketModel.setPosition(rocketX, rocketY);
         this.rocketModel.setVelocity(0, 0);
-        
-        // Réinitialiser l'angle
         this.rocketModel.setAngle(0);
-        
-        // Réinitialiser la vélocité angulaire
         this.rocketModel.setAngularVelocity(0);
-        
-        // Réinitialiser le carburant et la santé
-        this.rocketModel.fuel = ROCKET.FUEL_MAX;
         this.rocketModel.health = ROCKET.MAX_HEALTH;
+        this.rocketModel.fuel = ROCKET.FUEL_MAX;
+        this.rocketModel.attachedTo = null;
+        this.rocketModel.relativePosition = null;
+        this.rocketModel.landedOn = 'Terre';
         
         // Réinitialiser les propulseurs
         for (const thrusterName in this.rocketModel.thrusters) {
@@ -593,9 +603,9 @@ class GameController {
             }, 50);
         }
         
-        // Effacer la trace
+        // Ajouter une discontinuité dans la trace plutôt que de l'effacer complètement
         if (this.traceView) {
-            this.traceView.clear();
+            this.traceView.clear(false); // false = ajouter une discontinuité
         }
         
         // Réinitialiser les états
@@ -661,12 +671,14 @@ class GameController {
     toggleVectors() {
         if (this.rocketView) {
             // Définir une valeur commune pour tous les vecteurs
-            const newValue = !(this.rocketView.showGravityVector || this.rocketView.showThrustVector || this.rocketView.showVelocityVector);
+            const newValue = !(this.rocketView.showGravityVector || this.rocketView.showThrustVector || 
+                              this.rocketView.showVelocityVector || this.rocketView.showLunarAttractionVector);
             
             // Appliquer à tous les vecteurs
             this.rocketView.showGravityVector = newValue;
             this.rocketView.showThrustVector = newValue;
             this.rocketView.showVelocityVector = newValue;
+            this.rocketView.showLunarAttractionVector = newValue;
             
             console.log(`Affichage des vecteurs: ${newValue ? 'activé' : 'désactivé'}`);
         }
@@ -676,14 +688,10 @@ class GameController {
     handleRocketStateUpdated(data) {
         // Vérifier si la fusée vient d'être détruite
         if (data.isDestroyed && this.rocketModel && !this.crashResetTimer) {
-            console.log("Fusée détruite, réinitialisation dans 15 secondes...");
+            console.log("Fusée détruite - Appuyez sur R pour réinitialiser");
             
-            // Programmer la réinitialisation automatique après 15 secondes
-            this.crashResetTimer = setTimeout(() => {
-                console.log("Réinitialisation automatique après crash");
-                this.resetRocket();
-                this.crashResetTimer = null;
-            }, 15000);
+            // Ne pas programmer de réinitialisation automatique
+            // pour permettre à l'utilisateur de voir la trace du crash
         }
     }
 
@@ -691,8 +699,9 @@ class GameController {
     updateTrace() {
         if (!this.rocketModel || !this.traceView) return;
         
-        // Vérifier si la fusée est détruite et attachée à la lune
-        const isAttachedToMoon = this.rocketModel.isDestroyed && this.rocketModel.attachedTo === 'Lune';
+        // Vérifier si la fusée est attachée à la lune (détruite ou simplement posée)
+        const isAttachedToMoon = (this.rocketModel.isDestroyed && this.rocketModel.attachedTo === 'Lune') || 
+                                  (this.rocketModel.landedOn === 'Lune');
         
         // Si la fusée est attachée à la lune, on a besoin de la position de la lune
         let moonPosition = null;
@@ -709,5 +718,46 @@ class GameController {
         
         // Ajouter le point à la trace avec l'information d'attachement à la lune
         this.traceView.update(this.rocketModel.position, isAttachedToMoon, moonPosition);
+    }
+
+    // Basculer les contrôles assistés
+    toggleAssistedControls() {
+        if (this.physicsController && this.uiView) {
+            // Basculer l'état des contrôles assistés dans le contrôleur physique
+            const assistedEnabled = this.physicsController.toggleAssistedControls();
+            
+            // Synchroniser l'état avec la vue UI
+            this.uiView.assistedControlsActive = assistedEnabled;
+            
+            console.log(`Contrôles assistés: ${assistedEnabled ? 'activés' : 'désactivés'}`);
+        }
+    }
+
+    // Nettoyer toutes les traces
+    clearAllTraces() {
+        if (this.traceView) {
+            this.traceView.clear(true); // true = effacer toutes les traces
+        }
+    }
+
+    // Calculer le vecteur d'attraction vers la Lune
+    calculateLunarAttractionVector() {
+        if (!this.rocketModel || !this.universeModel) return null;
+        
+        // Trouver la Lune dans les corps célestes
+        const moon = this.universeModel.celestialBodies.find(body => body.name === 'Lune');
+        if (!moon) return null;
+        
+        // Calculer le vecteur d'attraction
+        const dx = moon.position.x - this.rocketModel.position.x;
+        const dy = moon.position.y - this.rocketModel.position.y;
+        const distanceSquared = dx * dx + dy * dy;
+        const distance = Math.sqrt(distanceSquared);
+        
+        // Retourner le vecteur et la distance
+        return { 
+            vector: { x: dx / distance, y: dy / distance }, // Vecteur normalisé
+            distance: distance // Distance à la Lune
+        };
     }
 } 

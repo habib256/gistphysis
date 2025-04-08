@@ -36,8 +36,8 @@ class InputController {
             a: false,           // Alternative au propulseur gauche
             d: false,           // Alternative au propulseur droit
             r: false,           // Réinitialiser
-            p: false,           // Augmenter le multiplicateur de poussée
-            m: false,           // Diminuer le multiplicateur de poussée
+            t: false,           // Augmenter le multiplicateur de poussée
+            p: false,           // Diminuer le multiplicateur de poussée
             c: false,           // Centrer la caméra
             v: false,           // Afficher les vecteurs
             o: false,           // Ralentir la simulation
@@ -63,6 +63,7 @@ class InputController {
             'r': 'resetRocket',
             'c': 'centerCamera',
             'v': 'toggleVectors',
+            't': 'toggleTraces',        // Afficher/masquer les traces
             'o': 'slowDown',            // Ralentir 
             'i': 'speedUp',             // Accélérer
             'p': 'increaseThrustMultiplier',

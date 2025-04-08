@@ -24,7 +24,14 @@ const PHYSICS = {
     
     // Multiplicateur de propulsion
     // Ajustez cette valeur pour augmenter la puissance de tous les propulseurs
-    THRUST_MULTIPLIER: 10.0     // Multiplicateur global pour toutes les forces de propulsion
+    THRUST_MULTIPLIER: 10.0,    // Multiplicateur global pour toutes les forces de propulsion
+    
+    // Contrôles assistés
+    ASSISTED_CONTROLS: {
+        NORMAL_ANGULAR_DAMPING: 0.2,     // Amortissement angulaire normal (mode réaliste)
+        ASSISTED_ANGULAR_DAMPING: 2.0,    // Amortissement angulaire en mode assisté (valeur augmentée pour effet plus visible)
+        ROTATION_STABILITY_FACTOR: 0.05   // Facteur de stabilisation supplémentaire pour le mode assisté
+    }
 };
 
 // Constantes de rendu
@@ -80,7 +87,7 @@ const ROCKET = {
     
     // Propulseurs - Forces
     MAIN_THRUST: 5500.0,         // Force du propulseur principal 
-    LATERAL_THRUST: 20.0,       // Force des propulseurs latéraux 
+    LATERAL_THRUST: 100.0,       // Force des propulseurs latéraux 
     REAR_THRUST: 3000.0,         // Force du propulseur arrière
     
     // Propulseurs - Puissance maximale

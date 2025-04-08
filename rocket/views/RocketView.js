@@ -16,6 +16,7 @@ class RocketView {
         this.showGravityVector = false; // Option pour activer/désactiver l'affichage
         this.showThrustVector = false;  // Option pour afficher les vecteurs de poussée
         this.showVelocityVector = false; // Option pour afficher le vecteur de vitesse
+        this.showLunarAttractionVector = false; // Option pour afficher le vecteur d'attraction lunaire
         this.showThrusterPositions = false; // Option pour afficher la position des propulseurs
     }
     
@@ -78,6 +79,11 @@ class RocketView {
             // Dessiner le vecteur de vitesse
             if (this.showVelocityVector && rocketState.velocity) {
                 this.renderVelocityVector(ctx, rocketState);
+            }
+            
+            // Dessiner le vecteur d'attraction vers la Lune
+            if (this.showLunarAttractionVector && rocketState.lunarAttractionVector) {
+                this.renderLunarAttractionVector(ctx, rocketState);
             }
         }
         
@@ -339,5 +345,70 @@ class RocketView {
     // Activer/désactiver l'affichage des positions des propulseurs
     setShowThrusterPositions(enabled) {
         this.showThrusterPositions = enabled;
+    }
+
+    // Affiche le vecteur d'attraction vers la Lune
+    renderLunarAttractionVector(ctx, rocketState) {
+        if (!rocketState.lunarAttractionVector) return;
+        
+        // Sauvegarder le contexte
+        ctx.save();
+        
+        const lunarVector = rocketState.lunarAttractionVector;
+        
+        // Calculer la magnitude du vecteur d'attraction lunaire
+        const lunarMagnitude = Math.sqrt(lunarVector.x * lunarVector.x + lunarVector.y * lunarVector.y);
+        
+        if (lunarMagnitude > 0.0000001) { // Vérifier si l'attraction est significative
+            // Normaliser la direction
+            const dirX = lunarVector.x / lunarMagnitude;
+            const dirY = lunarVector.y / lunarMagnitude;
+            
+            // Échelle de visualisation fixe pour le vecteur normalisé
+            const vectorLength = 80; // Longueur fixe pour que le vecteur soit bien visible
+            
+            // Dessiner le vecteur
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(dirX * vectorLength, dirY * vectorLength);
+            
+            // Style de ligne
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#E0A0FF"; // Violet clair pour l'attraction lunaire
+            ctx.stroke();
+            
+            // Dessiner la flèche
+            const arrowSize = RENDER.GRAVITY_ARROW_SIZE;
+            const angle = Math.atan2(dirY, dirX);
+            ctx.beginPath();
+            ctx.moveTo(dirX * vectorLength, dirY * vectorLength);
+            ctx.lineTo(
+                dirX * vectorLength - arrowSize * Math.cos(angle - Math.PI/6),
+                dirY * vectorLength - arrowSize * Math.sin(angle - Math.PI/6)
+            );
+            ctx.lineTo(
+                dirX * vectorLength - arrowSize * Math.cos(angle + Math.PI/6),
+                dirY * vectorLength - arrowSize * Math.sin(angle + Math.PI/6)
+            );
+            ctx.closePath();
+            ctx.fillStyle = "#E0A0FF";
+            ctx.fill();
+            
+            // Ajouter un texte explicatif
+            ctx.fillStyle = "#E0A0FF";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Luna", dirX * vectorLength + dirX * 20, dirY * vectorLength + dirY * 15);
+            
+            // Afficher la distance à la Lune si disponible
+            if (rocketState.lunarDistance) {
+                ctx.font = "10px Arial";
+                ctx.fillText(`${rocketState.lunarDistance.toFixed(0)} m`, 
+                    dirX * vectorLength + dirX * 20, 
+                    dirY * vectorLength + dirY * 30);
+            }
+        }
+        
+        ctx.restore();
     }
 } 

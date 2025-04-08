@@ -1,7 +1,7 @@
 class TraceView {
     constructor() {
         this.traces = [];
-        this.maxPoints = 500; // Nombre maximum de points dans la trace
+        this.maxPoints = 10000; // Augmentation du nombre maximum de points dans la trace (de 500 à 2000)
         this.isVisible = true;
         
         // Pour suivre le mouvement avec la lune
@@ -48,21 +48,40 @@ class TraceView {
         
         ctx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
         ctx.lineWidth = 2;
-        ctx.beginPath();
         
-        // Tracer la ligne entre les points
+        let isNewPath = true;
+        
+        // Tracer la ligne entre les points en gérant les discontinuités
         for (let i = 0; i < this.traces.length; i++) {
             const point = this.traces[i];
+            
+            // Si le point est null, c'est une discontinuité
+            if (point === null) {
+                // Terminer le chemin actuel
+                if (!isNewPath) {
+                    ctx.stroke();
+                    isNewPath = true;
+                }
+                continue;
+            }
+            
             const screenPos = camera.worldToScreen(point.x, point.y);
             
-            if (i === 0) {
+            if (isNewPath) {
+                // Commencer un nouveau chemin
+                ctx.beginPath();
                 ctx.moveTo(screenPos.x, screenPos.y);
+                isNewPath = false;
             } else {
                 ctx.lineTo(screenPos.x, screenPos.y);
             }
         }
         
-        ctx.stroke();
+        // Terminer le dernier chemin
+        if (!isNewPath) {
+            ctx.stroke();
+        }
+        
         ctx.restore();
     }
     
@@ -85,8 +104,18 @@ class TraceView {
         return this.isVisible;
     }
     
-    clear() {
-        this.traces = [];
-        this.moonRelativeTraces = [];
+    clear(fullClear = false) {
+        if (fullClear) {
+            // Effacement complet de toutes les traces
+            this.traces = [];
+            this.moonRelativeTraces = [];
+        } else {
+            // Ajouter un point null pour créer une discontinuité dans la trace
+            // Cela permet de voir les différentes trajectoires sans les relier
+            this.traces.push(null);
+            if (this.attachedToMoon) {
+                this.moonRelativeTraces.push(null);
+            }
+        }
     }
 } 
