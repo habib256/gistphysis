@@ -32,10 +32,10 @@ class UIView {
         
         const barWidth = 100;
         const barHeight = 10;
-        const barX = 100;
+        const barX = 50;
         
         // Texte de santé (toujours en blanc)
-        ctx.fillText(`Santé:`, 20, 20);
+        ctx.fillText(`❤️:`, 20, 20);
         
         // Barre de santé
         const barYHealth = 25;
@@ -60,7 +60,7 @@ class UIView {
         ctx.fillStyle = this.colors.white;
         
         // Afficher le carburant
-        ctx.fillText(`Carburant:`, 20, 50);
+        ctx.fillText(`⛽:`, 20, 50);
         
         // Barre de carburant
         const barYFuel = 55;
@@ -108,12 +108,12 @@ class UIView {
     renderSpeed(ctx, speed, x, y) {
         // Texte de vitesse (toujours en blanc)
         ctx.fillStyle = this.colors.white;
-        ctx.fillText(`Vitesse:`, x, y);
+        ctx.fillText(`🚀:`, x, y);
         
         // Barre de vitesse
         const barWidth = 100;
         const barHeight = 10;
-        const barX = 100;
+        const barX = 50;
         const barYSpeed = y + 5;
         
         // Fond de la barre (gris clair)

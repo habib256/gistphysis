@@ -453,14 +453,43 @@ class PhysicsController {
         
         // Si la fusée est déjà posée, vérifier si l'utilisateur essaie de décoller
         if (rocketModel.isLanded) {
+            // Si la fusée est posée sur la Lune, mettre à jour sa position pour suivre le mouvement de la Lune
+            if (rocketModel.landedOn === 'Lune' && !rocketModel.isDestroyed) {
+                const luneModel = this.moonBodies.find(moon => moon.model.name === 'Lune')?.model;
+                if (luneModel) {
+                    // Calculer et stocker la position relative si ce n'est pas déjà fait
+                    if (!rocketModel.relativePosition) {
+                        rocketModel.updateRelativePosition(luneModel);
+                    }
+                    // Mettre à jour la position absolue de la fusée en fonction de la position de la lune
+                    rocketModel.updateAbsolutePosition(luneModel);
+                    
+                    // Mettre à jour la position du corps physique
+                    if (this.rocketBody) {
+                        this.Body.setPosition(this.rocketBody, {
+                            x: rocketModel.position.x,
+                            y: rocketModel.position.y
+                        });
+                        // Maintenir l'orientation verticale par rapport à la surface de la Lune
+                        const angleToLune = Math.atan2(
+                            rocketModel.position.y - luneModel.position.y,
+                            rocketModel.position.x - luneModel.position.x
+                        );
+                        this.Body.setAngle(this.rocketBody, angleToLune - Math.PI/2);
+                    }
+                }
+            }
+
             // Stabiliser la fusée au sol lorsqu'elle est posée
             if (this.rocketBody && rocketModel.thrusters.main.power === 0) {
                 // Forcer la vitesse à zéro
                 this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
                 this.Body.setAngularVelocity(this.rocketBody, 0);
                 
-                // Stabiliser l'angle à 0 (verticale)
-                this.Body.setAngle(this.rocketBody, 0);
+                // Stabiliser l'angle à 0 (verticale) si on n'est pas sur la Lune
+                if (rocketModel.landedOn !== 'Lune') {
+                    this.Body.setAngle(this.rocketBody, 0);
+                }
             }
             
             // Si le propulseur principal est activé avec assez de puissance, permettre le décollage
