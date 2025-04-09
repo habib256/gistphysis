@@ -35,9 +35,7 @@ Ce projet est une simulation web de fusée qui permet aux utilisateurs de contr�
 - **→ ou D** : Rotation droite
 - **R** : Réinitialiser la fusée
 - **C** : Centrer la caméra
-- **+ / -** : Zoom
-- **Echap** : Pause
-- **P / M** : Ajuster la puissance des propulseurs
+- **+ / -** : Zoom molette de souris
 - **T** : Afficher/masquer la trace
 - **V** : Afficher/masquer les vecteurs de force
 

@@ -54,7 +54,7 @@ function showInstructions() {
         <p>↑/W: Propulsion avant | ↓/S: Propulsion arrière</p>
         <p>←/A: Rotation gauche | →/D: Rotation droite</p>
         <p>R: Réinitialiser | C: Centrer caméra | T: Traces</p>
-        <p>I: Activer/Désactiver le pilote automatique (IA)</p>
+        <p>V: Vecteurs | Mouse wheel: Zoom</p>
     `;
     
     // Créer le bouton de fermeture
