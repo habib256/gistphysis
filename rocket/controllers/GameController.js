@@ -21,6 +21,7 @@ class GameController {
         this.physicsController = null;
         this.particleController = null;
         this.renderingController = null;
+        this.rocketAgent = null;
         
         // État du jeu
         this.isRunning = false;
@@ -163,6 +164,9 @@ class GameController {
                 break;
             case 'decreaseThrustMultiplier':
                 this.adjustThrustMultiplier(0.5); // Réduire de moitié
+                break;
+            case 'toggleAI':
+                this.toggleAIControl();
                 break;
         }
     }
@@ -370,6 +374,7 @@ class GameController {
     setControllers(controllers) {
         this.inputController = controllers.inputController;
         this.renderingController = controllers.renderingController;
+        this.rocketAgent = controllers.rocketAgent;
     }
     
     // Configurer les modèles
@@ -460,27 +465,16 @@ class GameController {
     
     // Configurer les contrôleurs
     setupControllers() {
-        this.physicsController = new PhysicsController(this.eventBus);
+        this.physicsController = new PhysicsController({
+            eventBus: this.eventBus,
+            rocketModel: this.rocketModel,
+            universeModel: this.universeModel
+        });
+        
         this.particleController = new ParticleController(this.particleSystemModel);
         
-        // Initialiser la physique avec les modèles
-        if (this.physicsController && this.rocketModel && this.universeModel) {
-            this.physicsController.initPhysics(this.rocketModel, this.universeModel);
-            // Donner une référence au gameController pour accéder à l'universeModel
-            this.physicsController.setGameController(this);
-        }
-        
-        // Donner la référence du physicsController au renderingController pour afficher les forces
-        if (this.renderingController && this.physicsController) {
-            this.renderingController.setPhysicsController(this.physicsController);
-        }
-        
-        // Synchroniser les contrôles assistés entre le PhysicsController et le UIView
-        if (this.physicsController && this.uiView) {
-            // S'assurer que l'UIView reflète l'état du PhysicsController
-            this.uiView.assistedControlsActive = this.physicsController.assistedControls;
-            console.log(`Contrôles assistés initialisés: ${this.physicsController.assistedControls ? 'activés' : 'désactivés'}`);
-        }
+        // Initialiser les événements
+        this.eventBus.emit('CONTROLLERS_SETUP', {});
     }
     
     // Démarrer la boucle de jeu
@@ -747,5 +741,14 @@ class GameController {
             vector: { x: dx / distance, y: dy / distance }, // Vecteur normalisé
             distance: distance // Distance à la Lune
         };
+    }
+
+    // Méthode pour activer/désactiver le contrôle par IA
+    toggleAIControl() {
+        if (!this.rocketAgent) return;
+        
+        // Émettre l'événement pour activer/désactiver l'agent
+        this.eventBus.emit('TOGGLE_AI_CONTROL', {});
+        console.log('Basculement du contrôle IA');
     }
 } 

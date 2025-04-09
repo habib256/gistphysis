@@ -18,6 +18,7 @@ function init() {
     // Créer les contrôleurs avec l'EventBus
     const inputController = new InputController(eventBus);
     const renderingController = new RenderingController(eventBus);
+    const rocketAgent = new RocketAgent(eventBus);
     
     // Créer et initialiser le contrôleur de jeu
     gameController = new GameController(eventBus);
@@ -25,7 +26,8 @@ function init() {
     // Initialiser avec les dépendances
     gameController.setControllers({
         inputController,
-        renderingController
+        renderingController,
+        rocketAgent
     });
     
     // Initialiser le jeu
@@ -52,6 +54,7 @@ function showInstructions() {
         <p>↑/W: Propulsion avant | ↓/S: Propulsion arrière</p>
         <p>←/A: Rotation gauche | →/D: Rotation droite</p>
         <p>R: Réinitialiser | C: Centrer caméra | T: Traces</p>
+        <p>I: Activer/Désactiver le pilote automatique (IA)</p>
     `;
     
     // Créer le bouton de fermeture

@@ -1171,18 +1171,25 @@ class PhysicsController {
         
         // Vérifier si la fusée est à la bonne distance de la surface
         const distanceToSurface = distance - totalRadius;
+        
+        // S'assurer que distanceToSurface n'est pas NaN
+        const validDistanceToSurface = isNaN(distanceToSurface) ? 0 : distanceToSurface;
+        
         // Utiliser Math.abs pour éviter les problèmes avec des valeurs négatives
-        const isCloseToSurface = Math.abs(distanceToSurface) < 10; // Seuil en pixels
+        // Augmenter le seuil de proximité à la surface pour être plus tolérant
+        const isCloseToSurface = Math.abs(validDistanceToSurface) < 30; // Seuil augmenté
         
         // Vérifier si la vitesse est suffisamment basse
         const velocity = this.rocketBody.velocity;
         const speedSquared = velocity.x * velocity.x + velocity.y * velocity.y;
         const speed = Math.sqrt(speedSquared);
-        const hasLowVelocity = speed < 0.8;
+        // Augmenter le seuil de vitesse pour un atterrissage
+        const hasLowVelocity = speed < 100.0; // Valeur augmentée pour permettre des atterrissages à plus haute vitesse
         
         // Vérifier si la vitesse angulaire est suffisamment basse
         const angularVelocity = Math.abs(this.rocketBody.angularVelocity);
-        const hasLowAngularVelocity = angularVelocity < 0.05;
+        // Augmenter le seuil de vitesse angulaire
+        const hasLowAngularVelocity = angularVelocity < 15.0; // Valeur augmentée pour permettre plus de rotation
         
         // DÉTECTION DE CRASH 1: Fusée couchée sur le sol et immobile
         const isLyingDown = (angleDiff > Math.PI/3) && isCloseToSurface && hasLowVelocity && hasLowAngularVelocity;
@@ -1194,9 +1201,12 @@ class PhysicsController {
         const isRotatingFast = angularVelocity > 0.2;
         const isRollingOrTumbling = isCloseToSurface && isBadAngle && (isMovingFast || isRotatingFast);
         
-        // Si la fusée est couchée ou est en train de rouler/culbuter sur la surface, déclencher un crash
-        if ((isLyingDown || isRollingOrTumbling) && !rocketModel.isDestroyed) {
-            console.log(`Crash détecté sur ${otherBody.label}! ${isLyingDown ? 'Fusée couchée' : 'Fusée en mouvement anormal'}`);
+        // DÉTECTION DE CRASH 3: Fusée à l'envers (inclinaison > 90° par rapport à la normale)
+        const isUpsideDown = angleDiff > Math.PI/2;
+        
+        // Si la fusée est couchée, en train de rouler/culbuter sur la surface, ou à l'envers, déclencher un crash
+        if ((isLyingDown || isRollingOrTumbling || isUpsideDown) && !rocketModel.isDestroyed) {
+            console.log(`Crash détecté sur ${otherBody.label}! ${isLyingDown ? 'Fusée couchée' : isRollingOrTumbling ? 'Fusée en mouvement anormal' : 'Fusée à l\'envers'}`);
             console.log(`Vitesse: ${speed.toFixed(2)}, Rotation: ${angularVelocity.toFixed(2)}, Angle: ${(angleDiff * 180 / Math.PI).toFixed(2)}°`);
             
             // Appliquer des dégâts pour détruire la fusée
@@ -1214,8 +1224,9 @@ class PhysicsController {
         
         // Enregistrer les valeurs pour le débogage - protection contre NaN
         const formattedDistance = isNaN(distance) ? "N/A" : distance.toFixed(2);
-        const formattedDistanceToSurface = isNaN(distanceToSurface) ? "N/A" : distanceToSurface.toFixed(2);
+        const formattedDistanceToSurface = validDistanceToSurface.toFixed(2);
         
+        /*
         console.log(`Diagnostic atterrissage sur ${otherBody.label}:
             - Distance: ${formattedDistance}, Distance à la surface: ${formattedDistanceToSurface}
             - Angle fusée: ${rocketOrientation.toFixed(2)}, Angle surface: ${surfaceAngle.toFixed(2)}
@@ -1223,7 +1234,7 @@ class PhysicsController {
             - Vitesse: ${speed.toFixed(2)}, Vitesse angulaire: ${angularVelocity.toFixed(4)}
             - Orientation correcte: ${isCorrectlyOriented}, Proche de la surface: ${isCloseToSurface}, Vitesse basse: ${hasLowVelocity}, Rotation basse: ${hasLowAngularVelocity}
             - RÉSULTAT: ${isCorrectlyOriented && isCloseToSurface && hasLowVelocity && hasLowAngularVelocity ? "POSÉ" : "NON POSÉ"}`);
-        
+        */
         return isCorrectlyOriented && isCloseToSurface && hasLowVelocity && hasLowAngularVelocity;
     }
 

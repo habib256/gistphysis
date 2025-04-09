@@ -14,6 +14,7 @@ class InputController {
         'KeyR': 'resetRocket',
         'KeyC': 'centerCamera',
         'KeyV': 'toggleVectors',
+        'KeyI': 'toggleAI',
         'Equal': 'zoomIn',
         'Minus': 'zoomOut',
         'Escape': 'pauseGame'
@@ -38,6 +39,7 @@ class InputController {
             p: false,           // Diminuer le multiplicateur de poussée
             c: false,           // Centrer la caméra
             v: false,           // Afficher les vecteurs
+            i: false,           // Activer/désactiver l'IA
         };
         
         // Mapping des touches aux actions
@@ -61,7 +63,8 @@ class InputController {
             'v': 'toggleVectors',
             't': 'toggleTraces',        // Afficher/masquer les traces
             'p': 'increaseThrustMultiplier',
-            'm': 'decreaseThrustMultiplier'
+            'm': 'decreaseThrustMultiplier',
+            'i': 'toggleAI'             // Activer/désactiver l'IA
         };
         
         // Initialiser les événements du clavier

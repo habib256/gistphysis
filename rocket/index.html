@@ -41,6 +41,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <!-- Plugin Matter Attractors (ignorer le warning de compatibilité, il fonctionne quand même) -->
     <script src="https://cdn.jsdelivr.net/npm/matter-attractors@0.1.6/build/matter-attractors.min.js"></script>
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0/dist/tf.min.js"></script>
 </head>
 <body> 
 
@@ -59,29 +61,30 @@
     <!-- Constantes globales -->
     <script src="constants.js"></script>
     
-    <!-- Modèles (Models) -->
+    <!-- Scripts: Modèles -->
+    <script src="models/UniverseModel.js"></script>
+    <script src="models/CelestialBodyModel.js"></script>
+    <script src="models/RocketModel.js"></script>
     <script src="models/CameraModel.js"></script>
     <script src="models/ParticleModel.js"></script>
-    <script src="models/CelestialBodyModel.js"></script>
-    <script src="models/UniverseModel.js"></script>
-    <script src="models/RocketModel.js"></script>
     <script src="models/ParticleSystemModel.js"></script>
-    
-    <!-- Vues (Views) -->
-    <script src="views/ParticleView.js"></script>
-    <script src="views/CelestialBodyView.js"></script>
-    <script src="views/UniverseView.js"></script>
-    <script src="views/RocketView.js"></script>
-    <script src="views/TraceView.js"></script>
-    <script src="views/UIView.js"></script>
-    
-    <!-- Contrôleurs (Controllers) -->
+
+    <!-- Scripts: Contrôleurs -->
     <script src="controllers/EventBus.js"></script>
-    <script src="controllers/InputController.js"></script>
     <script src="controllers/PhysicsController.js"></script>
-    <script src="controllers/ParticleController.js"></script>
+    <script src="controllers/InputController.js"></script>
     <script src="controllers/RenderingController.js"></script>
+    <script src="controllers/ParticleController.js"></script>
+    <script src="controllers/RocketAgent.js"></script>
     <script src="controllers/GameController.js"></script>
+
+    <!-- Scripts: Vues -->
+    <script src="views/RocketView.js"></script>
+    <script src="views/UniverseView.js"></script>
+    <script src="views/CelestialBodyView.js"></script>
+    <script src="views/ParticleView.js"></script>
+    <script src="views/UIView.js"></script>
+    <script src="views/TraceView.js"></script>
     
     <!-- Point d'entrée -->
     <script src="main.js"></script>
