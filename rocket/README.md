@@ -8,7 +8,21 @@ Ce projet est une simulation web de fusée qui permet aux utilisateurs de contr�
 
 - [Lancer Rocket](https://habib256.github.io/gistphysis/rocket/index.html)  
   _(Cliquez pour lancer l'application Rocket)_
-  
+
+### Captures d'écran
+
+![Écran de démarrage](assets/screenshots/Startup.png)
+*Écran de démarrage de la simulation*
+
+![Visualisation des vecteurs](assets/screenshots/Vectors.png)
+*Visualisation des vecteurs de force et de la physique*
+
+![Simulation lunaire](assets/screenshots/Lune.png)
+*Simulation de l'orbite lunaire*
+
+![Trajectoire de la fusée](assets/screenshots/Trajectoire.png)
+*Visualisation de la trajectoire de la fusée*
+
 ## ✨ Fonctionnalités
 
 - **Moteur de physique complet** basé sur Matter.js avec gravité réaliste
