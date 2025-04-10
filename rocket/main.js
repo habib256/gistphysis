@@ -47,7 +47,7 @@ function cleanup() {
 // Fonction pour jouer le son de compte à rebours
 function playCountdownSound() {
     try {
-        const countdownSound = new Audio('assets/sound/ambiant/4321.mp3');
+        const countdownSound = new Audio('assets/sound/4321.mp3');
         countdownSound.volume = 1.0; // Volume maximum
         countdownSound.play().catch(error => {
             console.error("Erreur lors de la lecture du son de compte à rebours:", error);
