@@ -228,9 +228,14 @@ class GameController {
             // Calculer les vecteurs de gravité et de poussée pour le rendu
             const gravityVector = this.calculateGravityVector();
             const thrustVectors = this.calculateThrustVectors();
+            const totalThrustVector = this.calculateTotalThrustVector();
             
             // Calculer le vecteur d'attraction lunaire
             const lunarAttraction = this.calculateLunarAttractionVector();
+            
+            // Calculer la distance à la Terre et le vecteur d'attraction terrestre
+            const earthDistance = this.calculateEarthDistance();
+            const earthAttractionVector = this.calculateEarthAttractionVector();
             
             // Émettre l'état de la fusée mis à jour
             this.eventBus.emit('ROCKET_STATE_UPDATED', {
@@ -247,8 +252,11 @@ class GameController {
                 thrusters: { ...this.rocketModel.thrusters },
                 gravityVector,
                 thrustVectors,
+                totalThrustVector,
                 lunarAttractionVector: lunarAttraction ? lunarAttraction.vector : null,
-                lunarDistance: lunarAttraction ? lunarAttraction.distance : null
+                lunarDistance: lunarAttraction ? lunarAttraction.distance : null,
+                earthDistance: earthDistance,
+                earthAttractionVector: earthAttractionVector
             });
         }
         
@@ -346,6 +354,77 @@ class GameController {
         }
         
         return thrustVectors;
+    }
+    
+    // Calculer le vecteur de poussée totale
+    calculateTotalThrustVector() {
+        if (!this.rocketModel) return null;
+        
+        let totalX = 0;
+        let totalY = 0;
+        
+        // Parcourir tous les propulseurs actifs
+        for (const thrusterName in this.rocketModel.thrusters) {
+            const thruster = this.rocketModel.thrusters[thrusterName];
+            
+            // Ne considérer que les propulseurs actifs
+            if (thruster.power > 0) {
+                // Récupérer la position du propulseur
+                const position = ROCKET.THRUSTER_POSITIONS[thrusterName.toUpperCase()];
+                if (!position) continue;
+                
+                // Calculer l'angle de poussée en fonction du type de propulseur
+                let thrustAngle;
+                
+                if (thrusterName === 'left' || thrusterName === 'right') {
+                    // Pour les propulseurs latéraux
+                    const propAngle = Math.atan2(position.distance * Math.sin(position.angle), 
+                                               position.distance * Math.cos(position.angle));
+                    const perpDirection = thrusterName === 'left' ? Math.PI/2 : -Math.PI/2;
+                    thrustAngle = this.rocketModel.angle + propAngle + perpDirection;
+                } else {
+                    // Pour les propulseurs principaux
+                    switch (thrusterName) {
+                        case 'main': 
+                            thrustAngle = this.rocketModel.angle - Math.PI/2; // Vers le haut
+                            break;
+                        case 'rear':
+                            thrustAngle = this.rocketModel.angle + Math.PI/2; // Vers le bas
+                            break;
+                        default:
+                            thrustAngle = this.rocketModel.angle;
+                    }
+                }
+                
+                // Calculer la force en fonction de la puissance
+                let thrustForce;
+                switch (thrusterName) {
+                    case 'main': 
+                        thrustForce = ROCKET.MAIN_THRUST * (thruster.power / 100) * PHYSICS.THRUST_MULTIPLIER;
+                        break;
+                    case 'rear': 
+                        thrustForce = ROCKET.REAR_THRUST * (thruster.power / 100) * PHYSICS.THRUST_MULTIPLIER;
+                        break;
+                    case 'left':
+                    case 'right': 
+                        thrustForce = ROCKET.LATERAL_THRUST * (thruster.power / 100) * PHYSICS.THRUST_MULTIPLIER;
+                        break;
+                    default:
+                        thrustForce = 0;
+                }
+                
+                // Ajouter la contribution de ce propulseur
+                totalX += Math.cos(thrustAngle) * thrustForce;
+                totalY += Math.sin(thrustAngle) * thrustForce;
+            }
+        }
+        
+        // Si aucune poussée, retourner null
+        if (Math.abs(totalX) < 0.001 && Math.abs(totalY) < 0.001) {
+            return null;
+        }
+        
+        return { x: totalX, y: totalY };
     }
     
     // Initialiser le jeu
@@ -654,13 +733,16 @@ class GameController {
         if (this.rocketView) {
             // Définir une valeur commune pour tous les vecteurs
             const newValue = !(this.rocketView.showGravityVector || this.rocketView.showThrustVector || 
-                              this.rocketView.showVelocityVector || this.rocketView.showLunarAttractionVector);
+                              this.rocketView.showVelocityVector || this.rocketView.showLunarAttractionVector ||
+                              this.rocketView.showEarthAttractionVector || this.rocketView.showTotalThrustVector);
             
             // Appliquer à tous les vecteurs
             this.rocketView.showGravityVector = newValue;
             this.rocketView.showThrustVector = newValue;
             this.rocketView.showVelocityVector = newValue;
             this.rocketView.showLunarAttractionVector = newValue;
+            this.rocketView.showEarthAttractionVector = newValue;
+            this.rocketView.showTotalThrustVector = newValue;
             
             console.log(`Affichage des vecteurs: ${newValue ? 'activé' : 'désactivé'}`);
         }
@@ -750,5 +832,42 @@ class GameController {
         // Émettre l'événement pour activer/désactiver l'agent
         this.eventBus.emit('TOGGLE_AI_CONTROL', {});
         console.log('Basculement du contrôle IA');
+    }
+
+    // Calculer la distance à la Terre
+    calculateEarthDistance() {
+        if (!this.rocketModel || !this.universeModel) return null;
+        
+        // Trouver la Terre dans les corps célestes
+        const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
+        if (!earth) return null;
+        
+        // Calculer la distance entre la fusée et la Terre
+        const dx = earth.position.x - this.rocketModel.position.x;
+        const dy = earth.position.y - this.rocketModel.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Soustraire le rayon de la Terre pour obtenir la distance à la surface
+        const surfaceDistance = Math.max(0, distance - earth.radius);
+        
+        return surfaceDistance;
+    }
+
+    // Calculer le vecteur d'attraction vers la Terre
+    calculateEarthAttractionVector() {
+        if (!this.rocketModel || !this.universeModel) return null;
+        
+        // Trouver la Terre dans les corps célestes
+        const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
+        if (!earth) return null;
+        
+        // Calculer le vecteur d'attraction
+        const dx = earth.position.x - this.rocketModel.position.x;
+        const dy = earth.position.y - this.rocketModel.position.y;
+        const distanceSquared = dx * dx + dy * dy;
+        const distance = Math.sqrt(distanceSquared);
+        
+        // Retourner le vecteur normalisé qui pointe vers la Terre
+        return { x: dx / distance, y: dy / distance };
     }
 } 

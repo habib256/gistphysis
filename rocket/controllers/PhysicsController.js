@@ -280,6 +280,28 @@ class PhysicsController {
                         this.rocketModel.isLanded = true;
                         this.rocketModel.landedOn = otherBody.label; // Indiquer la planète ou la lune sur laquelle on a atterri
                         
+                        // Si on atterrit sur la Lune, corriger immédiatement l'angle
+                        if (otherBody.label === 'Lune') {
+                            // Trouver le modèle de la lune
+                            const luneModel = this.moonBodies.find(moon => moon.model.name === 'Lune')?.model;
+                            if (luneModel) {
+                                // Calculer l'angle correct par rapport à la surface de la Lune
+                                const angleToLune = Math.atan2(
+                                    this.rocketModel.position.y - luneModel.position.y,
+                                    this.rocketModel.position.x - luneModel.position.x
+                                );
+                                
+                                // Orientation verticale : la fusée pointe vers l'extérieur de la lune
+                                const correctAngle = angleToLune + Math.PI/2;
+                                
+                                // Appliquer l'angle correct avant tout calcul de position relative
+                                this.rocketModel.angle = correctAngle;
+                                if (this.rocketBody) {
+                                    this.Body.setAngle(this.rocketBody, correctAngle);
+                                }
+                            }
+                        }
+                        
                         // Synchroniser immédiatement la vitesse
                         this.rocketModel.setVelocity(0, 0);
                         this.rocketModel.setAngularVelocity(0);
@@ -478,8 +500,29 @@ class PhysicsController {
                 if (luneModel) {
                     // Calculer et stocker la position relative si ce n'est pas déjà fait
                     if (!rocketModel.relativePosition) {
+                        // Calculer d'abord l'angle correct par rapport à la surface de la Lune
+                        const angleToLune = Math.atan2(
+                            rocketModel.position.y - luneModel.position.y,
+                            rocketModel.position.x - luneModel.position.x
+                        );
+                        
+                        // Ajuster l'angle de la fusée avant de calculer la position relative
+                        // pour qu'elle soit perpendiculaire à la surface de la Lune
+                        const correctAngle = angleToLune + Math.PI/2;
+                        rocketModel.angle = correctAngle;
+                        
+                        if (this.rocketBody) {
+                            this.Body.setAngle(this.rocketBody, correctAngle);
+                            this.Body.setAngularVelocity(this.rocketBody, 0);
+                        }
+                        
+                        // Maintenant calculer la position relative avec l'angle correct
                         rocketModel.updateRelativePosition(luneModel);
+                        
+                        // Attendre une frame avant de mettre à jour la position absolue
+                        return;
                     }
+                    
                     // Mettre à jour la position absolue de la fusée en fonction de la position de la lune
                     rocketModel.updateAbsolutePosition(luneModel);
                     
@@ -972,7 +1015,7 @@ class PhysicsController {
             ctx.font = `${12 * camera.zoom}px Arial`;
             
             // Créer un fond pour le texte
-            const text = `G: ${forceMagnitude.toFixed(1)}`;
+            const text = `a: ${forceMagnitude.toFixed(1)}`;
             const textWidth = ctx.measureText(text).width;
             const textHeight = 14 * camera.zoom;
             const padding = 4 * camera.zoom;
@@ -1156,11 +1199,22 @@ class PhysicsController {
         
         // Calculer l'angle entre la fusée et la surface
         const surfaceAngle = Math.atan2(dy, dx);
-        const rocketOrientation = this.rocketBody.angle % (Math.PI * 2);
+        
+        // L'angle idéal pour la fusée serait perpendiculaire à la surface
+        // Pour une surface circulaire, cela signifie pointer vers/depuis le centre
+        const idealRocketAngle = surfaceAngle - Math.PI/2; // Orientation verticale vers l'extérieur
+        
+        // Normaliser l'angle de la fusée pour la comparaison
+        let rocketOrientation = this.rocketBody.angle % (Math.PI * 2);
+        if (rocketOrientation < 0) rocketOrientation += Math.PI * 2;
+        
+        // Normaliser l'angle idéal pour la comparaison
+        let normalizedIdealAngle = idealRocketAngle % (Math.PI * 2);
+        if (normalizedIdealAngle < 0) normalizedIdealAngle += Math.PI * 2;
         
         // Calculer la différence angulaire (en tenant compte des sauts à 2π)
-        let angleDiff = Math.abs(rocketOrientation - (surfaceAngle - Math.PI/2));
-        // Normaliser la différence d'angle pour qu'elle soit entre 0 et π
+        let angleDiff = Math.abs(rocketOrientation - normalizedIdealAngle);
+        // Prendre le plus court chemin angulaire
         angleDiff = angleDiff > Math.PI ? Math.PI * 2 - angleDiff : angleDiff;
         
         // Vérifier si la fusée est orientée perpendiculairement à la surface (tolérance de 30 degrés)

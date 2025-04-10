@@ -15,8 +15,10 @@ class RocketView {
         // Affichage des vecteurs
         this.showGravityVector = false; // Option pour activer/désactiver l'affichage
         this.showThrustVector = false;  // Option pour afficher les vecteurs de poussée
+        this.showTotalThrustVector = false; // Option pour afficher le vecteur de poussée totale
         this.showVelocityVector = false; // Option pour afficher le vecteur de vitesse
         this.showLunarAttractionVector = false; // Option pour afficher le vecteur d'attraction lunaire
+        this.showEarthAttractionVector = false; // Option pour afficher le vecteur d'attraction terrestre
         this.showThrusterPositions = false; // Option pour afficher la position des propulseurs
     }
     
@@ -76,6 +78,11 @@ class RocketView {
                 this.renderThrustVectors(ctx, rocketState);
             }
             
+            // Dessiner le vecteur de poussée totale
+            if (this.showTotalThrustVector && rocketState.totalThrustVector) {
+                this.renderTotalThrustVector(ctx, rocketState);
+            }
+            
             // Dessiner le vecteur de vitesse
             if (this.showVelocityVector && rocketState.velocity) {
                 this.renderVelocityVector(ctx, rocketState);
@@ -85,12 +92,17 @@ class RocketView {
             if (this.showLunarAttractionVector && rocketState.lunarAttractionVector) {
                 this.renderLunarAttractionVector(ctx, rocketState);
             }
+            
+            // Dessiner le vecteur d'attraction vers la Terre
+            if (this.showEarthAttractionVector && rocketState.earthAttractionVector) {
+                this.renderEarthAttractionVector(ctx, rocketState);
+            }
         }
         
         ctx.restore();
     }
     
-    // Affiche le vecteur de gravité agissant sur la fusée
+    // Affiche le vecteur de gravité agissant sur la fusée (somme des attractions)
     renderGravityVector(ctx, rocketState) {
         if (!rocketState.gravityVector) return;
         
@@ -142,13 +154,8 @@ class RocketView {
             ctx.fillStyle = "#FFFF00";
             ctx.font = "12px Arial";
             ctx.textAlign = "center";
-            ctx.fillText("G(Terre)", dirX * vectorLength + dirX * 15, dirY * vectorLength + dirY * 15);
-            
-            // Nous ne voulons plus afficher la valeur numérique
+            ctx.fillText("a", dirX * vectorLength + dirX * 15, dirY * vectorLength + dirY * 15);
         }
-        
-        // Ajouter également le vecteur de vitesse pour référence
-        this.renderVelocityVector(ctx, rocketState);
         
         ctx.restore();
     }
@@ -386,13 +393,137 @@ class RocketView {
             ctx.fillStyle = "#E0A0FF";
             ctx.fill();
             
-            // Ajouter un texte explicatif
+            // Calculer la distance à la Lune si disponible
+            let distanceText = "";
+            if (rocketState.lunarDistance) {
+                distanceText = ` ${Math.floor(rocketState.lunarDistance)}`;
+            }
+            
+            // Ajouter un texte explicatif avec le nom de la Lune et la distance
             ctx.fillStyle = "#E0A0FF";
             ctx.font = "12px Arial";
             ctx.textAlign = "center";
-            ctx.fillText("G(Lune)", dirX * vectorLength + dirX * 20, dirY * vectorLength + dirY * 15);
+            ctx.fillText(`Lune${distanceText}`, dirX * vectorLength + dirX * 20, dirY * vectorLength + dirY * 15);
+        }
+        
+        ctx.restore();
+    }
+
+    // Affiche le vecteur d'attraction vers la Terre
+    renderEarthAttractionVector(ctx, rocketState) {
+        if (!rocketState.earthAttractionVector) return;
+        
+        // Sauvegarder le contexte
+        ctx.save();
+        
+        const earthVector = rocketState.earthAttractionVector;
+        
+        // Calculer la magnitude du vecteur d'attraction terrestre
+        const earthMagnitude = Math.sqrt(earthVector.x * earthVector.x + earthVector.y * earthVector.y);
+        
+        if (earthMagnitude > 0.0000001) { // Vérifier si l'attraction est significative
+            // Normaliser la direction
+            const dirX = earthVector.x / earthMagnitude;
+            const dirY = earthVector.y / earthMagnitude;
             
-            // Ne plus afficher la distance à la Lune
+            // Échelle de visualisation fixe pour le vecteur normalisé
+            const vectorLength = 80; // Longueur fixe pour que le vecteur soit bien visible
+            
+            // Dessiner le vecteur
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(dirX * vectorLength, dirY * vectorLength);
+            
+            // Style de ligne
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#00FF00"; // Vert pour l'attraction terrestre
+            ctx.stroke();
+            
+            // Dessiner la flèche
+            const arrowSize = RENDER.GRAVITY_ARROW_SIZE;
+            const angle = Math.atan2(dirY, dirX);
+            ctx.beginPath();
+            ctx.moveTo(dirX * vectorLength, dirY * vectorLength);
+            ctx.lineTo(
+                dirX * vectorLength - arrowSize * Math.cos(angle - Math.PI/6),
+                dirY * vectorLength - arrowSize * Math.sin(angle - Math.PI/6)
+            );
+            ctx.lineTo(
+                dirX * vectorLength - arrowSize * Math.cos(angle + Math.PI/6),
+                dirY * vectorLength - arrowSize * Math.sin(angle + Math.PI/6)
+            );
+            ctx.closePath();
+            ctx.fillStyle = "#00FF00";
+            ctx.fill();
+            
+            // Calculer la distance à la Terre si disponible
+            let distanceText = "";
+            if (rocketState.earthDistance !== null && rocketState.earthDistance !== undefined) {
+                distanceText = ` ${Math.floor(rocketState.earthDistance)}`;
+            }
+            
+            // Ajouter un texte explicatif
+            ctx.fillStyle = "#00FF00";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(`Terre${distanceText}`, dirX * vectorLength + dirX * 15, dirY * vectorLength + dirY * 15);
+        }
+        
+        ctx.restore();
+    }
+
+    // Affiche le vecteur de poussée totale de la fusée
+    renderTotalThrustVector(ctx, rocketState) {
+        if (!rocketState.totalThrustVector) return;
+        
+        // Sauvegarder le contexte
+        ctx.save();
+        
+        const thrustVector = rocketState.totalThrustVector;
+        
+        // Calculer la magnitude du vecteur de poussée
+        const thrustMagnitude = Math.sqrt(thrustVector.x * thrustVector.x + thrustVector.y * thrustVector.y);
+        
+        if (thrustMagnitude > 0.0000001) { // Vérifier si la poussée est significative
+            // Normaliser la direction
+            const dirX = thrustVector.x / thrustMagnitude;
+            const dirY = thrustVector.y / thrustMagnitude;
+            
+            // Échelle de visualisation
+            const vectorLength = 80; // Longueur fixe pour que le vecteur soit bien visible
+            
+            // Dessiner le vecteur
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(dirX * vectorLength, dirY * vectorLength);
+            
+            // Style de ligne
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#FF0000"; // Rouge pour la poussée totale
+            ctx.stroke();
+            
+            // Dessiner la flèche
+            const arrowSize = RENDER.GRAVITY_ARROW_SIZE;
+            const angle = Math.atan2(dirY, dirX);
+            ctx.beginPath();
+            ctx.moveTo(dirX * vectorLength, dirY * vectorLength);
+            ctx.lineTo(
+                dirX * vectorLength - arrowSize * Math.cos(angle - Math.PI/6),
+                dirY * vectorLength - arrowSize * Math.sin(angle - Math.PI/6)
+            );
+            ctx.lineTo(
+                dirX * vectorLength - arrowSize * Math.cos(angle + Math.PI/6),
+                dirY * vectorLength - arrowSize * Math.sin(angle + Math.PI/6)
+            );
+            ctx.closePath();
+            ctx.fillStyle = "#FF0000";
+            ctx.fill();
+            
+            // Ajouter un texte explicatif
+            ctx.fillStyle = "#FF0000";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Poussée", dirX * vectorLength + dirX * 15, dirY * vectorLength + dirY * 15);
         }
         
         ctx.restore();
