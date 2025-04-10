@@ -94,40 +94,40 @@
     <script>
         // Liste des fichiers audio disponibles
         const ambientSounds = [
+            'assets/sound/ambiant/Wave Ganymede flyby_Juno.wav',
             'assets/sound/ambiant/Enceladus Hiss audio 256 kbps.mp3',
             'assets/sound/ambiant/whistlerWaves.mp3',
             'assets/sound/ambiant/plasmawaves-chorus.mp3',
+            'assets/sound/ambiant/plasmatic_hiss.wav',
             'assets/sound/ambiant/voyager1-TsunamiWaves.mp3',
             'assets/sound/ambiant/cassini_saturn_radio_waves1.mp3',
             'assets/sound/ambiant/kepler_star_KIC7671081B.mp3',
             'assets/sound/ambiant/kepler_star_KIC12268220C.mp3',
             'assets/sound/ambiant/cassini_saturn_radio_waves2.mp3',
+            'assets/sound/ambiant/sun_sonification.wav',
             'assets/sound/ambiant/Voyager: Interstellar Plasma Sounds.mp3',
             'assets/sound/ambiant/Chorus Radio Waves within Earth\'s Atmosphere.mp3'
         ];
         
-        // Fonction pour charger un son aléatoire
-        function loadRandomSound() {
-            // Sélection aléatoire d'un fichier audio différent de l'actuel
-            let newSoundIndex;
-            const currentSrc = audioElement.src;
-            
-            do {
-                newSoundIndex = Math.floor(Math.random() * ambientSounds.length);
-            } while (ambientSounds[newSoundIndex] === currentSrc && ambientSounds.length > 1);
-            
-            const randomSound = ambientSounds[newSoundIndex];
+        // Index du son actuel (pour parcours séquentiel)
+        let currentSoundIndex = 0;
+        
+        // Fonction pour charger le son suivant (parcours circulaire)
+        function loadNextSound() {
+            // Passer au son suivant (parcours circulaire)
+            currentSoundIndex = (currentSoundIndex + 1) % ambientSounds.length;
+            const nextSound = ambientSounds[currentSoundIndex];
             
             // Extraction du nom du fichier pour l'affichage
-            const soundName = randomSound.split('/').pop().replace('.mp3', '');
+            const soundName = nextSound.split('/').pop().replace('.mp3', '').replace('.wav', '');
             audioTitle.textContent = soundName;
             
             // Sauvegarde du niveau de volume actuel
-            const currentVolume = audioElement.volume;
+            const currentVolume = audioElement.volume || 0.3;
             const wasPlaying = !audioElement.paused;
             
             // Définir la source audio
-            audioElement.src = randomSound;
+            audioElement.src = nextSound;
             audioElement.volume = currentVolume;
             
             // Reprendre la lecture si elle était en cours
@@ -137,7 +137,7 @@
                 });
             }
             
-            return randomSound;
+            return nextSound;
         }
         
         // Configuration de l'audio
@@ -145,8 +145,18 @@
         const toggleButton = document.getElementById('toggleAudio');
         const audioTitle = document.getElementById('audioTitle');
         
+        // Tri alphabétique des sons pour une meilleure organisation (optionnel)
+        ambientSounds.sort();
+        
         // Chargement initial d'un son
-        loadRandomSound();
+        window.addEventListener('DOMContentLoaded', () => {
+            // Choisir un son aléatoire pour commencer
+            currentSoundIndex = Math.floor(Math.random() * ambientSounds.length) - 1;
+            loadNextSound();
+            
+            // Définir un volume initial raisonnable
+            audioElement.volume = 0.3;
+        });
         
         // Démarrer la musique une fois la page chargée
         window.addEventListener('load', () => {
@@ -168,7 +178,7 @@
         
         // Gestion du clic sur le titre pour changer de musique
         audioTitle.addEventListener('click', () => {
-            loadRandomSound();
+            loadNextSound();
             // Notification visuelle du changement
             audioTitle.style.opacity = 0.5;
             setTimeout(() => {
