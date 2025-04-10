@@ -116,7 +116,7 @@ const CELESTIAL_BODY = {
         RADIUS: 180,                 // Rayon de la lune
         ORBIT_DISTANCE: 2500,        // Distance orbitale depuis la planète
         ORBIT_SPEED: 0.005,         // Vitesse orbitale de la lune
-        INITIAL_ANGLE: - Math.PI / 4   // Angle initial de la lune sur son orbite
+        INITIAL_ANGLE: Math.PI + Math.PI / 4   // Angle initial de la lune sur son orbite
     }
 };
 

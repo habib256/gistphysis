@@ -58,10 +58,10 @@ class CelestialBodyModel {
     initMoon() {
         console.log("initMoon() appelée pour", this.name);
         
-        // Création d'une position pour la lune basée sur les constantes
+        // Utiliser la constante INITIAL_ANGLE pour initialiser la position de la lune
         const moonPosition = {
-            x: this.position.x + CELESTIAL_BODY.MOON.ORBIT_DISTANCE,
-            y: this.position.y
+            x: this.position.x + CELESTIAL_BODY.MOON.ORBIT_DISTANCE * Math.cos(CELESTIAL_BODY.MOON.INITIAL_ANGLE),
+            y: this.position.y + CELESTIAL_BODY.MOON.ORBIT_DISTANCE * Math.sin(CELESTIAL_BODY.MOON.INITIAL_ANGLE)
         };
         
         // Créer le modèle de la lune
