@@ -75,7 +75,23 @@ class TraceView {
                 continue;
             }
             
+            // Vérifier que le point a des coordonnées x et y valides
+            if (point.x === undefined || point.y === undefined || 
+                isNaN(point.x) || isNaN(point.y)) {
+                console.warn("Point de trace invalide:", point);
+                // Commencer un nouveau chemin au prochain point valide
+                isNewPath = true;
+                continue;
+            }
+            
             const screenPos = camera.worldToScreen(point.x, point.y);
+            
+            // S'assurer que les coordonnées d'écran sont des nombres valides
+            if (isNaN(screenPos.x) || isNaN(screenPos.y)) {
+                console.warn("Coordonnées d'écran invalides:", screenPos);
+                isNewPath = true;
+                continue;
+            }
             
             if (isNewPath) {
                 // Commencer un nouveau chemin

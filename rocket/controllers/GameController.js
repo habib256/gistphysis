@@ -110,6 +110,15 @@ class GameController {
                 if (!this.rocketModel) return;
                 this.rocketModel.setThrusterPower('main', 0);
                 this.particleSystemModel.setEmitterActive('main', false);
+                
+                // Forcer l'arrêt du son du propulseur principal
+                if (this.physicsController && this.physicsController.mainThrusterSoundPlaying) {
+                    if (this.physicsController.mainThrusterSound) {
+                        this.physicsController.mainThrusterSound.pause();
+                        this.physicsController.mainThrusterSound.currentTime = 0;
+                        this.physicsController.mainThrusterSoundPlaying = false;
+                    }
+                }
                 break;
             case 'thrustBackward':
                 if (!this.rocketModel) return;
@@ -540,6 +549,8 @@ class GameController {
         this.camera.setTarget(this.rocketModel, 'rocket');
         this.camera.offsetX = this.canvas.width / 2;
         this.camera.offsetY = this.canvas.height / 2;
+        this.camera.width = this.canvas.width;
+        this.camera.height = this.canvas.height;
     }
     
     // Configurer les contrôleurs

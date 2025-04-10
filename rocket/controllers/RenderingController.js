@@ -159,7 +159,16 @@ class RenderingController {
     
     // Mettre à jour la trace de la fusée
     updateTrace() {
-        if (!this.traceView || !this.rocketState.position) return;
+        if (!this.traceView || !this.rocketState || !this.rocketState.position) {
+            return;
+        }
+        
+        // S'assurer que la position est valide
+        if (this.rocketState.position.x === undefined || this.rocketState.position.y === undefined ||
+            isNaN(this.rocketState.position.x) || isNaN(this.rocketState.position.y)) {
+            console.warn("Position de la fusée invalide pour la trace:", this.rocketState.position);
+            return;
+        }
         
         // Vérifier si la fusée est détruite et attachée à la lune
         const isAttachedToMoon = (this.rocketState.isDestroyed && 
@@ -168,14 +177,21 @@ class RenderingController {
         
         // Si la fusée est attachée à la lune, on a besoin de la position de la lune
         let moonPosition = null;
-        if (isAttachedToMoon && this.universeState.celestialBodies) {
+        if (isAttachedToMoon && this.universeState && this.universeState.celestialBodies) {
             // Trouver la lune dans l'univers
             const moon = this.universeState.celestialBodies.find(body => body.name === 'Lune');
-            if (moon) {
+            if (moon && moon.position) {
                 moonPosition = moon.position;
                 
-                // Mettre à jour les traces existantes pour qu'elles suivent la lune
-                this.traceView.updateTracesForMoon(moonPosition);
+                // Vérifier que la position de la lune est valide
+                if (moonPosition.x === undefined || moonPosition.y === undefined ||
+                    isNaN(moonPosition.x) || isNaN(moonPosition.y)) {
+                    console.warn("Position de la lune invalide pour la trace:", moonPosition);
+                    moonPosition = null;
+                } else {
+                    // Mettre à jour les traces existantes pour qu'elles suivent la lune
+                    this.traceView.updateTracesForMoon(moonPosition);
+                }
             }
         }
         

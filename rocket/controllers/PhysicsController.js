@@ -766,6 +766,23 @@ class PhysicsController {
         switch (thrusterName) {
             case 'main': 
                 thrustForce = ROCKET.MAIN_THRUST * (powerPercentage / 100) * 1.5 * PHYSICS.THRUST_MULTIPLIER;
+                // Jouer le son du propulseur principal
+                try {
+                    if (!this.mainThrusterSound) {
+                        this.mainThrusterSound = new Audio('assets/sound/rocketthrustmaxx.mp3');
+                        this.mainThrusterSound.loop = true;
+                        this.mainThrusterSound.volume = 0.7; // Volume un peu réduit pour ne pas être trop fort
+                    }
+                    
+                    if (!this.mainThrusterSoundPlaying) {
+                        this.mainThrusterSound.play().catch(error => {
+                            console.error("Erreur lors de la lecture du son du propulseur principal:", error);
+                        });
+                        this.mainThrusterSoundPlaying = true;
+                    }
+                } catch (error) {
+                    console.error("Erreur lors de la lecture du fichier rocketthrustmaxx.mp3:", error);
+                }
                 break;
             case 'rear': 
                 thrustForce = ROCKET.REAR_THRUST * (powerPercentage / 100) * 1.5 * PHYSICS.THRUST_MULTIPLIER;
@@ -781,6 +798,15 @@ class PhysicsController {
         // Si pas de carburant, pas de poussée
         if (rocketModel.fuel <= 0) {
             thrustForce = 0;
+            
+            // Arrêter le son du propulseur principal si actif
+            if (thrusterName === 'main' && this.mainThrusterSoundPlaying) {
+                if (this.mainThrusterSound) {
+                    this.mainThrusterSound.pause();
+                    this.mainThrusterSound.currentTime = 0;
+                    this.mainThrusterSoundPlaying = false;
+                }
+            }
         } else {
             // Consommer du carburant en fonction du type de propulseur
             let fuelConsumption;
@@ -857,6 +883,15 @@ class PhysicsController {
         
         // Appliquer la force au corps physique
         this.Body.applyForce(this.rocketBody, position, { x: thrustX, y: thrustY });
+        
+        // Arrêter le son du propulseur principal si la puissance est à 0
+        if (thrusterName === 'main' && powerPercentage <= 0 && this.mainThrusterSoundPlaying) {
+            if (this.mainThrusterSound) {
+                this.mainThrusterSound.pause();
+                this.mainThrusterSound.currentTime = 0;
+                this.mainThrusterSoundPlaying = false;
+            }
+        }
         
         // Si nous sommes en train d'appliquer la poussée du propulseur principal et que la fusée est posée sur la Lune
         // Forcer le passage à l'état "non posé" pour permettre le décollage

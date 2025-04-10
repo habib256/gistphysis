@@ -8,6 +8,8 @@ class CameraModel {
         this.target = null;
         this.mode = 'rocket'; // 'rocket', 'earth', 'free'
         this.smoothing = RENDER.CAMERA_SMOOTHING;
+        this.width = 800;  // Valeur par défaut
+        this.height = 600; // Valeur par défaut
     }
 
     setTarget(target, mode = 'rocket') {
