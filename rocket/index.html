@@ -35,6 +35,31 @@
             padding: 10px 20px;
             border-radius: 5px;
         }
+        #audioControls {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 100;
+        }
+        #audioControls button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #audioControls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
     </style>
     
     <!-- Bibliothèques externes -->
@@ -45,7 +70,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0/dist/tf.min.js"></script>
 </head>
 <body> 
-
+    <!-- Élément audio pour la musique d'ambiance -->
+    <audio id="ambientAudio" loop></audio>
+    
+    <!-- Contrôles audio -->
+    <div id="audioControls">
+        <button id="toggleAudio">🔊</button>
+        <span id="audioTitle" style="cursor: pointer;" title="Cliquer pour changer de musique">Musique spatiale</span>
+    </div>
     
     <!-- Script d'initialisation du plugin Matter Attractors -->
     <script>
@@ -56,6 +88,93 @@
         } catch (e) {
             console.error("Erreur lors de l'initialisation du plugin Matter Attractors:", e);
         }
+    </script>
+    
+    <!-- Gestion de l'audio d'ambiance -->
+    <script>
+        // Liste des fichiers audio disponibles
+        const ambientSounds = [
+            'assets/sound/ambiant/Enceladus Hiss audio 256 kbps.mp3',
+            'assets/sound/ambiant/whistlerWaves.mp3',
+            'assets/sound/ambiant/plasmawaves-chorus.mp3',
+            'assets/sound/ambiant/voyager1-TsunamiWaves.mp3',
+            'assets/sound/ambiant/cassini_saturn_radio_waves1.mp3',
+            'assets/sound/ambiant/kepler_star_KIC7671081B.mp3',
+            'assets/sound/ambiant/kepler_star_KIC12268220C.mp3',
+            'assets/sound/ambiant/cassini_saturn_radio_waves2.mp3',
+            'assets/sound/ambiant/Voyager: Interstellar Plasma Sounds.mp3',
+            'assets/sound/ambiant/Chorus Radio Waves within Earth\'s Atmosphere.mp3'
+        ];
+        
+        // Fonction pour charger un son aléatoire
+        function loadRandomSound() {
+            // Sélection aléatoire d'un fichier audio différent de l'actuel
+            let newSoundIndex;
+            const currentSrc = audioElement.src;
+            
+            do {
+                newSoundIndex = Math.floor(Math.random() * ambientSounds.length);
+            } while (ambientSounds[newSoundIndex] === currentSrc && ambientSounds.length > 1);
+            
+            const randomSound = ambientSounds[newSoundIndex];
+            
+            // Extraction du nom du fichier pour l'affichage
+            const soundName = randomSound.split('/').pop().replace('.mp3', '');
+            audioTitle.textContent = soundName;
+            
+            // Sauvegarde du niveau de volume actuel
+            const currentVolume = audioElement.volume;
+            const wasPlaying = !audioElement.paused;
+            
+            // Définir la source audio
+            audioElement.src = randomSound;
+            audioElement.volume = currentVolume;
+            
+            // Reprendre la lecture si elle était en cours
+            if (wasPlaying) {
+                audioElement.play().catch(e => {
+                    console.log('Erreur lors de la lecture:', e);
+                });
+            }
+            
+            return randomSound;
+        }
+        
+        // Configuration de l'audio
+        const audioElement = document.getElementById('ambientAudio');
+        const toggleButton = document.getElementById('toggleAudio');
+        const audioTitle = document.getElementById('audioTitle');
+        
+        // Chargement initial d'un son
+        loadRandomSound();
+        
+        // Démarrer la musique une fois la page chargée
+        window.addEventListener('load', () => {
+            audioElement.play().catch(e => {
+                console.log('Lecture audio automatique bloquée par le navigateur:', e);
+            });
+        });
+        
+        // Gestion du bouton mute/unmute
+        toggleButton.addEventListener('click', () => {
+            if (audioElement.paused) {
+                audioElement.play();
+                toggleButton.textContent = '🔊';
+            } else {
+                audioElement.pause();
+                toggleButton.textContent = '🔇';
+            }
+        });
+        
+        // Gestion du clic sur le titre pour changer de musique
+        audioTitle.addEventListener('click', () => {
+            loadRandomSound();
+            // Notification visuelle du changement
+            audioTitle.style.opacity = 0.5;
+            setTimeout(() => {
+                audioTitle.style.opacity = 1;
+            }, 300);
+        });
     </script>
     
     <!-- Constantes globales -->

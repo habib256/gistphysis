@@ -267,7 +267,7 @@ class UIView {
         // Position et dimensions du bouton
         const buttonWidth = 180;
         const buttonHeight = 30;
-        const buttonX = canvas.width / 2 - buttonWidth / 2;
+        const buttonX = 10; // Nouvelle position: à gauche
         const buttonY = canvas.height - 40; // Position en bas de l'écran
 
         // Dessiner le fond du bouton
