@@ -117,14 +117,13 @@ class RocketModel {
             this.health = 0;
             this.isDestroyed = true;
             
-            // Si on est sur la Lune quand on est détruit, enregistrer la position relative
-            if (this.landedOn === 'Lune') {
-                // Conserver l'information qu'on est attaché à la lune pour le mouvement
-                this.attachedTo = 'Lune';
+            // Si on est sur la Terre ou sur la Lune quand on est détruit, enregistrer la position relative
+            if (this.landedOn === 'Lune' || this.landedOn === 'Terre') {
+                // Conserver l'information qu'on est attaché au corps céleste pour le mouvement
+                this.attachedTo = this.landedOn;
                 
-                // Ne pas réinitialiser landedOn pour les débris sur la Lune
-                // pour garantir que les deux propriétés sont configurées
-                console.log("Fusée détruite sur la Lune - conservation de l'attachement");
+                // Ne pas réinitialiser landedOn pour les débris
+                console.log(`Fusée détruite sur ${this.landedOn} - conservation de l'attachement`);
             } else {
                 // Dans les autres cas, réinitialiser landedOn
                 this.landedOn = null;
@@ -140,7 +139,7 @@ class RocketModel {
                 this.setThrusterPower(thrusterName, 0);
             }
             
-            // Jouer le son de crash
+            // Jouer le son de crash une seule fois lors de la destruction
             try {
                 const crashSound = new Audio('assets/sound/crash.mp3');
                 crashSound.volume = 1.0; // Volume maximum

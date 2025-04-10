@@ -238,6 +238,9 @@ class PhysicsController {
     
     // Configurer les événements de collision
     setupCollisionEvents() {
+        // Variable locale pour stocker la référence au modèle de la fusée
+        const rocketModel = this.rocketModel;
+        
         // Événement déclenché au début d'une collision
         this.Events.on(this.engine, 'collisionStart', (event) => {
             // Vérifier si les collisions sont actives
@@ -276,36 +279,39 @@ class PhysicsController {
                     const COLLISION_THRESHOLD = 2.5; // m/s
                     
                     // Détecter un atterrissage en douceur (vitesse faible)
-                    if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && this.isRocketLanded(this.rocketModel, otherBody)) {
-                        this.rocketModel.isLanded = true;
-                        this.rocketModel.landedOn = otherBody.label; // Indiquer la planète ou la lune sur laquelle on a atterri
+                    if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && this.isRocketLanded(rocketModel, otherBody)) {
+                        rocketModel.isLanded = true;
+                        rocketModel.landedOn = otherBody.label; // Indiquer la planète ou la lune sur laquelle on a atterri
                         
-                        // Si on atterrit sur la Lune, corriger immédiatement l'angle
+                        // Corriger l'angle pour les deux corps célestes, pas seulement la Lune
+                        // Calculer l'angle correct par rapport à la surface du corps céleste
+                        const angleToBody = Math.atan2(
+                            rocketModel.position.y - otherBody.position.y,
+                            rocketModel.position.x - otherBody.position.x
+                        );
+                        
+                        // Orientation verticale : la fusée pointe vers l'extérieur du corps céleste
+                        const correctAngle = angleToBody + Math.PI/2;
+                        
+                        // Appliquer l'angle correct avant tout calcul de position relative
+                        rocketModel.angle = correctAngle;
+                        if (this.rocketBody) {
+                            this.Body.setAngle(this.rocketBody, correctAngle);
+                        }
+                        
+                        // Si on atterrit sur la Lune, gérer la position relative
                         if (otherBody.label === 'Lune') {
                             // Trouver le modèle de la lune
                             const luneModel = this.moonBodies.find(moon => moon.model.name === 'Lune')?.model;
                             if (luneModel) {
-                                // Calculer l'angle correct par rapport à la surface de la Lune
-                                const angleToLune = Math.atan2(
-                                    this.rocketModel.position.y - luneModel.position.y,
-                                    this.rocketModel.position.x - luneModel.position.x
-                                );
-                                
-                                // Orientation verticale : la fusée pointe vers l'extérieur de la lune
-                                const correctAngle = angleToLune + Math.PI/2;
-                                
-                                // Appliquer l'angle correct avant tout calcul de position relative
-                                this.rocketModel.angle = correctAngle;
-                                if (this.rocketBody) {
-                                    this.Body.setAngle(this.rocketBody, correctAngle);
-                                }
+                                // La correction d'angle a déjà été faite ci-dessus
                             }
                         }
                         
                         // Synchroniser immédiatement la vitesse
-                        this.rocketModel.setVelocity(0, 0);
-                        this.rocketModel.setAngularVelocity(0);
-                        this.syncPhysicsWithModel(this.rocketModel);
+                        rocketModel.setVelocity(0, 0);
+                        rocketModel.setAngularVelocity(0);
+                        this.syncPhysicsWithModel(rocketModel);
                         
                         console.log(`Atterrissage réussi sur ${otherBody.label}`);
                     } else {
@@ -314,29 +320,35 @@ class PhysicsController {
                         
                         // Si c'est une collision avec un corps céleste et que la vitesse d'impact dépasse le seuil
                         if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && impactVelocity > COLLISION_THRESHOLD) {
-                            // Mémoriser d'abord sur quel corps la collision a eu lieu
-                            this.rocketModel.landedOn = otherBody.label;
-                            
-                            // Appliquer les dégâts immédiatement
-                            this.rocketModel.applyDamage(impactDamage);
-                            
-                            // Si la fusée est détruite par cette collision et qu'elle est sur la Lune
-                            if (this.rocketModel.isDestroyed && this.rocketModel.attachedTo === 'Lune') {
-                                // Trouver le modèle de la lune pour calculer la position relative
-                                const luneModel = this.moonBodies.find(moon => moon.model.name === 'Lune')?.model;
-                                if (luneModel) {
-                                    // Calculer et stocker la position relative
-                                    this.rocketModel.updateRelativePosition(luneModel);
-                                    console.log("Position relative à la lune calculée pour les débris");
+                            // Ne pas appliquer de dégâts ni afficher de messages si la fusée est déjà détruite
+                            if (!rocketModel.isDestroyed) {
+                                // Mémoriser d'abord sur quel corps la collision a eu lieu
+                                rocketModel.landedOn = otherBody.label;
+                                
+                                // Appliquer les dégâts immédiatement
+                                rocketModel.applyDamage(impactDamage);
+                                
+                                // Si la fusée est détruite par cette collision et qu'elle est sur la Lune
+                                if (rocketModel.isDestroyed && rocketModel.attachedTo === 'Lune') {
+                                    // Trouver le modèle de la lune pour calculer la position relative
+                                    const luneModel = this.moonBodies.find(moon => moon.model.name === 'Lune')?.model;
+                                    if (luneModel) {
+                                        // Calculer et stocker la position relative
+                                        rocketModel.updateRelativePosition(luneModel);
+                                        console.log("Position relative à la lune calculée pour les débris");
+                                    }
                                 }
+                                
+                                // Jouer le son de collision importante
+                                this.playCollisionSound(impactVelocity);
+                                
+                                console.log(`Collision IMPORTANTE avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Dégâts=${impactDamage.toFixed(2)}`);
                             }
-                            
-                            // Jouer le son de collision importante
-                            this.playCollisionSound(impactVelocity);
-                            
-                            console.log(`Collision IMPORTANTE avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Dégâts=${impactDamage.toFixed(2)}`);
                         } else if (otherBody.label === 'Terre' || otherBody.label === 'Lune') {
-                            console.log(`Collision avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Pas de dégâts`);
+                            // Ne pas afficher de messages si la fusée est déjà détruite
+                            if (!rocketModel.isDestroyed) {
+                                console.log(`Collision avec ${otherBody.label}: Vitesse d'impact=${impactVelocity.toFixed(2)}, Pas de dégâts`);
+                            }
                         }
                     }
                 }
@@ -360,28 +372,38 @@ class PhysicsController {
                     // Si c'est une collision avec un corps céleste, considérer l'atterrissage
                     if (otherBody.label === 'Terre' || otherBody.label === 'Lune') {
                         // Utiliser la méthode améliorée pour détecter l'atterrissage
-                        if (!this.rocketModel.isLanded && this.isRocketLanded(this.rocketModel, otherBody)) {
-                            this.rocketModel.isLanded = true;
-                            this.rocketModel.landedOn = otherBody.label;
+                        if (!rocketModel.isLanded && this.isRocketLanded(rocketModel, otherBody)) {
+                            rocketModel.isLanded = true;
+                            rocketModel.landedOn = otherBody.label;
                             console.log(`Fusée posée sur ${otherBody.label}`);
                             
                             // Réinitialiser la vitesse dans le modèle
-                            this.rocketModel.setVelocity(0, 0);
-                            this.rocketModel.setAngularVelocity(0);
+                            rocketModel.setVelocity(0, 0);
+                            rocketModel.setAngularVelocity(0);
                             
                             // Réinitialiser la vitesse dans le corps physique
                             this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
                             this.Body.setAngularVelocity(this.rocketBody, 0);
                         }
                         
-                        // Stabiliser la fusée: fixer l'angle à 0 (verticale) si proche de 0
-                        if (Math.abs(this.rocketModel.angle) < 0.3) {  // Environ 17 degrés
-                            this.Body.setAngle(this.rocketBody, 0);
+                        // Stabiliser la fusée: maintenir l'orientation correcte par rapport à la surface
+                        if (Math.abs(rocketModel.angle) < 0.3 || otherBody.label === 'Terre' || otherBody.label === 'Lune') {
+                            // Calculer l'angle correct par rapport à la surface
+                            const angleToBody = Math.atan2(
+                                rocketModel.position.y - otherBody.position.y,
+                                rocketModel.position.x - otherBody.position.x
+                            );
+                            
+                            // Orientation verticale : la fusée pointe vers l'extérieur du corps céleste
+                            const correctAngle = angleToBody + Math.PI/2;
+                            
+                            // Appliquer l'angle correct
+                            this.Body.setAngle(this.rocketBody, correctAngle);
                             this.Body.setAngularVelocity(this.rocketBody, 0);
                         }
                         
                         // Vérifier si un propulseur est actif avec suffisamment de puissance
-                        const mainThrusterActive = this.rocketModel.thrusters.main.power > 50; // Seuil de puissance minimum
+                        const mainThrusterActive = rocketModel.thrusters.main.power > 50; // Seuil de puissance minimum
                         
                         // Ne pas amortir les mouvements si la fusée essaie de décoller
                         if (!mainThrusterActive) {
@@ -390,8 +412,8 @@ class PhysicsController {
                             this.Body.setAngularVelocity(this.rocketBody, 0);
                         } else {
                             // Si le propulseur principal est actif avec suffisamment de puissance, forcer le décollage
-                            this.rocketModel.isLanded = false;
-                            this.rocketModel.landedOn = null;
+                            rocketModel.isLanded = false;
+                            rocketModel.landedOn = null;
                             
                             // Appliquer une forte impulsion vers le haut pour garantir le décollage
                             const impulseY = -5.0; // Force augmentée
@@ -428,12 +450,12 @@ class PhysicsController {
                 if (pair.bodyA === this.rocketBody || pair.bodyB === this.rocketBody) {
                     const otherBody = pair.bodyA === this.rocketBody ? pair.bodyB : pair.bodyA;
                     
-                    if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && this.rocketModel.isLanded) {
+                    if ((otherBody.label === 'Terre' || otherBody.label === 'Lune') && rocketModel.isLanded) {
                         // Utiliser une méthode plus précise pour vérifier si on est toujours posé
                         // Si on n'est plus posé, mettre à jour l'état
-                        if (!this.isRocketLanded(this.rocketModel, otherBody)) {
-                            this.rocketModel.isLanded = false;
-                            this.rocketModel.landedOn = null;
+                        if (!this.isRocketLanded(rocketModel, otherBody)) {
+                            rocketModel.isLanded = false;
+                            rocketModel.landedOn = null;
                             console.log(`Décollage de ${otherBody.label} confirmé`);
                         }
                     }
@@ -444,6 +466,11 @@ class PhysicsController {
     
     // Jouer le son de collision en fonction de la vitesse d'impact
     playCollisionSound(impactVelocity) {
+        // Si la fusée est déjà détruite, ne pas jouer de son supplémentaire
+        if (this.rocketModel && this.rocketModel.isDestroyed) {
+            return;
+        }
+        
         try {
             // Créer un élément audio pour jouer le son de collision
             const collisionSound = new Audio('assets/sound/collision.mp3');
@@ -549,9 +576,26 @@ class PhysicsController {
                 this.Body.setVelocity(this.rocketBody, { x: 0, y: 0 });
                 this.Body.setAngularVelocity(this.rocketBody, 0);
                 
-                // Stabiliser l'angle à 0 (verticale) si on n'est pas sur la Lune
-                if (rocketModel.landedOn !== 'Lune') {
-                    this.Body.setAngle(this.rocketBody, 0);
+                // Maintenir l'orientation perpendiculaire à la surface pour tous les corps
+                if (rocketModel.landedOn === 'Terre' || rocketModel.landedOn === 'Lune') {
+                    // Trouver le corps sur lequel on est posé
+                    const landedOnBody = rocketModel.landedOn === 'Lune' 
+                        ? this.moonBodies.find(moon => moon.model.name === 'Lune')?.model
+                        : this.celestialBodies.find(body => body.model.name === 'Terre')?.model;
+                    
+                    if (landedOnBody) {
+                        // Calculer l'angle correct par rapport à la surface
+                        const angleToBody = Math.atan2(
+                            rocketModel.position.y - landedOnBody.position.y,
+                            rocketModel.position.x - landedOnBody.position.x
+                        );
+                        
+                        // Orientation verticale : la fusée pointe vers l'extérieur du corps céleste
+                        const correctAngle = angleToBody + Math.PI/2;
+                        
+                        // Appliquer l'angle correct
+                        this.Body.setAngle(this.rocketBody, correctAngle);
+                    }
                 }
             }
             
@@ -1306,8 +1350,8 @@ class PhysicsController {
                 }
             }
             
-            // Jouer le son de collision importante
-            this.playCollisionSound(5.0); // Valeur arbitraire pour le son
+            // Le son de crash est déjà joué dans la méthode applyDamage du RocketModel
+            // Ne pas jouer le son de collision ici, car cela duplique les sons
             
             return false; // Ne pas considérer comme "posé" mais comme "crashé"
         }
