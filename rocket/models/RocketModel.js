@@ -121,10 +121,18 @@ class RocketModel {
             if (this.landedOn === 'Lune') {
                 // Conserver l'information qu'on est attaché à la lune pour le mouvement
                 this.attachedTo = 'Lune';
+                
+                // Ne pas réinitialiser landedOn pour les débris sur la Lune
+                // pour garantir que les deux propriétés sont configurées
+                console.log("Fusée détruite sur la Lune - conservation de l'attachement");
+            } else {
+                // Dans les autres cas, réinitialiser landedOn
+                this.landedOn = null;
             }
             
+            // Une fusée détruite n'est plus considérée comme atterrie
             this.isLanded = false;
-            this.landedOn = null;
+            
             console.log(`Fusée détruite${this.attachedTo ? ' sur ' + this.attachedTo : ''}!`);
             
             // Désactiver tous les propulseurs
@@ -153,21 +161,29 @@ class RocketModel {
         const isRelatedToBody = (this.landedOn === celestialBody.name) || (this.attachedTo === celestialBody.name);
         
         if (isRelatedToBody) {
-            // Calculer la position relative
+            // Calculer le vecteur de la position relative (du centre du corps céleste vers la fusée)
+            const dx = this.position.x - celestialBody.position.x;
+            const dy = this.position.y - celestialBody.position.y;
+            
+            // Calculer la distance et l'angle par rapport au corps céleste
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angleToBody = Math.atan2(dy, dx);
+            
+            // Stocker la position relative sous forme de coordonnées polaires et cartésiennes
+            // pour éviter les problèmes de discontinuité lors du passage de -π à +π
             this.relativePosition = {
-                x: this.position.x - celestialBody.position.x,
-                y: this.position.y - celestialBody.position.y,
-                angle: this.angle, // Conserver l'angle aussi
-                // Calculer la distance et l'angle de la fusée par rapport au corps céleste
-                distance: Math.sqrt(
-                    Math.pow(this.position.x - celestialBody.position.x, 2) + 
-                    Math.pow(this.position.y - celestialBody.position.y, 2)
-                ),
-                angleToBody: Math.atan2(
-                    this.position.y - celestialBody.position.y,
-                    this.position.x - celestialBody.position.x
-                )
+                x: dx,
+                y: dy,
+                angle: this.angle,
+                distance: distance,
+                angleToBody: angleToBody,
+                // Stocker également les composantes normalisées du vecteur pour plus de précision
+                dirX: dx / distance, 
+                dirY: dy / distance
             };
+            
+            // Stocker l'angle de rotation du corps céleste au moment où la position relative est calculée
+            this.relativePosition.referenceRotationAngle = celestialBody.rotationAngle || 0;
         }
     }
     
@@ -180,27 +196,49 @@ class RocketModel {
         
         if (isRelatedToBody) {
             if (this.isDestroyed) {
-                // Si la fusée est détruite, garder la même position relative fixe
-                this.position.x = celestialBody.position.x + this.relativePosition.x;
-                this.position.y = celestialBody.position.y + this.relativePosition.y;
-                // L'angle reste le même car les débris ne tournent pas avec la lune
-            } else {
-                // Si la fusée est posée, maintenir la même distance et l'angle par rapport au corps
-                const distance = this.relativePosition.distance;
-                const angle = celestialBody.rotationAngle ? 
-                    // Si le corps a un angle de rotation, l'utiliser pour calculer la nouvelle position
-                    this.relativePosition.angleToBody + celestialBody.rotationAngle : 
-                    // Sinon, utiliser l'angle de base
-                    this.relativePosition.angleToBody;
+                // Si la fusée est détruite, nous avons deux options :
+                // 1. Utiliser les coordonnées cartésiennes (position statique relative)
+                // 2. Utiliser les coordonnées polaires (suivre la rotation)
                 
-                // Calculer la nouvelle position
-                this.position.x = celestialBody.position.x + Math.cos(angle) * distance;
-                this.position.y = celestialBody.position.y + Math.sin(angle) * distance;
+                // Pour les débris sur la Lune, utiliser les coordonnées polaires pour suivre la rotation
+                if (celestialBody.name === 'Lune' && (this.attachedTo === 'Lune' || this.landedOn === 'Lune')) {
+                    // Calculer la différence d'angle de rotation depuis la référence
+                    const referenceAngle = this.relativePosition.referenceRotationAngle || 0;
+                    const currentAngle = celestialBody.rotationAngle || 0;
+                    const rotationDelta = currentAngle - referenceAngle;
+                    
+                    // Appliquer la rotation au vecteur de position relative
+                    const rotatedAngle = this.relativePosition.angleToBody + rotationDelta;
+                    
+                    // Calculer la nouvelle position en utilisant les coordonnées polaires
+                    this.position.x = celestialBody.position.x + Math.cos(rotatedAngle) * this.relativePosition.distance;
+                    this.position.y = celestialBody.position.y + Math.sin(rotatedAngle) * this.relativePosition.distance;
+                } else {
+                    // Pour les autres corps, utiliser les coordonnées cartésiennes (plus simple)
+                    this.position.x = celestialBody.position.x + this.relativePosition.x;
+                    this.position.y = celestialBody.position.y + this.relativePosition.y;
+                }
+                // L'angle reste le même pour les débris (ils ne tournent pas avec la surface)
+            } else {
+                // Pour une fusée posée, utiliser les coordonnées polaires qui sont 
+                // plus adaptées pour suivre la rotation du corps céleste
+                
+                // Calculer la différence d'angle de rotation depuis la référence
+                const referenceAngle = this.relativePosition.referenceRotationAngle || 0;
+                const currentAngle = celestialBody.rotationAngle || 0;
+                const rotationDelta = currentAngle - referenceAngle;
+                
+                // Appliquer la rotation au vecteur de position relative
+                const rotatedAngle = this.relativePosition.angleToBody + rotationDelta;
+                
+                // Calculer la nouvelle position en utilisant les coordonnées polaires
+                this.position.x = celestialBody.position.x + Math.cos(rotatedAngle) * this.relativePosition.distance;
+                this.position.y = celestialBody.position.y + Math.sin(rotatedAngle) * this.relativePosition.distance;
                 
                 // Mettre à jour l'angle de la fusée pour qu'elle reste perpendiculaire au rayon du corps céleste
                 if (this.landedOn === celestialBody.name) {
-                    // L'angle correcte est l'angle vers le corps céleste + 90 degrés (π/2)
-                    this.angle = angle + Math.PI/2;
+                    // L'angle correct est l'angle vers le corps céleste + 90 degrés (π/2)
+                    this.angle = rotatedAngle + Math.PI/2;
                 }
             }
         }

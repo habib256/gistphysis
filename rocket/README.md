@@ -128,4 +128,45 @@ Le fichier `constants.js` contient de nombreux paramètres que vous pouvez ajust
 
 ## 📜 Licence
 
-Ce projet est sous licence MIT - voir le fichier LICENSE pour plus de détails. 
+Ce projet est sous licence MIT - voir le fichier LICENSE pour plus de détails.
+
+## Améliorations du positionnement de la fusée sur la lune
+
+Nous avons apporté plusieurs améliorations pour éviter les sauts de positionnement lorsque la fusée est posée sur la lune et qu'elle passe de l'autre côté:
+
+### 1. Amélioration du calcul de la position relative
+
+Dans `RocketModel.js`, nous avons optimisé la méthode `updateRelativePosition()` pour :
+- Stocker à la fois les coordonnées cartésiennes et polaires
+- Mémoriser l'angle de rotation de référence de la lune
+- Ajouter des vecteurs directionnels normalisés pour plus de précision
+
+### 2. Stabilisation du positionnement absolu
+
+La méthode `updateAbsolutePosition()` a été améliorée pour :
+- Utiliser les coordonnées cartésiennes pour les débris (plus stables)
+- Utiliser les coordonnées polaires pour les fusées posées (suivre la rotation)
+- Calculer correctement la différence d'angle de rotation
+
+### 3. Optimisation dans le PhysicsController
+
+- Suppression du recalcul redondant de l'angle
+- Utilisation de l'angle déjà calculé dans updateAbsolutePosition
+- Ajout d'une vérification pour calculer la position relative si elle n'existe pas encore
+- Mise à jour de la position du corps physique pour les débris
+
+### 4. Amélioration de la détection d'atterrissage
+
+La méthode `isRocketLanded()` a été optimisée pour :
+- Considérer qu'une fusée est toujours posée si son état n'a pas changé
+- Ajuster les seuils spécifiquement pour la lune
+- Simplifier la logique de calcul d'angle et éviter les sauts à 2π
+
+### 5. Synchronisation des traces
+
+`TraceView.js` inclut déjà des améliorations pour :
+- Réinitialiser les traces lors des changements d'état
+- Maintenir les tableaux de traces synchronisés
+- Calculer correctement les positions relatives à la lune
+
+Ces modifications permettent maintenant à la fusée de rester correctement positionnée lorsqu'elle est posée sur la lune, même quand celle-ci tourne et passe de l'autre côté. 

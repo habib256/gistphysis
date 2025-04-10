@@ -764,7 +764,7 @@ class GameController {
         if (!this.rocketModel || !this.traceView) return;
         
         // Vérifier si la fusée est attachée à la lune (détruite ou simplement posée)
-        const isAttachedToMoon = (this.rocketModel.isDestroyed && this.rocketModel.attachedTo === 'Lune') || 
+        const isAttachedToMoon = (this.rocketModel.isDestroyed && (this.rocketModel.attachedTo === 'Lune' || this.rocketModel.landedOn === 'Lune')) || 
                                   (this.rocketModel.landedOn === 'Lune');
         
         // Si la fusée est attachée à la lune, on a besoin de la position de la lune

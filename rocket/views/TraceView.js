@@ -30,6 +30,16 @@ class TraceView {
                 y: position.y - moonPosition.y
             };
             this.moonRelativeTraces.push(relativePosition);
+            
+            // S'assurer que les tableaux traces et moonRelativeTraces ont la même longueur
+            if (this.traces.length !== this.moonRelativeTraces.length) {
+                console.warn("Désynchronisation des traces relatives à la lune");
+                
+                // Tenter de corriger en ajustant la longueur des tableaux
+                while (this.traces.length > this.moonRelativeTraces.length && this.traces.length > 0) {
+                    this.traces.shift();
+                }
+            }
         }
         
         // Limiter le nombre de points
@@ -91,8 +101,16 @@ class TraceView {
         
         // Mettre à jour toutes les positions absolues des traces basées sur la position actuelle de la lune
         for (let i = 0; i < this.traces.length; i++) {
+            // Ignorer les points null (discontinuités)
+            if (this.traces[i] === null) continue;
+            
             if (i < this.moonRelativeTraces.length) {
                 const relativePos = this.moonRelativeTraces[i];
+                
+                // Ignorer les points relatifs null (discontinuités)
+                if (relativePos === null) continue;
+                
+                // Mettre à jour la position absolue
                 this.traces[i].x = moonPosition.x + relativePos.x;
                 this.traces[i].y = moonPosition.y + relativePos.y;
             }

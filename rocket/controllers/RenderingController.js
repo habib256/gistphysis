@@ -162,7 +162,9 @@ class RenderingController {
         if (!this.traceView || !this.rocketState.position) return;
         
         // Vérifier si la fusée est détruite et attachée à la lune
-        const isAttachedToMoon = this.rocketState.isDestroyed && this.rocketState.attachedTo === 'Lune';
+        const isAttachedToMoon = (this.rocketState.isDestroyed && 
+                                 (this.rocketState.attachedTo === 'Lune' || this.rocketState.landedOn === 'Lune')) ||
+                                 (!this.rocketState.isDestroyed && this.rocketState.landedOn === 'Lune');
         
         // Si la fusée est attachée à la lune, on a besoin de la position de la lune
         let moonPosition = null;
