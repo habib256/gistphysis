@@ -12,10 +12,37 @@ class TraceView {
     update(position, isAttachedToMoon = false, moonPosition = null) {
         if (!this.isVisible) return;
         
-        // Si l'état d'attachement change, réinitialiser les traces
+        // Si l'état d'attachement change
         if (this.attachedToMoon !== isAttachedToMoon) {
-            this.traces = [];
-            this.moonRelativeTraces = [];
+            // Ne pas réinitialiser les traces lorsqu'on se pose sur la Lune
+            // Au lieu de cela, on va calculer les positions relatives pour les traces existantes
+            if (isAttachedToMoon && moonPosition) {
+                console.log("Attachement à la Lune - conservation des traces");
+                
+                // Calculer les positions relatives pour toutes les traces existantes
+                this.moonRelativeTraces = [];
+                for (const trace of this.traces) {
+                    if (trace === null) {
+                        // Conserver les discontinuités
+                        this.moonRelativeTraces.push(null);
+                    } else {
+                        // Calculer et stocker la position relative à la lune
+                        this.moonRelativeTraces.push({
+                            x: trace.x - moonPosition.x,
+                            y: trace.y - moonPosition.y
+                        });
+                    }
+                }
+            } else {
+                // Si on se détache de la Lune, ne pas réinitialiser les traces
+                // Ajouter uniquement une discontinuité pour marquer le changement
+                console.log("Détachement de la Lune - conservation des traces avec discontinuité");
+                this.traces.push(null);
+                
+                // Les coordonnées relatives ne sont plus nécessaires pour les nouveaux points
+                // mais on conserve celles des points existants
+            }
+            
             this.attachedToMoon = isAttachedToMoon;
         }
         
