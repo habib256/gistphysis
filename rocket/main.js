@@ -44,6 +44,19 @@ function cleanup() {
     }
 }
 
+// Fonction pour jouer le son de compte à rebours
+function playCountdownSound() {
+    try {
+        const countdownSound = new Audio('assets/sound/ambiant/4321.mp3');
+        countdownSound.volume = 1.0; // Volume maximum
+        countdownSound.play().catch(error => {
+            console.error("Erreur lors de la lecture du son de compte à rebours:", error);
+        });
+    } catch (error) {
+        console.error("Erreur lors de la lecture du fichier 4321.mp3:", error);
+    }
+}
+
 // Fonction pour afficher les instructions
 function showInstructions() {
     // Créer élément d'instructions
@@ -62,6 +75,9 @@ function showInstructions() {
     closeButton.textContent = 'Fermer';
     closeButton.onclick = () => {
         document.body.removeChild(instructions);
+        
+        // Jouer le son de compte à rebours après avoir fermé les instructions
+        playCountdownSound();
     };
     
     instructions.appendChild(closeButton);
