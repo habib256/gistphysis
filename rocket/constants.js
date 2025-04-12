@@ -5,7 +5,7 @@
 // Constantes physiques
 const PHYSICS = {
     // Gravité
-    G: 1,                // Constante gravitationnelle 
+    G: 0.0001,                // Constante gravitationnelle (Ancien: 1)
     
     // Limites et seuils
     MAX_SPEED: 10000.0,        // Vitesse maximale de la fusée
@@ -17,6 +17,13 @@ const PHYSICS = {
     COLLISION_DAMPING: 0.7,     // Facteur d'amortissement des collisions
     IMPACT_DAMAGE_FACTOR: 10,   // Facteur de dommages lors des impacts
     RESTITUTION: 0.2,           // Coefficient de restitution (rebond)
+    CRASH_SPEED_THRESHOLD: 2500, // Vitesse max pour atterrissage (m/s)
+    // Nouveaux seuils pour atterrissage/crash plus fins
+    LANDING_MAX_SPEED: 2500,           // Vitesse verticale max pour atterrir (m/s)
+    LANDING_MAX_ANGLE_DEG: 30,        // Angle max par rapport à la verticale (degrés)
+    LANDING_MAX_ANGULAR_VELOCITY: 400,// Vitesse angulaire max pour atterrir (rad/s)
+    CRASH_ANGLE_DEG: 45,              // Angle de crash par rapport à la verticale (degrés)
+    CRASH_ANGULAR_VELOCITY: 400,      // Vitesse angulaire de crash (rad/s)
     
     // Multiplicateur de propulsion
     // Ajustez cette valeur pour augmenter la puissance de tous les propulseurs

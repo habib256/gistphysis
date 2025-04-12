@@ -178,11 +178,19 @@ class RocketModel {
                 angleToBody: angleToBody,
                 // Stocker également les composantes normalisées du vecteur pour plus de précision
                 dirX: dx / distance, 
-                dirY: dy / distance
+                dirY: dy / distance,
+                // Stocker les coordonnées absolues pour la Terre
+                absoluteX: this.position.x,
+                absoluteY: this.position.y
             };
             
             // Stocker l'angle de rotation du corps céleste au moment où la position relative est calculée
             this.relativePosition.referenceRotationAngle = celestialBody.rotationAngle || 0;
+            
+            // Pour la Terre, marquer explicitement que la position doit rester fixe
+            if (celestialBody.name === 'Terre' && this.isLanded) {
+                this.relativePosition.isFixedOnEarth = true;
+            }
         }
     }
     
@@ -194,6 +202,15 @@ class RocketModel {
         const isRelatedToBody = (this.landedOn === celestialBody.name) || (this.attachedTo === celestialBody.name);
         
         if (isRelatedToBody) {
+            // Si la fusée est posée sur la Terre, utiliser les coordonnées absolues fixes
+            if (this.relativePosition.isFixedOnEarth && celestialBody.name === 'Terre' && this.isLanded) {
+                this.position.x = this.relativePosition.absoluteX;
+                this.position.y = this.relativePosition.absoluteY;
+                // L'angle est perpendiculaire à la surface terrestre
+                this.angle = this.relativePosition.angle;
+                return;
+            }
+            
             if (this.isDestroyed) {
                 // Si la fusée est détruite, nous avons deux options :
                 // 1. Utiliser les coordonnées cartésiennes (position statique relative)

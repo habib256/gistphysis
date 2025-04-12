@@ -139,13 +139,17 @@ class PhysicsController {
         this.Engine.update(this.engine, deltaTime * this.timeScale);
 
         // 6. Synchroniser le modèle de la fusée avec le résultat de la physique
-        //    (Sauf si elle est gérée manuellement car posée/attachée sur un corps mobile)
-        const isHandledManually = (this.rocketModel.isLanded || this.rocketModel.isDestroyed) &&
-                                   (this.rocketModel.landedOn || this.rocketModel.attachedTo) &&
-                                   this.celestialBodies.some(cb =>
-                                       (cb.model.name === this.rocketModel.landedOn || cb.model.name === this.rocketModel.attachedTo) &&
-                                       typeof cb.model.updateOrbit === 'function'
-                                   );
+        //    (Sauf si elle est gérée manuellement car posée/attachée sur un corps mobile ou sur la Terre)
+        const isLandedOnTerre = this.rocketModel.isLanded && this.rocketModel.landedOn === 'Terre';
+
+        const isOnMobileBody = (this.rocketModel.isLanded || this.rocketModel.isDestroyed) &&
+                               (this.rocketModel.landedOn || this.rocketModel.attachedTo) &&
+                               this.celestialBodies.some(cb =>
+                                   (cb.model.name === this.rocketModel.landedOn || cb.model.name === this.rocketModel.attachedTo) &&
+                                   typeof cb.model.updateOrbit === 'function'
+                               );
+
+        const isHandledManually = isLandedOnTerre || isOnMobileBody;
 
         if (!isHandledManually) {
             this.synchronizationManager.syncModelWithPhysics(this.rocketModel);

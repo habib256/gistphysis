@@ -16,8 +16,8 @@ class BodyFactory {
             {
                 mass: this.ROCKET.MASS,
                 inertia: this.ROCKET.MASS * 1.5,
-                friction: this.ROCKET.FRICTION,
-                restitution: this.PHYSICS.RESTITUTION,
+                friction: 0.8,
+                restitution: 0.05,
                 angle: rocketModel.angle,
                 isStatic: false,
                 label: 'rocket',

@@ -65,101 +65,125 @@ class SynchronizationManager {
     handleLandedOrAttachedRocket(rocketModel) {
         const rocketBody = this.physicsController.rocketBody;
         const celestialBodies = this.physicsController.celestialBodies;
-        const thrusterPhysics = this.physicsController.thrusterPhysics; // Besoin pour vérifier la poussée
 
         if (!rocketBody || !rocketModel) return;
 
-        // CAS 1: Fusée posée sur un corps (potentiellement mobile)
+        // CAS 1: Fusée posée sur un corps
         if (rocketModel.isLanded && rocketModel.landedOn) {
             const landedOnInfo = celestialBodies.find(cb => cb.model.name === rocketModel.landedOn);
             const landedOnModel = landedOnInfo ? landedOnInfo.model : null;
 
             if (landedOnModel) {
-                const isMobile = typeof landedOnModel.updateOrbit === 'function';
+                const mainThrusterPower = rocketModel.thrusters.main.power;
+                // Définir un seuil clair pour le décollage
+                const TAKEOFF_THRUST_THRESHOLD = 50; // Ex: 50% de puissance
+                const isTryingToLiftOff = mainThrusterPower > TAKEOFF_THRUST_THRESHOLD;
 
-                // Si posé sur un corps mobile, maintenir la position relative
-                if (isMobile) {
-                    if (!rocketModel.relativePosition) {
-                        // Recalculer l'angle correct au moment de l'atterrissage si pas déjà fait
-                        const angleToBody = Math.atan2(
-                            rocketModel.position.y - landedOnModel.position.y,
-                            rocketModel.position.x - landedOnModel.position.x
-                        );
-                        const correctAngle = angleToBody + Math.PI/2;
-                        rocketModel.angle = correctAngle;
-                        this.Body.setAngle(rocketBody, correctAngle);
-                        this.Body.setAngularVelocity(rocketBody, 0);
+                if (isTryingToLiftOff) {
+                    // --- TENTATIVE DE DÉCOLLAGE ---
+                    console.log(`Tentative de décollage de ${rocketModel.landedOn} détectée (Poussée: ${mainThrusterPower.toFixed(0)}%)`);
+                    rocketModel.isLanded = false;
+                    rocketModel.landedOn = null;
+                    rocketModel.relativePosition = null; // Important pour arrêter le suivi de position
+                    // L'impulsion de décollage sera gérée par ThrusterPhysics lors de l'application de la poussée
+                } else {
+                    // --- STABILISATION ACTIVE (Pas de tentative de décollage) ---
+                    const isMobile = typeof landedOnModel.updateOrbit === 'function';
 
-                        rocketModel.updateRelativePosition(landedOnModel);
-                        // Ne pas synchroniser la position absolue immédiatement, attendre la prochaine frame
-                         return; // Sortir pour cette frame
-                    }
-                    // Mettre à jour la position absolue à partir de la position relative
-                    rocketModel.updateAbsolutePosition(landedOnModel);
-                    // Synchroniser le corps physique avec la nouvelle position absolue
-                    this.Body.setPosition(rocketBody, rocketModel.position);
-                }
-
-                // Stabilisation : maintenir l'orientation et arrêter le mouvement si pas de poussée
-                // Vérifier si le propulseur principal est actif (via rocketModel ou ThrusterPhysics?)
-                 const mainThrusterPower = rocketModel.thrusters.main.power;
-                 const isTryingToLiftOff = mainThrusterPower > 50;
-
-                if (!isTryingToLiftOff) {
-                    // Forcer la vitesse à zéro
+                    // 1. Forcer les vitesses à zéro (Physique)
                     this.Body.setVelocity(rocketBody, { x: 0, y: 0 });
                     this.Body.setAngularVelocity(rocketBody, 0);
 
-                    // Maintenir l'orientation perpendiculaire
+                    // 2. Calculer et forcer l'angle correct par rapport à la surface (Physique ET Modèle)
+                    //    Utiliser la position PHYSIQUE actuelle pour le calcul de l'angle, car c'est elle qu'on stabilise.
                     const angleToBody = Math.atan2(
-                        rocketModel.position.y - landedOnModel.position.y,
-                        rocketModel.position.x - landedOnModel.position.x
+                        rocketBody.position.y - landedOnModel.position.y, // Utiliser la position physique pour le calcul de l'angle
+                        rocketBody.position.x - landedOnModel.position.x
                     );
-                    const correctAngle = angleToBody + Math.PI/2;
-                    // Appliquer doucement pour éviter des sauts brusques?
-                    // Ou forcer comme actuellement:
+                    const correctAngle = angleToBody + Math.PI / 2; // Perpendiculaire à la surface
                     this.Body.setAngle(rocketBody, correctAngle);
-                    // Mettre à jour l'angle du modèle aussi pour la cohérence
-                    rocketModel.angle = correctAngle;
-                } else {
-                     // La logique de décollage (handleLiftoff) est dans ThrusterPhysics
-                     // et est déclenchée par applyThrusterForce.
-                     // On s'assure ici que l'état isLanded est bien mis à false
-                     // si ThrusterPhysics a initié le décollage.
-                     // (Normalement déjà fait dans handleLiftoff)
-                     // if (rocketModel.isLanded) {
-                     //     rocketModel.isLanded = false;
-                     //     rocketModel.landedOn = null;
-                     // }
-                }
+                    rocketModel.angle = correctAngle; // Synchro modèle immédiate pour cohérence
+
+                    // 3. Gérer la position (Physique)
+                    if (isMobile) {
+                        // Corps mobile: Suivre la position du corps parent
+                        if (!rocketModel.relativePosition) {
+                            // Première frame posée sur mobile OU après un recalcul: calculer relative.
+                            rocketModel.updateRelativePosition(landedOnModel);
+                            console.log(`Position relative sur ${landedOnModel.name} calculée/recalculée.`);
+                        }
+                        // Mettre à jour la position absolue du modèle EN PREMIER
+                        rocketModel.updateAbsolutePosition(landedOnModel);
+                        // Puis forcer la position PHYSIQUE à correspondre au modèle
+                        this.Body.setPosition(rocketBody, rocketModel.position);
+
+                    } else {
+                        // Corps statique (Terre ou autre): Maintenir la position où l'atterrissage s'est produit.
+                        // La position physique ne devrait pas changer si les vitesses sont nulles.
+                        // On peut s'assurer que la position du modèle correspond à la physique actuelle.
+                        rocketModel.position.x = rocketBody.position.x;
+                        rocketModel.position.y = rocketBody.position.y;
+                        // Pas besoin de recalculer la position relative pour les corps statiques une fois posé.
+                        if (!rocketModel.relativePosition) {
+                           // Stocker la position absolue au moment de l'atterrissage si nécessaire
+                           rocketModel.updateRelativePosition(landedOnModel);
+                        }
+                    }
+                    // Forcer la synchro du modèle avec la physique stabilisée (surtout pour vitesse/angle)
+                    this.syncModelWithPhysics(rocketModel);
+                } // Fin else (Stabilisation active)
+
+            } else {
+                 // Cas où landedOn est défini mais le corps n'est pas trouvé (ne devrait pas arriver)
+                 console.warn(`Corps ${rocketModel.landedOn} non trouvé pour la stabilisation.`);
+                 rocketModel.isLanded = false; // Forcer le décollage pour éviter blocage
+                 rocketModel.landedOn = null;
+                 rocketModel.relativePosition = null;
             }
-        }
-        // CAS 2: Fusée détruite et attachée à un corps mobile
+        } // fin if(rocketModel.isLanded)
+
+        // CAS 2: Fusée détruite et attachée (logique existante semble correcte)
         else if (rocketModel.isDestroyed && rocketModel.attachedTo) {
             const attachedToInfo = celestialBodies.find(cb => cb.model.name === rocketModel.attachedTo);
             const attachedToModel = attachedToInfo ? attachedToInfo.model : null;
 
             if (attachedToModel && typeof attachedToModel.updateOrbit === 'function') {
+                // Calculer la position relative si pas encore fait
                 if (!rocketModel.relativePosition) {
+                    // Utiliser l'angle actuel des débris pour calculer la position relative initiale
                     rocketModel.updateRelativePosition(attachedToModel);
-                    console.log(`Position relative des débris sur ${rocketModel.attachedTo} calculée.`);
+                    console.log(`Position relative initiale des débris sur ${rocketModel.attachedTo} calculée.`);
                 }
+
+                // Mettre à jour la position absolue des débris
                 rocketModel.updateAbsolutePosition(attachedToModel);
 
-                // Mettre à jour la position et l'angle du corps physique (débris)
+                // Mettre à jour la position ET l'angle du corps physique des débris
                 this.Body.setPosition(rocketBody, rocketModel.position);
                 this.Body.setAngle(rocketBody, rocketModel.angle);
-                 // Les débris ne devraient pas avoir de vélocité propre une fois attachés
+
+                // Les débris attachés ne bougent pas par eux-mêmes
                 this.Body.setVelocity(rocketBody, { x: 0, y: 0 });
                 this.Body.setAngularVelocity(rocketBody, 0);
+
+                 // Synchroniser le modèle une dernière fois pour être sûr
+                 this.syncModelWithPhysics(rocketModel);
+            } else if (attachedToModel) {
+                 // Attaché à un corps statique: juste s'assurer que la physique ne bouge pas
+                 this.Body.setVelocity(rocketBody, { x: 0, y: 0 });
+                 this.Body.setAngularVelocity(rocketBody, 0);
+                 // S'assurer que la position physique correspond au modèle (qui ne devrait pas changer)
+                 this.Body.setPosition(rocketBody, rocketModel.position);
+                 this.Body.setAngle(rocketBody, rocketModel.angle);
             }
-        }
+        } // fin if(rocketModel.isDestroyed)
     }
 
     // Vérifier périodiquement l'état d'atterrissage de la fusée
     checkRocketLandedStatusPeriodically(rocketModel, universeModel) {
         // Ne vérifier que toutes les ~100ms et si la fusée n'est pas détruite
-        if (rocketModel.isDestroyed || (this._lastLandedCheck && Date.now() - this._lastLandedCheck < 100)) {
+        // Augmenter légèrement le délai pour éviter les vérifications trop fréquentes
+        if (rocketModel.isDestroyed || (this._lastLandedCheck && Date.now() - this._lastLandedCheck < 150)) {
             return;
         }
         this._lastLandedCheck = Date.now();
@@ -168,70 +192,76 @@ class SynchronizationManager {
         const collisionHandler = this.physicsController.collisionHandler; // Besoin pour isRocketLanded
         if (!rocketBody || !collisionHandler || !universeModel || !universeModel.celestialBodies) return;
 
-        let newlyLanded = false;
-        let stillLandedOn = null;
+        let isNowConsideredLanded = false;
+        let currentLandedOnBody = null;
 
         for (const bodyModel of universeModel.celestialBodies) {
-            // Créer un objet simulé pour isRocketLanded si le corps physique n'est pas directement accessible
-            // ou utiliser le body physique s'il est dans this.physicsController.celestialBodies?
-            // Pour l'instant, utilisons le modèle qui a les infos nécessaires (pos, radius, label)
+            // Créer un objet simulé pour isRocketLanded
             const bodyToCheck = {
                  position: bodyModel.position,
                  radius: bodyModel.radius,
                  label: bodyModel.name,
-                 // On simule circleRadius pour la méthode isRocketLanded
-                 // Attention: ceci suppose que bodyModel.radius est le rayon physique
-                 circleRadius: bodyModel.radius
+                 circleRadius: bodyModel.radius // Simuler pour la fonction
             };
 
             // Calculer la distance pour un test rapide
-            const dx = bodyToCheck.position.x - rocketModel.position.x;
+            const dx = bodyToCheck.position.x - rocketModel.position.x; // Utiliser la position du modèle de fusée ici
             const dy = bodyToCheck.position.y - rocketModel.position.y;
             const distanceSquared = dx * dx + dy * dy;
-            // Seuil basé sur le rayon du corps + hauteur fusée + marge
-            const checkRadius = bodyToCheck.radius + this.ROCKET.HEIGHT * 1.5;
+            const checkRadius = bodyToCheck.radius + this.ROCKET.HEIGHT * 1.5; // Marge suffisante
             const maxDistanceCheckSq = checkRadius * checkRadius;
 
-            // Ne vérifier que si la fusée est assez proche
             if (distanceSquared <= maxDistanceCheckSq) {
+                // Utiliser la méthode isRocketLanded de CollisionHandler
                 if (collisionHandler.isRocketLanded(rocketModel, bodyToCheck)) {
-                    // Si on détecte un atterrissage sur ce corps
-                    if (!rocketModel.isLanded) {
-                        // Si on n'était pas déjà posé -> Nouvel atterrissage
-                        rocketModel.isLanded = true;
-                        rocketModel.landedOn = bodyToCheck.label;
-                        newlyLanded = true;
-                        console.log(`État d'atterrissage détecté (périodique) sur ${bodyToCheck.label}`);
-                        // Réinitialiser vitesse/rotation
-                        rocketModel.setVelocity(0, 0);
-                        rocketModel.setAngularVelocity(0);
-                        this.Body.setVelocity(rocketBody, { x: 0, y: 0 });
-                        this.Body.setAngularVelocity(rocketBody, 0);
-                        // Important: Recalculer la position relative si mobile
-                        const landedOnInfo = this.physicsController.celestialBodies.find(cb => cb.model.name === bodyToCheck.label);
-                        if (landedOnInfo && typeof landedOnInfo.model.updateOrbit === 'function'){
-                            rocketModel.relativePosition = null; // Forcer le recalcul
-                            this.handleLandedOrAttachedRocket(rocketModel); // Recalcul immédiat
-                        }
-                        break; // Sortir de la boucle, on a trouvé notre corps d'atterrissage
-                    } else if (rocketModel.landedOn === bodyToCheck.label) {
-                        // Si on était déjà posé sur CE corps, confirmer qu'on l'est toujours
-                        stillLandedOn = bodyToCheck.label;
-                        break; // Pas besoin de vérifier les autres
-                    }
+                     isNowConsideredLanded = true;
+                     currentLandedOnBody = bodyToCheck.label;
+                     break; // Trouvé un corps sur lequel on est posé
                 }
             }
         }
 
-        // Si on était posé, mais qu'on n'a confirmé être posé sur AUCUN corps proche
-        if (rocketModel.isLanded && !newlyLanded && !stillLandedOn) {
-            // Vérifier si la raison n'est pas un décollage actif
-            if (rocketModel.thrusters.main.power <= 50) {
-                console.log(`État de décollage détecté (périodique) de ${rocketModel.landedOn}`);
-                rocketModel.isLanded = false;
-                rocketModel.landedOn = null;
-                rocketModel.relativePosition = null;
+        // --- MISE À JOUR DE L'ÉTAT ---
+
+        // CAS 1: Actuellement posé (selon le modèle)
+        if (rocketModel.isLanded) {
+            // Si la vérification montre qu'on n'est PLUS posé sur AUCUN corps
+            if (!isNowConsideredLanded) {
+                 // Vérifier si ce n'est pas dû à une tentative de décollage en cours
+                 if (rocketModel.thrusters.main.power <= 50) {
+                     console.log(`État de décollage confirmé (périodique) de ${rocketModel.landedOn}`);
+                     rocketModel.isLanded = false;
+                     rocketModel.landedOn = null;
+                     rocketModel.relativePosition = null;
+                 } else {
+                     // Décollage en cours, l'état a probablement déjà été mis à jour par handleLanded...
+                     // Ne rien faire ici pour éviter conflit.
+                 }
+            // Si la vérification montre qu'on est posé, mais sur un AUTRE corps (très improbable, mais gérons le cas)
+            } else if (currentLandedOnBody !== rocketModel.landedOn) {
+                 console.warn(`Changement de corps d'atterrissage détecté (périodique): ${rocketModel.landedOn} -> ${currentLandedOnBody}`);
+                 rocketModel.landedOn = currentLandedOnBody;
+                 rocketModel.relativePosition = null; // Recalculer la position relative
+                 // Déclencher la stabilisation immédiate peut être utile ici
+                 this.handleLandedOrAttachedRocket(rocketModel);
             }
+            // Si on est posé et la vérification confirme le même corps, ne rien faire.
+
+        // CAS 2: Actuellement PAS posé (selon le modèle)
+        } else {
+            // Si la vérification montre qu'on EST maintenant posé
+            if (isNowConsideredLanded) {
+                 console.log(`État d'atterrissage détecté (périodique) sur ${currentLandedOnBody}`);
+                 rocketModel.isLanded = true;
+                 rocketModel.landedOn = currentLandedOnBody;
+                 rocketModel.relativePosition = null; // Calculer la position relative
+                 // Appeler handleLandedOrAttachedRocket pour appliquer la stabilisation immédiatement
+                 this.handleLandedOrAttachedRocket(rocketModel);
+                 // Forcer les vitesses à zéro immédiatement dans le modèle aussi pour cohérence
+                 rocketModel.setVelocity(0, 0);
+                 rocketModel.setAngularVelocity(0);
+            }
+            // Si on n'était pas posé et la vérification confirme, ne rien faire.
         }
     }
 } 
