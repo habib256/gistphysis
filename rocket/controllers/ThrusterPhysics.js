@@ -276,19 +276,6 @@ class ThrusterPhysics {
              const twr = mainThrusterForce / gravitationalForce;
 
              const canLiftOff = twr > 1;
-
-             console.log(`=== ANALYSE POUSSÉE (${nearestBody.name}) ===`);
-             console.log(`  Force Gravitationnelle (${nearestBody.name}): ${gravitationalForce.toFixed(2)} N`);
-             console.log(`  Poussée Max Principale: ${mainThrusterForce.toFixed(2)} N`);
-             console.log(`  TWR Local: ${twr.toFixed(3)}`);
-             console.log(`  Décollage Possible: ${canLiftOff ? "Oui" : "Non"}`);
-             if (!canLiftOff && gravitationalForce > 0) {
-                 const requiredTWR = 1.05; // Viser un TWR légèrement > 1
-                 const requiredThrust = gravitationalForce * requiredTWR;
-                 const requiredMultiplier = requiredThrust / (this.ROCKET.MAIN_THRUST * 1.5);
-                 console.log(`  -> Nécessite Multiplicateur Poussée: ~${requiredMultiplier.toFixed(2)}x (actuel: ${this.PHYSICS.THRUST_MULTIPLIER}x)`);
-             }
-             console.log("===============================");
          }
      }
 }
