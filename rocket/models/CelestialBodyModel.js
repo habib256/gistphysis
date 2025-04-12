@@ -96,19 +96,16 @@ class CelestialBodyModel {
         const dy = this.moon.position.y - this.position.y;
         let angle = Math.atan2(dy, dx);
         
-        // Calculer la distance actuelle
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
         // Mise à jour de l'angle en fonction de la vitesse orbitale
         angle += CELESTIAL_BODY.MOON.ORBIT_SPEED * deltaTime;
         
         // Stocker l'angle de rotation dans le modèle de la lune
         this.moon.rotationAngle = angle;
         
-        // Mettre à jour la position de la lune
+        // Mettre à jour la position de la lune en utilisant la distance orbitale constante
         this.moon.position = {
-            x: this.position.x + Math.cos(angle) * distance,
-            y: this.position.y + Math.sin(angle) * distance
+            x: this.position.x + Math.cos(angle) * CELESTIAL_BODY.MOON.ORBIT_DISTANCE,
+            y: this.position.y + Math.sin(angle) * CELESTIAL_BODY.MOON.ORBIT_DISTANCE
         };
     }
 } 

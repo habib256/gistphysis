@@ -170,6 +170,8 @@ class RenderingController {
             return;
         }
         
+        // Supprimer toute la logique de vérification et d'appel relative à la lune
+        /*
         // Vérifier si la fusée est détruite et attachée à la lune
         const isAttachedToMoon = (this.rocketState.isDestroyed && 
                                  (this.rocketState.attachedTo === 'Lune' || this.rocketState.landedOn === 'Lune')) ||
@@ -190,12 +192,13 @@ class RenderingController {
                     moonPosition = null;
                 } else {
                     // Mettre à jour les traces existantes pour qu'elles suivent la lune
-                    this.traceView.updateTracesForMoon(moonPosition);
+                    // this.traceView.updateTracesForMoon(moonPosition); // Appel supprimé
                 }
             }
         }
+        */
         
-        // Ajouter le point à la trace avec l'information d'attachement à la lune
-        this.traceView.update(this.rocketState.position, isAttachedToMoon, moonPosition);
+        // Ajouter le point de trace (coordonnées absolues uniquement)
+        this.traceView.update(this.rocketState.position);
     }
 } 

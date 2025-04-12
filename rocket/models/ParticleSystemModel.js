@@ -1,5 +1,8 @@
 class ParticleSystemModel {
     constructor() {
+        // Facteur pour convertir la consommation en nombre de particules
+        const PARTICLES_PER_FUEL_UNIT = 20; 
+        
         // Émetteurs de particules
         this.emitters = {
             main: {
@@ -12,7 +15,8 @@ class ParticleSystemModel {
                 colorStart: PARTICLES.EMITTER.MAIN.COLOR_START,
                 colorEnd: PARTICLES.EMITTER.MAIN.COLOR_END,
                 particleLifetimeBase: PARTICLES.EMITTER.MAIN.LIFETIME,
-                particleCountPerEmit: PARTICLES.EMITTER.MAIN.COUNT,
+                // Calcul basé sur la consommation
+                particleCountPerEmit: Math.max(1, Math.round(ROCKET.FUEL_CONSUMPTION.MAIN * PARTICLES_PER_FUEL_UNIT)), 
                 spread: 0.4,
                 particleSpeedVar: 0.3,
                 particleLifetimeVar: 0.5
@@ -27,7 +31,8 @@ class ParticleSystemModel {
                 colorStart: PARTICLES.EMITTER.LATERAL.COLOR_START,
                 colorEnd: PARTICLES.EMITTER.LATERAL.COLOR_END,
                 particleLifetimeBase: PARTICLES.EMITTER.LATERAL.LIFETIME,
-                particleCountPerEmit: PARTICLES.EMITTER.LATERAL.COUNT,
+                 // Calcul basé sur la consommation
+                particleCountPerEmit: Math.max(1, Math.round(ROCKET.FUEL_CONSUMPTION.LATERAL * PARTICLES_PER_FUEL_UNIT)),
                 spread: 0.3,
                 particleSpeedVar: 0.3,
                 particleLifetimeVar: 0.5
@@ -42,7 +47,8 @@ class ParticleSystemModel {
                 colorStart: PARTICLES.EMITTER.LATERAL.COLOR_START,
                 colorEnd: PARTICLES.EMITTER.LATERAL.COLOR_END,
                 particleLifetimeBase: PARTICLES.EMITTER.LATERAL.LIFETIME,
-                particleCountPerEmit: PARTICLES.EMITTER.LATERAL.COUNT,
+                 // Calcul basé sur la consommation
+                particleCountPerEmit: Math.max(1, Math.round(ROCKET.FUEL_CONSUMPTION.LATERAL * PARTICLES_PER_FUEL_UNIT)),
                 spread: 0.3,
                 particleSpeedVar: 0.3,
                 particleLifetimeVar: 0.5
@@ -57,7 +63,8 @@ class ParticleSystemModel {
                 colorStart: PARTICLES.EMITTER.REAR.COLOR_START,
                 colorEnd: PARTICLES.EMITTER.REAR.COLOR_END,
                 particleLifetimeBase: PARTICLES.EMITTER.REAR.LIFETIME,
-                particleCountPerEmit: PARTICLES.EMITTER.REAR.COUNT,
+                 // Calcul basé sur la consommation
+                particleCountPerEmit: Math.max(1, Math.round(ROCKET.FUEL_CONSUMPTION.REAR * PARTICLES_PER_FUEL_UNIT)),
                 spread: 0.3,
                 particleSpeedVar: 0.3,
                 particleLifetimeVar: 0.5

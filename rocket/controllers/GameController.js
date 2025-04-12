@@ -604,6 +604,11 @@ class GameController {
                 this.particleController.updateEmitterPositions(this.rocketModel);
             }
             
+            // Mise à jour de l'univers (y compris la lune)
+            if (this.universeModel) {
+                this.universeModel.update(deltaTime);
+            }
+
             // Mise à jour de la caméra
             if (this.camera) {
                 this.camera.update(deltaTime);

@@ -37,26 +37,30 @@ class SynchronizationManager {
         this.Body.setAngularVelocity(rocketBody, rocketModel.angularVelocity);
     }
 
-    // Met à jour la position des corps physiques statiques (lunes) pour correspondre à leur modèle
+    // Met à jour la position des corps physiques (y compris ceux qui orbitent/tournent) pour correspondre à leur modèle
     syncMovingBodyPositions() {
         const celestialBodies = this.physicsController.celestialBodies; // Accès via physicsController
         for (const celestialInfo of celestialBodies) {
-            // Vérifier si le modèle est mobile (ex: a une méthode updateOrbit)
-            if (celestialInfo.model && typeof celestialInfo.model.updateOrbit === 'function') {
-                 // La mise à jour de la position du *modèle* (ex: celestialInfo.model.updateOrbit(deltaTime))
-                 // est supposée avoir été faite ailleurs (dans GameController ou UniverseModel)
+            // Synchroniser si le modèle et le corps physique existent et le modèle a une position
+            if (celestialInfo.model && celestialInfo.model.position && celestialInfo.body) {
+                // La mise à jour de la position du *modèle* (ex: celestialInfo.model.updateMoon(deltaTime))
+                // est supposée avoir été faite ailleurs (dans GameController ou UniverseModel)
 
-                // Mettre à jour la position du corps physique
-                if (celestialInfo.body) {
-                    this.Body.setPosition(celestialInfo.body, {
-                        x: celestialInfo.model.position.x,
-                        y: celestialInfo.model.position.y
-                    });
-                    // Optionnel: Synchroniser la vitesse si elle est calculée dans le modèle
-                    // if (celestialInfo.model.velocity) {
-                    //     this.Body.setVelocity(celestialInfo.body, celestialInfo.model.velocity);
-                    // }
+                // Mettre à jour la position du corps physique pour correspondre au modèle
+                this.Body.setPosition(celestialInfo.body, {
+                    x: celestialInfo.model.position.x,
+                    y: celestialInfo.model.position.y
+                });
+                
+                // Optionnel: Synchroniser l'angle si le modèle en a un (pour rotation)
+                if (typeof celestialInfo.model.angle === 'number') {
+                    this.Body.setAngle(celestialInfo.body, celestialInfo.model.angle);
                 }
+                
+                // Optionnel: Synchroniser la vitesse si elle est calculée dans le modèle
+                // if (celestialInfo.model.velocity) {
+                //     this.Body.setVelocity(celestialInfo.body, celestialInfo.model.velocity);
+                // }
             }
         }
     }
@@ -88,7 +92,8 @@ class SynchronizationManager {
                     // L'impulsion de décollage sera gérée par ThrusterPhysics lors de l'application de la poussée
                 } else {
                     // --- STABILISATION ACTIVE (Pas de tentative de décollage) ---
-                    const isMobile = typeof landedOnModel.updateOrbit === 'function';
+                    // Détecter si le corps est mobile (orbite OU rotation)
+                    const isMobile = typeof landedOnModel.updateOrbit === 'function' || typeof landedOnModel.rotationAngle === 'number';
 
                     // 1. Forcer les vitesses à zéro (Physique)
                     this.Body.setVelocity(rocketBody, { x: 0, y: 0 });
@@ -147,7 +152,10 @@ class SynchronizationManager {
             const attachedToInfo = celestialBodies.find(cb => cb.model.name === rocketModel.attachedTo);
             const attachedToModel = attachedToInfo ? attachedToInfo.model : null;
 
-            if (attachedToModel && typeof attachedToModel.updateOrbit === 'function') {
+            // Vérifier si le corps est mobile (orbite OU rotation)
+            const isAttachedToMobile = attachedToModel && (typeof attachedToModel.updateOrbit === 'function' || typeof attachedToModel.rotationAngle === 'number');
+
+            if (isAttachedToMobile) {
                 // Calculer la position relative si pas encore fait
                 if (!rocketModel.relativePosition) {
                     // Utiliser l'angle actuel des débris pour calculer la position relative initiale
