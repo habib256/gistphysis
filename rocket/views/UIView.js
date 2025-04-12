@@ -228,6 +228,10 @@ class UIView {
         ctx.fillText('Vous êtes crashé', canvas.width / 2, 30);
         ctx.font = 'bold 28px Arial';
         ctx.fillText('THE END', canvas.width / 2, 70);
+        // Ajouter le message de redémarrage
+        ctx.font = '16px Arial';
+        ctx.fillStyle = this.colors.danger; // Changer la couleur pour le message de redémarrage en rouge
+        ctx.fillText('Appuyez sur R pour recommencer', canvas.width / 2, 100);
     }
 
     renderMoonInfo(ctx, canvas, rocketModel, universeModel) {
