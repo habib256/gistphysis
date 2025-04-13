@@ -786,6 +786,9 @@ class GameController {
     
     // Réinitialiser la fusée
     resetRocket() {
+        // Déclarer startLocation au début de la fonction
+        let startLocation = 'Terre'; // On part du principe qu'on commence/réinitialise sur Terre
+        
         // Effacer le timer de réinitialisation auto si présent
         if (this.crashResetTimer) {
             clearTimeout(this.crashResetTimer);
@@ -801,15 +804,16 @@ class GameController {
         } else {
             // Réinitialiser l'état de base du modèle (fuel, health, vitesse, etc.)
             this.rocketModel.reset();
-            // Réinitialiser le cargo
-            this.rocketModel.cargo = new RocketCargo(); // Assure que le cargo est vide
-            // Ajouter un log pour vérifier les appels multiples
-            console.log(`%c[GameController] Appel de addCargo('Fuel', 10) dans resetRocket. Timestamp: ${performance.now()}`, 'color: orange;');
-            this.rocketModel.cargo.addCargo('Fuel', 10);
-            console.log("Cargo initial ajouté: Fuel x10");
+            // Réinitialiser le cargo (VIDE initialement)
+            this.rocketModel.cargo = new RocketCargo(); 
+            // Supprimer l'ajout initial fixe de Fuel
+            // console.log(`%c[GameController] Appel de addCargo('Fuel', 10) dans resetRocket. Timestamp: ${performance.now()}`, 'color: orange;');
+            // this.rocketModel.cargo.addCargo('Fuel', 10);
+            // console.log("Cargo initial ajouté: Fuel x10");
 
             // --- Repositionner la fusée sur Terre ---            
             const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
+            // startLocation est déjà 'Terre', on le met à null seulement si Earth n'est pas trouvée
             if (earth) {
                 const angleVersSoleil = Math.atan2(earth.position.y - this.universeModel.celestialBodies[0].position.y, 
                                                  earth.position.x - this.universeModel.celestialBodies[0].position.x);
@@ -834,6 +838,7 @@ class GameController {
 
             } else {
                 console.error("Impossible de trouver la Terre pour repositionner la fusée.");
+                startLocation = null; // Mettre à null si Earth n'est pas trouvée
             }
             // -----------------------------------------
 
@@ -865,6 +870,12 @@ class GameController {
         // Réinitialiser les missions
         if (this.missionManager) {
             this.missionManager.resetMissions();
+        }
+        
+        // CHARGER LE CARGO POUR LA MISSION AU POINT DE DÉPART
+        // Vérifier que startLocation n'est pas null (au cas où Earth n'a pas été trouvée)
+        if(startLocation){
+            this.loadCargoForCurrentLocationMission(startLocation);
         }
 
         console.log("Fusée réinitialisée.");
@@ -1063,14 +1074,55 @@ class GameController {
 
         console.log(`La fusée a atterri sur : ${data.landedOn}`);
 
-        // Vérifier si des missions sont complétées
-        const completedMissions = this.missionManager.checkMissionCompletion(this.rocketModel.cargo, data.landedOn);
+        // Vérifier et gérer la complétion de mission
+        if (this.missionManager && this.rocketModel.cargo) {
+            const completedMissions = this.missionManager.checkMissionCompletion(this.rocketModel.cargo, data.landedOn);
+            if (completedMissions.length > 0) {
+                // Logique de récompense ou autre si nécessaire
+                console.log(`%c[GameController] ${completedMissions.length} mission(s) complétée(s) !`, 'color: lightgreen;');
+                // Mettre à jour l'UI pour refléter la complétion (peut être déjà fait via l'état)
+            }
+            
+            // TENTER DE CHARGER LE CARGO POUR LA PROCHAINE MISSION
+            this.loadCargoForCurrentLocationMission(data.landedOn);
+        }
+    }
 
-        // Afficher un message pour chaque mission complétée
-        completedMissions.forEach(mission => {
-            console.log(`%cMission accomplie : ${mission.cargoType} livré à ${mission.to} ! Récompense : ${mission.reward} crédits`, 'color: lightgreen; font-weight: bold;');
-            // Ici, vous pourriez ajouter la récompense au joueur, etc.
-            // Exemple: this.playerScore += mission.reward;
-        });
+    /**
+     * Charge le cargo nécessaire pour la première mission active partant de la localisation donnée.
+     * @param {string} location - Le nom de la planète/lune où se trouve la fusée.
+     */
+    loadCargoForCurrentLocationMission(location) {
+        if (!this.missionManager || !this.rocketModel) return;
+
+        const activeMissions = this.missionManager.getActiveMissions();
+        const nextMission = activeMissions.find(m => m.from === location);
+
+        if (nextMission) {
+            console.log(`%c[GameController] Détection de la mission suivante au départ de ${location}. Tentative de chargement du cargo requis.`, 'color: magenta;');
+            
+            // Vider le cargo actuel avant de charger celui de la mission
+            this.rocketModel.cargo = new RocketCargo(); 
+            let allLoaded = true;
+
+            nextMission.requiredCargo.forEach(item => {
+                const loaded = this.rocketModel.cargo.addCargo(item.type, item.quantity);
+                if (!loaded) {
+                    allLoaded = false;
+                    console.warn(`[GameController] Échec du chargement de ${item.quantity} x ${item.type} pour la mission ${nextMission.id}. Capacité dépassée ?`);
+                }
+            });
+
+            if (allLoaded) {
+                const cargoString = nextMission.requiredCargo.map(item => `${item.type} x${item.quantity}`).join(', ');
+                console.log(`%c[GameController] Cargo chargé pour la mission ${nextMission.id}: ${cargoString}`, 'color: lightblue;');
+            }
+             // Mettre à jour l'affichage UI du cargo immédiatement
+            if (this.uiView) {
+                this.uiView.updateCargoDisplay(this.rocketModel.cargo.getCargoList());
+            }
+        } else {
+            console.log(`%c[GameController] Aucune mission active au départ de ${location} trouvée. Pas de chargement automatique de cargo.`, 'color: gray;');
+        }
     }
 } 

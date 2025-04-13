@@ -439,18 +439,33 @@ class UIView {
 
         // Boucler sur les items du cargo
         cargoList.forEach(item => {
-            if (item.type === 'Fuel') { // Pour l'instant, on gère que le Fuel
-                for (let i = 0; i < item.quantity; i++) {
-                    // Créer un span pour l'émoticône au lieu d'une image
-                    const span = document.createElement('span');
-                    span.textContent = '🛢️'; // Remplacer ⛽ par 🛢️
-                    span.title = 'Fuel'; // Info-bulle
-                    // Ajouter un style si nécessaire, par exemple pour la taille
-                    // span.style.fontSize = '16px';
-                    this.cargoDisplayElement.appendChild(span);
-                }
+            let icon = '';
+            let title = item.type;
+            if (item.type === 'Fuel') { 
+                icon = '🛢️';
+                title = 'Fuel';
+            } else if (item.type === 'Wrench') { // AJOUTER LE CAS POUR WRENCH
+                icon = '🔧';
+                title = 'Clé à molette';
             }
             // Ajouter d'autres 'else if' pour d'autres types de cargo si nécessaire
+
+            if (icon) { // Si une icône est définie pour ce type
+                for (let i = 0; i < item.quantity; i++) {
+                    const span = document.createElement('span');
+                    span.textContent = icon;
+                    span.title = title; // Info-bulle
+                    this.cargoDisplayElement.appendChild(span);
+                }
+            } else {
+                // Affichage texte pour les types inconnus (optionnel)
+                 const span = document.createElement('span');
+                 span.textContent = ` ${item.type}x${item.quantity} `;
+                 span.title = title;
+                 span.style.fontSize = '12px'; // Plus petit pour le texte
+                 span.style.verticalAlign = 'middle';
+                 this.cargoDisplayElement.appendChild(span);
+            }
         });
         
         // Si le cargo est vide, afficher un message ? (Optionnel)
