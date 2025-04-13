@@ -1,6 +1,7 @@
 class SynchronizationManager {
-    constructor(physicsController, Body, ROCKET, PHYSICS) {
+    constructor(physicsController, eventBus, Body, ROCKET, PHYSICS) {
         this.physicsController = physicsController; // Pour accéder à rocketBody, celestialBodies, etc.
+        this.eventBus = eventBus; // Stocker l'eventBus
         this.Body = Body;
         this.ROCKET = ROCKET;
         this.PHYSICS = PHYSICS;
@@ -275,6 +276,9 @@ class SynchronizationManager {
                  // Forcer les vitesses à zéro immédiatement dans le modèle aussi pour cohérence
                  rocketModel.setVelocity(0, 0);
                  rocketModel.setAngularVelocity(0);
+
+                 // Émettre l'événement ROCKET_LANDED
+                 this.eventBus.emit('ROCKET_LANDED', { landedOn: currentLandedOnBody });
             }
             // Si on n'était pas posé et la vérification confirme, ne rien faire.
         }

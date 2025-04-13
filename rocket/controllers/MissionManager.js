@@ -67,18 +67,20 @@ class MissionManager {
 
             // Vérifier uniquement si la destination est atteinte
             if (mission.to === currentLocation) {
-                // // La vérification du cargo est retirée pour cette version
-                // const cargoList = rocketCargo.getCargoList();
-                // const cargoItem = cargoList.find(item => item.type === mission.cargoType);
-                //
-                // if (cargoItem && cargoItem.quantity >= mission.quantity) {
-                //     rocketCargo.removeCargo(mission.cargoType, mission.quantity);
+                // La vérification du cargo est maintenant réactivée
+                const cargoList = rocketCargo.getCargoList();
+                const cargoItem = cargoList.find(item => item.type === mission.cargoType);
+                
+                // Vérifier si le cargo nécessaire est présent en quantité suffisante
+                if (cargoItem && cargoItem.quantity >= mission.quantity) {
+                    // Retirer le cargo livré de la fusée
+                    rocketCargo.removeCargo(mission.cargoType, mission.quantity);
 
-                console.log(`%c[MissionManager] Mission ${mission.id} (${mission.from} -> ${mission.to}) détectée comme complétée à ${currentLocation}.`, 'color: yellow;');
-                // Marquer la mission comme complétée dès l'arrivée
-                mission.status = "completed";
-                completedMissions.push(mission);
-                // }
+                    console.log(`%c[MissionManager] Mission ${mission.id} (${mission.from} -> ${mission.to}) détectée comme complétée à ${currentLocation}. Cargo livré: ${mission.cargoType} x${mission.quantity}`, 'color: yellow;');
+                    // Marquer la mission comme complétée
+                    mission.status = "completed";
+                    completedMissions.push(mission);
+                }
             }
         }
 

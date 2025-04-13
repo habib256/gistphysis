@@ -34,8 +34,6 @@ class PhysicsController {
         // Références aux objets principaux
         this.rocketBody = null;
         this.celestialBodies = []; // Stocke { body: Matter.Body, model: CelestialBodyModel }
-        this.rocketModel = null;
-        this.universeModel = null; // Sera défini lors de l'initialisation
         this.gameController = null; // Sera défini via setGameController
 
         // Paramètres de simulation
@@ -49,7 +47,7 @@ class PhysicsController {
         this.bodyFactory = new BodyFactory(this.Bodies, this.Body, this.Attractors, this.ROCKET, this.PHYSICS);
         this.collisionHandler = new CollisionHandler(this, this.engine, this.Events, this.Body, this.ROCKET, this.PHYSICS);
         this.thrusterPhysics = new ThrusterPhysics(this, this.Body, this.ROCKET, this.PHYSICS);
-        this.synchronizationManager = new SynchronizationManager(this, this.Body, this.ROCKET, this.PHYSICS);
+        this.synchronizationManager = new SynchronizationManager(this, this.eventBus, this.Body, this.ROCKET, this.PHYSICS);
         this.physicsVectors = new PhysicsVectors(this, this.RENDER);
 
         // Cache (gardé ici pour l'instant, pourrait être dans un module séparé)

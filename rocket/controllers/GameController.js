@@ -688,11 +688,7 @@ class GameController {
     
     // Configurer les contrôleurs
     setupControllers() {
-        this.physicsController = new PhysicsController({
-            eventBus: this.eventBus,
-            rocketModel: this.rocketModel,
-            universeModel: this.universeModel
-        });
+        this.physicsController = new PhysicsController(this.eventBus);
         
         this.particleController = new ParticleController(this.particleSystemModel);
         
