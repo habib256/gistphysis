@@ -474,13 +474,11 @@ class GameController {
             // --- Création des Corps Célestes --- 
 
             // 1. Soleil (Centre de l'univers, pas d'orbite)
-            // TODO: Déplacer ces valeurs vers constants.js
-            const SUN_MASS_SCALED = 1.989e6; // Masse solaire très réduite pour la simulation
-            const SUN_RADIUS_SCALED = 696;    // Rayon solaire réduit
+            // Utilisation des constantes pour le Soleil
             const sun = new CelestialBodyModel(
                 'Soleil',
-                SUN_MASS_SCALED,
-                SUN_RADIUS_SCALED,
+                CELESTIAL_BODY.SUN.MASS,   // Masse depuis constants.js
+                CELESTIAL_BODY.SUN.RADIUS, // Rayon depuis constants.js
                 { x: 0, y: 0 }, // Position centrale
                 '#FFD700',      // Couleur jaune
                 null,           // Pas de parent

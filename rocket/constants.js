@@ -112,12 +112,19 @@ const ROCKET = {
 
 // Constantes du corps céleste
 const CELESTIAL_BODY = {
-    MASS: 200000000000,             // Masse de l'astre (Utilisé pour la Terre initialement)
-    RADIUS: 720,                  // Rayon de l'astre (Utilisé pour la Terre initialement)
-    // ORBIT_DISTANCE: 820,       // Obsolète? La distance est définie dans GameController pour Terre/Lune
-    ATMOSPHERE_RATIO: 0.1666,     // Ratio du rayon pour la hauteur de l'atmosphère (120/720 ≈ 0.1666)
+    // --- Propriétés Générales / Terre (par défaut) ---
+    MASS: 2e11,                 // Masse de la Terre (valeur de base)
+    RADIUS: 720,                  // Rayon de la Terre (valeur de base)
+    ATMOSPHERE_RATIO: 0.1666,     // Ratio du rayon pour la hauteur de l'atmosphère
 
-    // --- Paramètres spécifiques à la Terre (Nouvelle section) ---
+    // --- Paramètres spécifiques au Soleil (Nouvelle section) ---
+    SUN: {
+      MASS: 6e12, // Masse 1000x celle de la Terre (simulation)
+      RADIUS: 1400 // Rayon plus grand pour le Soleil (simulation)
+    },
+    // --- Fin Paramètres Soleil ---
+
+    // --- Paramètres spécifiques à la Terre ---
     EARTH: {
       ORBIT_DISTANCE: 15000,    // Distance orbitale Terre-Soleil (valeur de GameController)
       ORBIT_SPEED: 0.0000,      // Vitesse orbitale TRÈS LENTE (radians/s)
