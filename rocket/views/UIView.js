@@ -343,29 +343,39 @@ class UIView {
         ctx.fillText("Missions:", boxX + boxPadding, currentY);
         currentY += lineHeight * 1.5; // Espace après titre
         
-        const activeMissions = missions.filter(m => m.status === 'pending');
-        const missionToShow = activeMissions.length > 0 ? activeMissions[0] : null;
-        if (missionToShow) {
-            // ... (dessin Origine -> Dest)
-            ctx.font = '14px ' + this.fontFamily;
-            const locationText = `${missionToShow.from} -> ${missionToShow.to}`;
-            ctx.fillText(locationText, boxX + boxPadding, currentY);
-            currentY += lineHeight * 1.2;
-            // ... (dessin détails cargo mission)
-            const detailItems = missionToShow.requiredCargo.map(item => {
-                const cargoIcon = item.type === 'Fuel' ? '🛢️' : (item.type === 'Wrench' ? '🔧' : item.type);
-                return `${cargoIcon} x${item.quantity}`;
-            });
-            const detailText = `  ${detailItems.join('  ')}`; 
-            ctx.fillText(detailText, boxX + boxPadding, currentY);
+        // --- Logique d'affichage du statut de la mission --- 
+        if (rocketModel && rocketModel.isDestroyed) {
+            ctx.font = 'bold 14px ' + this.fontFamily;
+            ctx.fillStyle = this.colors.red; // Mettre en rouge
+            ctx.fillText("Mission Ratée", boxX + boxPadding, currentY);
             currentY += lineHeight;
         } else {
-             // --- Afficher "Missions réussies !" --- 
-             ctx.font = 'bold 14px ' + this.fontFamily; // Mettre en gras
-             ctx.fillStyle = this.colors.green; // Mettre en vert
-             ctx.fillText("Missions réussies !", boxX + boxPadding, currentY);
-             currentY += lineHeight;
+            const activeMissions = missions.filter(m => m.status === 'pending');
+            const missionToShow = activeMissions.length > 0 ? activeMissions[0] : null;
+            if (missionToShow) {
+                // ... (dessin Origine -> Dest)
+                ctx.font = '14px ' + this.fontFamily;
+                const locationText = `${missionToShow.from} -> ${missionToShow.to}`;
+                ctx.fillText(locationText, boxX + boxPadding, currentY);
+                currentY += lineHeight * 1.2;
+                // ... (dessin détails cargo mission)
+                const detailItems = missionToShow.requiredCargo.map(item => {
+                    const cargoIcon = item.type === 'Fuel' ? '🛢️' : (item.type === 'Wrench' ? '🔧' : item.type);
+                    return `${cargoIcon} x${item.quantity}`;
+                });
+                const detailText = `  ${detailItems.join('  ')}`; 
+                ctx.fillText(detailText, boxX + boxPadding, currentY);
+                currentY += lineHeight;
+            } else {
+                // --- Afficher "Missions réussies !" --- 
+                ctx.font = 'bold 14px ' + this.fontFamily; // Mettre en gras
+                ctx.fillStyle = this.colors.green; // Mettre en vert
+                ctx.fillText("Missions réussies !", boxX + boxPadding, currentY);
+                currentY += lineHeight;
+            }
         }
+        // --- Fin logique affichage statut mission ---
+
         const missionsEndY = currentY;
         
         // Ajouter un espace avant Cargo
