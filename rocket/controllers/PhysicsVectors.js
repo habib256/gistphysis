@@ -46,14 +46,22 @@ class PhysicsVectors {
         const rocketBody = this.physicsController.rocketBody;
         if (!this.showForces || !rocketBody || !camera) return;
 
-        const scale = 0.02; // Échelle de visualisation des forces de poussée
-        const rocketX = (rocketBody.position.x - camera.x) * camera.zoom + camera.offsetX;
-        const rocketY = (rocketBody.position.y - camera.y) * camera.zoom + camera.offsetY;
+        const baseScale = 0.02; // Échelle de base pour la force de poussée
+        const minVectorScreenLength = 20; // Longueur minimale à l'écran
+        const maxVectorScreenLength = 80; // Longueur maximale à l'écran
+        const baseLineWidth = 1.5;
+        const baseHeadLength = 8;
+        const baseFontSize = 11;
+
+        // Position de la fusée à l'écran
+        const rocketScreenX = (rocketBody.position.x - camera.x) * camera.zoom + camera.offsetX;
+        const rocketScreenY = (rocketBody.position.y - camera.y) * camera.zoom + camera.offsetY;
 
         // Dessiner les vecteurs de force des propulseurs
         for (const thrusterName in this.thrustForces) {
             const force = this.thrustForces[thrusterName];
-            if (force.x === 0 && force.y === 0) continue;
+            const forceMagnitude = Math.sqrt(force.x**2 + force.y**2);
+            if (forceMagnitude === 0) continue;
 
             let color;
             switch (thrusterName) {
@@ -64,98 +72,125 @@ class PhysicsVectors {
                 default: color = '#FFFFFF';
             }
 
-            ctx.beginPath();
-            ctx.moveTo(rocketX, rocketY);
-            ctx.lineTo(
-                rocketX + force.x * scale * camera.zoom,
-                rocketY + force.y * scale * camera.zoom
-            );
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            // Calculer la longueur à l'écran, limitée
+            let screenLength = forceMagnitude * baseScale; // Calculer la longueur souhaitée sans zoom
+            screenLength = Math.max(minVectorScreenLength, Math.min(screenLength, maxVectorScreenLength)); // Limiter à l'écran
+
+            // Calculer la position de fin à l'écran
+            const endScreenX = rocketScreenX + (force.x / forceMagnitude) * screenLength;
+            const endScreenY = rocketScreenY + (force.y / forceMagnitude) * screenLength;
+
+            this.drawArrow(ctx, rocketScreenX, rocketScreenY, endScreenX, endScreenY, color, baseLineWidth, baseHeadLength, camera.zoom);
         }
 
         // Dessiner le vecteur de vitesse
         if (rocketBody.velocity && (rocketBody.velocity.x !== 0 || rocketBody.velocity.y !== 0)) {
             const velocityColor = '#00FFFF'; // Cyan
             const velocityMagnitude = Math.sqrt(rocketBody.velocity.x**2 + rocketBody.velocity.y**2);
-            const velocityScale = 10; // Échelle plus grande pour la vitesse
+            const velocityBaseScale = 0.1; // Échelle de base pour la vitesse
 
-            const endX = rocketX + rocketBody.velocity.x * velocityScale * camera.zoom;
-            const endY = rocketY + rocketBody.velocity.y * velocityScale * camera.zoom;
+             // Calculer la longueur à l'écran, limitée
+             let screenLength = velocityMagnitude * velocityBaseScale;
+             screenLength = Math.max(minVectorScreenLength, Math.min(screenLength, maxVectorScreenLength));
+
+             // Calculer la position de fin à l'écran
+             const endScreenX = rocketScreenX + (rocketBody.velocity.x / velocityMagnitude) * screenLength;
+             const endScreenY = rocketScreenY + (rocketBody.velocity.y / velocityMagnitude) * screenLength;
 
             // Dessiner la ligne et la pointe
-            this.drawArrow(ctx, rocketX, rocketY, endX, endY, velocityColor, 2, 10 * camera.zoom);
+            this.drawArrow(ctx, rocketScreenX, rocketScreenY, endScreenX, endScreenY, velocityColor, baseLineWidth, baseHeadLength, camera.zoom);
 
-            // Afficher la magnitude
-            ctx.font = `${(12 * camera.zoom).toFixed(0)}px Arial`;
+            // Afficher la magnitude (taille fixe à l'écran)
+            ctx.font = `${baseFontSize / camera.zoom}px Arial`; // Ajuster la taille de police
             ctx.fillStyle = velocityColor;
-            ctx.fillText(
-                `V: ${velocityMagnitude.toFixed(1)} m/s`,
-                endX + 5 * camera.zoom,
-                endY - 5 * camera.zoom
+            const textX = endScreenX + (5 / camera.zoom); // Décaler en unités "monde" pour un décalage écran constant
+            const textY = endScreenY - (5 / camera.zoom);
+            const text = `V: ${velocityMagnitude.toFixed(1)} m/s`;
+            const textMetrics = ctx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = baseFontSize / camera.zoom; // Hauteur approximative
+            const padding = 4 / camera.zoom;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; // Fond pour lisibilité
+            ctx.fillRect(
+                textX - padding, 
+                textY - textHeight, 
+                textWidth + padding * 2, 
+                textHeight + padding * 2 
             );
+            ctx.fillStyle = velocityColor;
+            ctx.fillText(text, textX, textY);
         }
 
-        // Dessiner le vecteur de force gravitationnelle (calculé dans PhysicsController)
+        // Dessiner le vecteur de force gravitationnelle
         if (this.gravityForce && (this.gravityForce.x !== 0 || this.gravityForce.y !== 0)) {
             const gravityColor = '#FF00FF'; // Magenta
             const forceMagnitude = Math.sqrt(this.gravityForce.x**2 + this.gravityForce.y**2);
             const angle = Math.atan2(this.gravityForce.y, this.gravityForce.x);
 
-            // Échelle adaptative
-            const adaptiveScale = 0.0001 * Math.max(1, 500000 / forceMagnitude);
-            let displayLength = forceMagnitude * adaptiveScale * camera.zoom;
-            const maxLength = this.RENDER.GRAVITY_MAX_LENGTH * camera.zoom;
-            const minLength = 30 * camera.zoom;
-            displayLength = Math.max(minLength, Math.min(displayLength, maxLength));
+            // Échelle de base adaptative pour la gravité (plus petite force = plus grande échelle initiale)
+            const gravityBaseScale = 0.00001 * Math.max(1, 50000 / forceMagnitude);
 
-            const endX = rocketX + Math.cos(angle) * displayLength;
-            const endY = rocketY + Math.sin(angle) * displayLength;
+            // Calculer la longueur à l'écran, limitée
+            let screenLength = forceMagnitude * gravityBaseScale;
+            screenLength = Math.max(minVectorScreenLength, Math.min(screenLength, maxVectorScreenLength));
+
+            const endScreenX = rocketScreenX + Math.cos(angle) * screenLength;
+            const endScreenY = rocketScreenY + Math.sin(angle) * screenLength;
 
             // Dessiner la ligne et la pointe
-            this.drawArrow(ctx, rocketX, rocketY, endX, endY, gravityColor, 2, 10 * camera.zoom);
+            this.drawArrow(ctx, rocketScreenX, rocketScreenY, endScreenX, endScreenY, gravityColor, baseLineWidth, baseHeadLength, camera.zoom);
 
-            // Afficher la magnitude avec fond
-            ctx.font = `${(12 * camera.zoom).toFixed(0)}px Arial`;
-            const text = `G: ${forceMagnitude.toFixed(1)}`; // G pour Gravité
-            const textWidth = ctx.measureText(text).width;
-            const textHeight = 14 * camera.zoom;
-            const padding = 4 * camera.zoom;
-            const textX = endX - (textWidth / 2) * Math.cos(angle + Math.PI / 2) + 10 * Math.cos(angle);
-            const textY = endY - (textHeight / 2) * Math.sin(angle + Math.PI / 2) + 10 * Math.sin(angle);
+            // Afficher la magnitude avec fond (taille fixe à l'écran)
+            ctx.font = `${baseFontSize / camera.zoom}px Arial`; // Ajuster la taille de police
+            const text = `G: ${forceMagnitude.toFixed(1)}`;
+            const textMetrics = ctx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = baseFontSize / camera.zoom; // Hauteur approximative
+            const padding = 4 / camera.zoom;
+
+            // Positionner le texte légèrement décalé du bout de la flèche (décalage écran constant)
+            const textOffsetScreen = 10; // Décalage souhaité en pixels écran
+            const textOffsetX = (textOffsetScreen / camera.zoom) * Math.cos(angle);
+            const textOffsetY = (textOffsetScreen / camera.zoom) * Math.sin(angle);
+            const textX = endScreenX + textOffsetX; 
+            const textY = endScreenY + textOffsetY;
 
             ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             ctx.fillRect(
                 textX - padding,
-                textY - textHeight + padding, // Ajustement pour position verticale
+                textY - textHeight, // Ajuster pour alignement vertical
                 textWidth + padding * 2,
-                textHeight + padding
+                textHeight + padding * 2
             );
             ctx.fillStyle = gravityColor;
             ctx.fillText(text, textX, textY);
         }
     }
 
-    // Helper pour dessiner une flèche
-    drawArrow(ctx, fromX, fromY, toX, toY, color, lineWidth, headLength) {
-        const angle = Math.atan2(toY - fromY, toX - fromX);
+    // Helper pour dessiner une flèche (avec zoom pour ajuster l'épaisseur/taille)
+    drawArrow(ctx, screenFromX, screenFromY, screenToX, screenToY, color, desiredLineWidth, desiredHeadLength, zoom) {
+        const angle = Math.atan2(screenToY - screenFromY, screenToX - screenFromX);
+
+        // Épaisseur et taille de pointe ajustées pour l'écran
+        const actualLineWidth = desiredLineWidth / zoom;
+        const actualHeadLength = desiredHeadLength / zoom;
 
         // Corps de la flèche
         ctx.beginPath();
-        ctx.moveTo(fromX, fromY);
-        ctx.lineTo(toX, toY);
+        ctx.moveTo(screenFromX, screenFromY);
+        ctx.lineTo(screenToX, screenToY);
         ctx.strokeStyle = color;
-        ctx.lineWidth = lineWidth;
+        ctx.lineWidth = actualLineWidth; // Utiliser l'épaisseur ajustée
         ctx.stroke();
 
-        // Pointe de la flèche
+        // Pointe de la flèche (taille ajustée)
         ctx.beginPath();
-        ctx.moveTo(toX, toY);
-        ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6),
-                   toY - headLength * Math.sin(angle - Math.PI / 6));
-        ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6),
-                   toY - headLength * Math.sin(angle + Math.PI / 6));
+        ctx.moveTo(screenToX, screenToY);
+        ctx.lineTo(screenToX - actualHeadLength * Math.cos(angle - Math.PI / 6),
+                   screenToY - actualHeadLength * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(screenToX - actualHeadLength * Math.cos(angle + Math.PI / 6),
+                   screenToY - actualHeadLength * Math.sin(angle + Math.PI / 6));
         ctx.closePath();
         ctx.fillStyle = color;
         ctx.fill();

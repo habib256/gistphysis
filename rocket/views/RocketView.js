@@ -49,12 +49,30 @@ class RocketView {
         if (currentImage.complete && currentImage.naturalWidth > 0) {
             // Si l'image est chargée, l'utiliser
             try {
+                // Calculer les dimensions de dessin pour assurer une taille minimale à l'écran
+                const minScreenSize = 10; // Taille minimale en pixels à l'écran (modifié)
+                const minDrawDim = minScreenSize / camera.zoom; // Taille minimale dans le système de coordonnées local
+
+                let drawWidth = this.width;
+                let drawHeight = this.height;
+                const aspectRatio = this.width / this.height;
+
+                if (drawWidth < minDrawDim || drawHeight < minDrawDim) {
+                   if (aspectRatio >= 1) { // Plus large ou carré
+                       drawWidth = Math.max(drawWidth, minDrawDim);
+                       drawHeight = drawWidth / aspectRatio;
+                   } else { // Plus haut
+                       drawHeight = Math.max(drawHeight, minDrawDim);
+                       drawWidth = drawHeight * aspectRatio;
+                   }
+                }
+
                 ctx.drawImage(
-                    currentImage, 
-                    -this.width / 2, 
-                    -this.height / 2, 
-                    this.width, 
-                    this.height
+                    currentImage,
+                    -drawWidth / 2,  // Centrer l'image ajustée
+                    -drawHeight / 2, // Centrer l'image ajustée
+                    drawWidth,
+                    drawHeight
                 );
             } catch (e) {
                 console.error("Erreur de chargement d'image:", e);
