@@ -798,10 +798,6 @@ class GameController {
                 if (this.rocketModel.isDestroyed && currentMission.status === 'pending') {
                     this.eventBus.emit('MISSION_FAILED', { mission: currentMission });
                 }
-                // Vérifier le succès (atterrissage sur la cible)
-                else if (this.rocketModel.isLanded && this.rocketModel.landedOn === currentMission.to && currentMission.status === 'pending') {
-                    this.eventBus.emit('MISSION_SUCCESS', { mission: currentMission });
-                }
             }
         }
 
@@ -1135,14 +1131,21 @@ class GameController {
             // Vérifier et gérer la complétion de mission
             if (this.missionManager && this.rocketModel.cargo) {
                 const completedMissions = this.missionManager.checkMissionCompletion(this.rocketModel.cargo, data.landedOn);
+                
+                // MODIFICATION: Traiter les conséquences du succès ICI
                 if (completedMissions.length > 0) {
                     console.log(`%c[GameController] ${completedMissions.length} mission(s) complétée(s) !`, 'color: lightgreen;');
-                    // Ajouter les récompenses au total
                     completedMissions.forEach(mission => {
+                        // Ajouter les récompenses au total
                         this.totalCreditsEarned += mission.reward;
                         console.log(`%c[GameController] +${mission.reward} crédits gagnés ! Total: ${this.totalCreditsEarned}`, 'color: gold;');
+                        
+                        // Émettre les événements de succès (si nécessaire pour l'UI ou autre)
+                        this.eventBus.emit('UI_UPDATE_CREDITS', { reward: mission.reward }); 
+                        this.eventBus.emit('MISSION_COMPLETED', { mission: mission }); // Passer la mission complétée
                     });
                 }
+                // FIN MODIFICATION
                 
                 // TENTER DE CHARGER LE CARGO POUR LA PROCHAINE MISSION
                 // S'assurer que rocketModel existe toujours (au cas où setTimeout est lent)

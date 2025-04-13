@@ -40,7 +40,7 @@ class MissionManager {
             console.error("[MissionManager] EventBus non fourni au constructeur.");
             return;
         }
-        this.eventBus.subscribe('MISSION_SUCCESS', (data) => this.completeMission(data));
+        // this.eventBus.subscribe('MISSION_SUCCESS', (data) => this.completeMission(data)); // SUPPRIMÉ
         this.eventBus.subscribe('MISSION_FAILED', (data) => this.failMission(data));
     }
 
@@ -144,24 +144,6 @@ class MissionManager {
         this.createMission("Lune", "Terre", [{ type: "Wrench", quantity: 10 }], 150);
         // Mission 3: Terre -> Mars, 5 Fuel ET 5 Wrench
         this.createMission("Terre", "Mars", [{ type: "Fuel", quantity: 5 }, { type: "Wrench", quantity: 5 }], 300);
-    }
-
-    /**
-     * Gère la complétion d'une mission.
-     * @param {object} data - Données de l'événement contenant la mission.
-     */
-    completeMission(data) {
-        const mission = this.missions.find(m => m.id === data.mission.id && m.status === 'pending');
-        if (mission) {
-            mission.status = "completed";
-            console.log(`✅ Mission accomplie : ${mission.from} → ${mission.to} ! Récompense : +${mission.reward} crédits`);
-            // TODO: Ajouter les crédits au joueur
-            // TODO: Réinitialiser l'état de la mission (ex: générer une nouvelle mission ?)
-            
-            // Optionnel: Publier un événement pour l'UI
-            this.eventBus.emit('UI_UPDATE_CREDITS', { reward: mission.reward });
-            this.eventBus.emit('MISSION_COMPLETED', { mission });
-        }
     }
 
     /**
