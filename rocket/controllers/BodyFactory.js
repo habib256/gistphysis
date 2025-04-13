@@ -53,7 +53,7 @@ class BodyFactory {
     createCelestialBody(bodyModel) {
         const options = {
             mass: bodyModel.mass,
-            isStatic: true, // Tous les corps célestes sont statiques
+            isStatic: true,
             label: bodyModel.name, // Utiliser le nom du corps comme label
             collisionFilter: {
                 category: 0x0002,

@@ -1,5 +1,5 @@
 class CelestialBodyModel {
-    constructor(name, mass, radius, position, color) {
+    constructor(name, mass, radius, position, color, parentBody = null, orbitDistance = 0, initialOrbitAngle = 0, orbitSpeed = 0) {
         // Identité
         this.name = name;
         
@@ -10,21 +10,27 @@ class CelestialBodyModel {
         
         // Position et mouvement
         this.position = position || { x: 0, y: 0 };
-        this.velocity = { x: 0, y: 0 };
+        this.velocity = { x: 0, y: 0 }; // Gardé pour d'autres usages potentiels (ex: corps non en orbite)
         
         // Apparence
         this.color = color || '#FFFFFF';
         this.atmosphere = {
-            // Seule la Terre a une atmosphère, indépendamment de la masse
+            // L'atmosphère pourrait être rendue plus générique aussi, mais on garde la logique actuelle pour l'instant
             exists: name === 'Terre',
             height: radius * CELESTIAL_BODY.ATMOSPHERE_RATIO, // Hauteur de l'atmosphère
             color: 'rgba(25, 35, 80, 0.4)'  // Bleu très sombre semi-transparent
         };
         
-        // Caractéristiques supplémentaires
-        this.hasRings = false;
-        this.satellites = [];
-        this.moon = null; // Référence à la lune
+        // Caractéristiques orbitales
+        this.parentBody = parentBody; // Référence au corps parent autour duquel orbiter
+        this.orbitDistance = orbitDistance; // Distance orbitale par rapport au parent
+        this.initialOrbitAngle = initialOrbitAngle; // Angle initial sur l'orbite (radians)
+        this.currentOrbitAngle = initialOrbitAngle; // Angle actuel sur l'orbite (radians)
+        this.orbitSpeed = orbitSpeed; // Vitesse angulaire orbitale (radians par seconde)
+        
+        // Caractéristiques supplémentaires (généralisées)
+        this.satellites = []; // Peut toujours contenir des satellites si nécessaire pour la logique du jeu
+        // La propriété 'moon' est supprimée
     }
     
     setVelocity(vx, vy) {
@@ -34,6 +40,8 @@ class CelestialBodyModel {
     
     addSatellite(satellite) {
         this.satellites.push(satellite);
+        // On pourrait ajouter une logique pour définir le parentBody du satellite ici
+        satellite.parentBody = this;
     }
     
     // Calcule la force gravitationnelle exercée sur un autre corps
@@ -43,8 +51,9 @@ class CelestialBodyModel {
         const distanceSquared = dx * dx + dy * dy;
         const distance = Math.sqrt(distanceSquared);
         
-        // Formule de la gravitation universelle modifiée: F = G * (m1 * m2) / r au lieu de F = G * (m1 * m2) / r²
-        // pour une diminution plus lente de la gravité avec la distance
+        // NOTE: La formule de gravité personnalisée (1/r) utilisée ici est pour le calcul manuel,
+        // le plugin MatterAttractors utilise 1/r² par défaut. S'assurer de la cohérence si nécessaire.
+        // Si la gravité entre corps célestes est gérée par les orbites, cette fonction est peut-être moins utile.
         const forceMagnitude = this.gravitationalConstant * this.mass * otherBody.mass / distance;
         
         // Direction de la force (vecteur unitaire)
@@ -54,58 +63,33 @@ class CelestialBodyModel {
         return { x: forceX, y: forceY };
     }
     
-    // Initialiser la lune comme satellite naturel
-    initMoon() {
-        console.log("initMoon() appelée pour", this.name);
-        
-        // Utiliser la constante INITIAL_ANGLE pour initialiser la position de la lune
-        const moonPosition = {
-            x: this.position.x + CELESTIAL_BODY.MOON.ORBIT_DISTANCE * Math.cos(CELESTIAL_BODY.MOON.INITIAL_ANGLE),
-            y: this.position.y + CELESTIAL_BODY.MOON.ORBIT_DISTANCE * Math.sin(CELESTIAL_BODY.MOON.INITIAL_ANGLE)
+    // Mise à jour de la position orbitale
+    updateOrbit(deltaTime) {
+        if (!this.parentBody) {
+            // Si pas de parent, le corps ne bouge pas via cette méthode
+            // (pourrait avoir une vélocité propre définie ailleurs si nécessaire)
+            return;
+        }
+
+        // Mettre à jour l'angle orbital
+        this.currentOrbitAngle += this.orbitSpeed * deltaTime;
+
+        // Calculer la nouvelle position basée sur l'orbite autour du parent
+        this.position = {
+            x: this.parentBody.position.x + Math.cos(this.currentOrbitAngle) * this.orbitDistance,
+            y: this.parentBody.position.y + Math.sin(this.currentOrbitAngle) * this.orbitDistance
         };
-        
-        // Créer le modèle de la lune
-        const moon = new CelestialBodyModel(
-            "Lune",
-            CELESTIAL_BODY.MOON.MASS,
-            CELESTIAL_BODY.MOON.RADIUS,
-            moonPosition,
-            '#CCCCCC' // Couleur grise pour la lune
-        );
-        
-        // Donner à la lune une vitesse orbitale initiale
-        moon.velocity = {
-            x: 0,
-            y: -Math.sqrt(PHYSICS.G * this.mass / CELESTIAL_BODY.MOON.ORBIT_DISTANCE) * 0.5 // Formule de vitesse orbitale avec un facteur de réduction
+
+        // Optionnel: Calculer la vélocité instantanée (utile pour la physique/collisions)
+        const tangentSpeed = this.orbitSpeed * this.orbitDistance;
+        this.velocity = {
+             x: -Math.sin(this.currentOrbitAngle) * tangentSpeed,
+             y: Math.cos(this.currentOrbitAngle) * tangentSpeed
         };
-        
-        // Ajouter la lune aux satellites
-        this.satellites.push(moon);
-        this.moon = moon;
-        
-        console.log("Lune créée:", moon);
-        return moon;
-    }
-    
-    // Mise à jour manuelle de la position de la lune (sans dépendre du moteur physique)
-    updateMoon(deltaTime) {
-        if (!this.moon) return;
-        
-        // Calculer l'angle actuel de la lune par rapport à la planète
-        const dx = this.moon.position.x - this.position.x;
-        const dy = this.moon.position.y - this.position.y;
-        let angle = Math.atan2(dy, dx);
-        
-        // Mise à jour de l'angle en fonction de la vitesse orbitale
-        angle += CELESTIAL_BODY.MOON.ORBIT_SPEED * deltaTime;
-        
-        // Stocker l'angle de rotation dans le modèle de la lune
-        this.moon.rotationAngle = angle;
-        
-        // Mettre à jour la position de la lune en utilisant la distance orbitale constante
-        this.moon.position = {
-            x: this.position.x + Math.cos(angle) * CELESTIAL_BODY.MOON.ORBIT_DISTANCE,
-            y: this.position.y + Math.sin(angle) * CELESTIAL_BODY.MOON.ORBIT_DISTANCE
-        };
+         // Ajouter la vélocité du parent si celui-ci orbite aussi
+         if (this.parentBody.velocity) {
+            this.velocity.x += this.parentBody.velocity.x;
+            this.velocity.y += this.parentBody.velocity.y;
+         }
     }
 } 

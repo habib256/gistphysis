@@ -122,9 +122,18 @@ class PhysicsController {
 
         if (!this.rocketModel || !this.rocketBody || !this.universeModel) return;
 
-        // 1. Mettre à jour les positions des corps célestes (lunes)
-        //    (On suppose que universeModel.updateOrbits a déjà été appelé par GameController)
-        this.synchronizationManager.syncMovingBodyPositions();
+        // 1. Mettre à jour les positions des corps célestes (orbites calculées dans UniverseModel.update)
+        //    On synchronise maintenant le moteur physique AVANT son update.
+        for (const celestialInfo of this.celestialBodies) {
+            if (celestialInfo.model.parentBody) {
+                // Mettre à jour la position du corps physique Matter.js
+                this.Body.setPosition(celestialInfo.body, celestialInfo.model.position);
+                // Mettre à jour la vélocité du corps physique Matter.js (calculée dans updateOrbit)
+                this.Body.setVelocity(celestialInfo.body, celestialInfo.model.velocity);
+                // Assurer que le corps ne s'endort pas
+                celestialInfo.body.isSleeping = false;
+            }
+        }
 
         // 2. Gérer la position/état de la fusée si posée ou attachée (avant la physique principale)
         this.synchronizationManager.handleLandedOrAttachedRocket(this.rocketModel);

@@ -53,37 +53,6 @@ class UniverseModel {
     
     addCelestialBody(body) {
         this.celestialBodies.push(body);
-        
-        // Si c'est la Terre, ajouter sa lune
-        if (body.name === 'Terre') {
-            console.log("Corps céleste Terre détecté, initialisation de la lune...");
-            this.initializeMoon(body);
-            
-            // Vérifier si la lune a été créée et l'ajouter directement aux corps célestes
-            if (body.moon) {
-                console.log("La lune a été créée, l'ajouter aux corps célestes de l'univers pour le rendu");
-                // On ajoute une propriété spéciale pour identifier que c'est un satellite
-                body.moon.isMoon = true;
-                // Ajouter la lune aux corps célestes pour qu'elle soit rendue
-                this.celestialBodies.push(body.moon);
-            }
-        }
-    }
-    
-    // Initialiser la lune comme satellite de la Terre
-    initializeMoon(earthBody) {
-        console.log("initializeMoon() appelée avec:", earthBody);
-        
-        // Créer la lune avec le modèle de la Terre
-        const moon = earthBody.initMoon();
-        
-        if (moon) {
-            // Ne pas ajouter la lune comme corps céleste indépendant
-            // Elle sera gérée par la Terre
-            console.log("Lune initialisée comme satellite de la Terre");
-        } else {
-            console.error("Échec de l'initialisation de la lune");
-        }
     }
     
     removeCelestialBody(body) {
@@ -118,16 +87,18 @@ class UniverseModel {
         this.elapsedTime = (this.elapsedTime || 0) + deltaTime;
         this.updateStars(deltaTime);
         
-        // Mettre à jour les corps célestes
+        // Mettre à jour les corps célestes (orbites)
         for (const body of this.celestialBodies) {
-            if (body.update) {
-                body.update(deltaTime);
-            }
+            // Met à jour la position basée sur l'orbite si applicable
+            body.updateOrbit(deltaTime);
             
-            // Mettre à jour la lune si le corps céleste en a une
-            if (body.moon && body.updateMoon) {
-                body.updateMoon(deltaTime);
-            }
+            // Conserver body.update(deltaTime) si d'autres logiques de mise à jour existent dans CelestialBodyModel
+            // if (body.update) {
+            //     body.update(deltaTime);
+            // }
+            
+            // La logique spécifique à updateMoon est supprimée.
+            // if (body.moon && body.updateMoon) { ... }
         }
     }
 } 

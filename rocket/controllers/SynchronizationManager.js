@@ -92,11 +92,13 @@ class SynchronizationManager {
                     // L'impulsion de décollage sera gérée par ThrusterPhysics lors de l'application de la poussée
                 } else {
                     // --- STABILISATION ACTIVE (Pas de tentative de décollage) ---
-                    // Détecter si le corps est mobile (orbite OU rotation)
-                    const isMobile = typeof landedOnModel.updateOrbit === 'function' || typeof landedOnModel.rotationAngle === 'number';
+                    // Détecter si le corps est mobile (orbite)
+                    const isMobile = landedOnModel.parentBody !== null;
+                    const parentVelocity = isMobile ? landedOnModel.velocity : { x: 0, y: 0 }; // Obtenir la vélocité du corps parent (ou zéro si statique)
 
-                    // 1. Forcer les vitesses à zéro (Physique)
-                    this.Body.setVelocity(rocketBody, { x: 0, y: 0 });
+                    // 1. Forcer les vitesses (Physique)
+                    // Faire suivre la vélocité du corps parent pour les corps mobiles
+                    this.Body.setVelocity(rocketBody, parentVelocity);
                     this.Body.setAngularVelocity(rocketBody, 0);
 
                     // 2. Calculer et forcer l'angle correct par rapport à la surface (Physique ET Modèle)
@@ -107,7 +109,7 @@ class SynchronizationManager {
                     );
                     const correctAngle = angleToBody + Math.PI / 2; // Perpendiculaire à la surface
                     this.Body.setAngle(rocketBody, correctAngle);
-                    rocketModel.angle = correctAngle; // Synchro modèle immédiate pour cohérence
+                    // La synchro modèle se fera à la fin avec syncModelWithPhysics
 
                     // 3. Gérer la position (Physique)
                     if (isMobile) {
@@ -117,25 +119,26 @@ class SynchronizationManager {
                             rocketModel.updateRelativePosition(landedOnModel);
                             console.log(`Position relative sur ${landedOnModel.name} calculée/recalculée.`);
                         }
-                        // Mettre à jour la position absolue du modèle EN PREMIER
+                        // Mettre à jour la position absolue du MODÈLE en utilisant la position actuelle du parent
                         rocketModel.updateAbsolutePosition(landedOnModel);
-                        // Puis forcer la position PHYSIQUE à correspondre au modèle
+                        // Forcer la position PHYSIQUE à correspondre au modèle mis à jour
                         this.Body.setPosition(rocketBody, rocketModel.position);
 
                     } else {
-                        // Corps statique (Terre ou autre): Maintenir la position où l'atterrissage s'est produit.
+                        // Corps statique (ex: Soleil ou si Terre est statique): Maintenir la position où l'atterrissage s'est produit.
                         // La position physique ne devrait pas changer si les vitesses sont nulles.
-                        // On peut s'assurer que la position du modèle correspond à la physique actuelle.
-                        rocketModel.position.x = rocketBody.position.x;
-                        rocketModel.position.y = rocketBody.position.y;
-                        // Pas besoin de recalculer la position relative pour les corps statiques une fois posé.
+                        // Pas besoin de forcer la position physique, la vélocité nulle suffit.
                         if (!rocketModel.relativePosition) {
                            // Stocker la position absolue au moment de l'atterrissage si nécessaire
                            rocketModel.updateRelativePosition(landedOnModel);
                         }
                     }
-                    // Forcer la synchro du modèle avec la physique stabilisée (surtout pour vitesse/angle)
+                    // Synchroniser le modèle avec l'état physique stabilisé (position, angle, vélocité du parent)
                     this.syncModelWithPhysics(rocketModel);
+                    // Forcer la vélocité du modèle à correspondre à celle du parent après synchro
+                    // pour garantir qu'elle reflète le mouvement orbital.
+                    rocketModel.velocity.x = parentVelocity.x;
+                    rocketModel.velocity.y = parentVelocity.y;
                 } // Fin else (Stabilisation active)
 
             } else {
@@ -152,8 +155,9 @@ class SynchronizationManager {
             const attachedToInfo = celestialBodies.find(cb => cb.model.name === rocketModel.attachedTo);
             const attachedToModel = attachedToInfo ? attachedToInfo.model : null;
 
-            // Vérifier si le corps est mobile (orbite OU rotation)
-            const isAttachedToMobile = attachedToModel && (typeof attachedToModel.updateOrbit === 'function' || typeof attachedToModel.rotationAngle === 'number');
+            // Vérifier si le corps est mobile (orbite) - Correction du test ici
+            const isAttachedToMobile = attachedToModel && attachedToModel.parentBody !== null;
+            const parentVelocity = isAttachedToMobile ? attachedToModel.velocity : { x: 0, y: 0 };
 
             if (isAttachedToMobile) {
                 // Calculer la position relative si pas encore fait
@@ -170,12 +174,15 @@ class SynchronizationManager {
                 this.Body.setPosition(rocketBody, rocketModel.position);
                 this.Body.setAngle(rocketBody, rocketModel.angle);
 
-                // Les débris attachés ne bougent pas par eux-mêmes
-                this.Body.setVelocity(rocketBody, { x: 0, y: 0 });
+                // Les débris attachés devraient aussi suivre la vélocité du parent
+                this.Body.setVelocity(rocketBody, parentVelocity);
                 this.Body.setAngularVelocity(rocketBody, 0);
 
                  // Synchroniser le modèle une dernière fois pour être sûr
                  this.syncModelWithPhysics(rocketModel);
+                 // Forcer la vélocité du modèle à correspondre à celle du parent après synchro
+                 rocketModel.velocity.x = parentVelocity.x;
+                 rocketModel.velocity.y = parentVelocity.y;
             } else if (attachedToModel) {
                  // Attaché à un corps statique: juste s'assurer que la physique ne bouge pas
                  this.Body.setVelocity(rocketBody, { x: 0, y: 0 });

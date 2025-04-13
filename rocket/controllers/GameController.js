@@ -470,42 +470,80 @@ class GameController {
         try {
             // Créer un modèle d'univers
             this.universeModel = new UniverseModel();
-            
-            // Ajouter la Terre
+
+            // --- Création des Corps Célestes --- 
+
+            // 1. Soleil (Centre de l'univers, pas d'orbite)
+            // TODO: Déplacer ces valeurs vers constants.js
+            const SUN_MASS_SCALED = 1.989e6; // Masse solaire très réduite pour la simulation
+            const SUN_RADIUS_SCALED = 696;    // Rayon solaire réduit
+            const sun = new CelestialBodyModel(
+                'Soleil',
+                SUN_MASS_SCALED,
+                SUN_RADIUS_SCALED,
+                { x: 0, y: 0 }, // Position centrale
+                '#FFD700',      // Couleur jaune
+                null,           // Pas de parent
+                0, 0, 0         // Pas d'orbite
+            );
+            this.universeModel.addCelestialBody(sun);
+
+            // 2. Terre (Orbite autour du Soleil)
+            // Utilisation des constantes pour la Terre
+            const EARTH_ORBIT_DISTANCE = CELESTIAL_BODY.EARTH.ORBIT_DISTANCE; // Distance depuis constants.js
+            const EARTH_ORBIT_SPEED = CELESTIAL_BODY.EARTH.ORBIT_SPEED;         // Vitesse LENTE depuis constants.js
+            const earthInitialAngle = Math.random() * Math.PI * 2; // Angle de départ aléatoire
             const earth = new CelestialBodyModel(
                 'Terre',
-                CELESTIAL_BODY.MASS,
-                CELESTIAL_BODY.RADIUS,
-                { x: 0, y: 0 },
-                '#1E88E5'
+                CELESTIAL_BODY.MASS,     // Masse depuis constants.js
+                CELESTIAL_BODY.RADIUS,   // Rayon depuis constants.js
+                { x: sun.position.x + Math.cos(earthInitialAngle) * EARTH_ORBIT_DISTANCE, y: sun.position.y + Math.sin(earthInitialAngle) * EARTH_ORBIT_DISTANCE }, // Position initiale calculée
+                '#1E88E5',                // Couleur bleue
+                sun,                      // Parent = Soleil
+                EARTH_ORBIT_DISTANCE,     // Distance orbitale
+                earthInitialAngle,        // Angle initial
+                EARTH_ORBIT_SPEED         // Vitesse orbitale
             );
-            
-            // L'atmosphère est déjà défini dans le constructeur de CelestialBodyModel
-            // Pas besoin d'appeler setAtmosphere
-            
-            console.log("Ajout de la Terre à l'univers...");
+            earth.updateOrbit(0); // Calculer la position et la vélocité initiales
             this.universeModel.addCelestialBody(earth);
-            console.log("La Terre a-t-elle une lune?", earth.moon ? "OUI" : "NON");
+
+            // 3. Lune (Orbite autour de la Terre)
+            const MOON_ORBIT_DISTANCE = CELESTIAL_BODY.MOON.ORBIT_DISTANCE; // Depuis constants.js
+            const MOON_ORBIT_SPEED = CELESTIAL_BODY.MOON.ORBIT_SPEED;       // Depuis constants.js
+            const moonInitialAngle = Math.random() * Math.PI * 2; // Angle de départ aléatoire autour de la Terre
+            const moon = new CelestialBodyModel(
+                'Lune',
+                CELESTIAL_BODY.MOON.MASS,    // Masse depuis constants.js
+                CELESTIAL_BODY.MOON.RADIUS,  // Rayon depuis constants.js
+                { x: earth.position.x + Math.cos(moonInitialAngle) * MOON_ORBIT_DISTANCE, y: earth.position.y + Math.sin(moonInitialAngle) * MOON_ORBIT_DISTANCE }, // Position initiale calculée
+                '#CCCCCC',                  // Couleur grise
+                earth,                    // Parent = Terre
+                MOON_ORBIT_DISTANCE,      // Distance orbitale
+                moonInitialAngle,         // Angle initial
+                MOON_ORBIT_SPEED          // Vitesse orbitale
+            );
+            moon.updateOrbit(0); // Calculer la position et la vélocité initiales
+            this.universeModel.addCelestialBody(moon);
+
+            // --- Fin Création des Corps Célestes ---
             
-            // Créer la fusée à une position initiale plus éloignée pour éviter les collisions
+            // --- Création de la Fusée ---
             this.rocketModel = new RocketModel();
+
+            // Positionner la fusée sur la surface initiale de la Terre
+            const angleVersSoleil = Math.atan2(earth.position.y - sun.position.y, earth.position.x - sun.position.x);
+            const rocketStartX = earth.position.x + Math.cos(angleVersSoleil) * (earth.radius + ROCKET.HEIGHT / 2 + 1);
+            const rocketStartY = earth.position.y + Math.sin(angleVersSoleil) * (earth.radius + ROCKET.HEIGHT / 2 + 1);
+            this.rocketModel.setPosition(rocketStartX, rocketStartY);
+
+            // Donner à la fusée la vélocité initiale de la Terre
+            this.rocketModel.setVelocity(earth.velocity.x, earth.velocity.y);
             
-            // Positionner la fusée à une distance sécuritaire par rapport à la Terre
-            const safeDistanceFromEarth = CELESTIAL_BODY.RADIUS * 2.5; // Augmenter la distance par sécurité
-            const initialAngle = -Math.PI / 4; // Légèrement vers le haut-gauche
-            this.rocketModel.setPosition(
-                Math.cos(initialAngle) * safeDistanceFromEarth,
-                Math.sin(initialAngle) * safeDistanceFromEarth
-            );
+            // Orienter la fusée vers le haut (loin de la Terre, dans la direction opposée au Soleil comme approximation)
+            this.rocketModel.setAngle(angleVersSoleil); 
             
-            // Initialiser la fusée avec une vitesse tangentielle pour l'orbite
-            const initialSpeed = 2.0; // Vitesse tangentielle pour une orbite stable
-            const tangentialAngle = initialAngle + Math.PI / 2; // Perpendiculaire à la direction radiale
-            this.rocketModel.setVelocity(
-                Math.cos(tangentialAngle) * initialSpeed,
-                Math.sin(tangentialAngle) * initialSpeed
-            );
-            
+            // --- Fin Création de la Fusée ---
+
             // Créer le système de particules
             this.particleSystemModel = new ParticleSystemModel();
             
