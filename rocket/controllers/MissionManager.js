@@ -144,6 +144,8 @@ class MissionManager {
         this.createMission("Lune", "Terre", [{ type: "Wrench", quantity: 10 }], 150);
         // Mission 3: Terre -> Mars, 5 Fuel ET 5 Wrench
         this.createMission("Terre", "Mars", [{ type: "Fuel", quantity: 5 }, { type: "Wrench", quantity: 5 }], 300);
+        // Mission 4: Mars -> Terre, 10 Humains
+        this.createMission("Mars", "Terre", [{ type: "🧑‍🚀", quantity: 10 }], 500); 
     }
 
     /**

@@ -388,23 +388,28 @@ class UIView {
         if (cargoList.length > 0) {
             cargoList.forEach(item => {
                 let icon = null;
+                // AJOUT: Reconnaître l'icône astronaute
                 if (item.type === 'Fuel') icon = '🛢️';
                 else if (item.type === 'Wrench') icon = '🔧';
+                else if (item.type === '🧑‍🚀') icon = '🧑‍🚀'; // Reconnaître l'astronaute
                 
-                if (icon) {
+                if (icon) { // Si c'est Fuel, Wrench ou Astronaute
                     const iconsPerLine = 5;
                     const totalIcons = item.quantity;
                     let linesNeeded = Math.ceil(totalIcons / iconsPerLine);
+                    ctx.font = '14px ' + this.fontFamily; // S'assurer que la police est correcte pour les icônes
                     for(let i=0; i<linesNeeded; i++){
                          const iconsToShow = Math.min(iconsPerLine, totalIcons - (i * iconsPerLine));
                          const cargoText = icon.repeat(iconsToShow);
-                         ctx.fillText(cargoText, boxX + boxPadding, currentY);
-                         currentY += lineHeight * 1.3; 
+                         // Ajuster légèrement la position Y pour un meilleur alignement
+                         ctx.fillText(cargoText, boxX + boxPadding + 5, currentY); 
+                         currentY += lineHeight * 1.3; // Augmenter l'espacement vertical entre les lignes d'icônes
                     }
-                } else {
-                    const cargoText = ` - ${item.type}: ${item.quantity}`; // Garder le tiret pour les non-icônes
+                } else { // Pour tous les autres types de cargo (texte)
+                    ctx.font = '12px ' + this.fontFamily; // Police plus petite pour le texte
+                    const cargoText = ` - ${item.type}: ${item.quantity}`; 
                     ctx.fillText(cargoText, boxX + boxPadding, currentY);
-                    currentY += lineHeight;
+                    currentY += lineHeight; // Espacement normal pour le texte
                 }
             });
         } else {
