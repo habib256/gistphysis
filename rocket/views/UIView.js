@@ -315,7 +315,7 @@ class UIView {
         }
 
         // Dimensions et position (gardons les valeurs précédentes)
-        const boxWidth = 120;
+        const boxWidth = 125;
         const boxPadding = 8;
         const lineHeight = 16;
         const boxX = canvas.width - boxWidth - 15;

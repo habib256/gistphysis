@@ -13,13 +13,35 @@ class MissionManager {
     /**
      * Crée une instance de MissionManager
      * @constructor
+     * @param {EventBus} eventBus - L'instance de l'EventBus pour la communication
      */
-    constructor() {
+    constructor(eventBus) {
+        /**
+         * @type {EventBus}
+         * Instance de l'EventBus
+         */
+        this.eventBus = eventBus;
+
         /**
          * @type {Array<Mission>}
          * Liste des missions actives
          */
         this.missions = [];
+
+        // S'abonner aux événements de succès et d'échec de mission
+        this.subscribeToEvents();
+    }
+
+    /**
+     * S'abonne aux événements pertinents de l'EventBus.
+     */
+    subscribeToEvents() {
+        if (!this.eventBus) {
+            console.error("[MissionManager] EventBus non fourni au constructeur.");
+            return;
+        }
+        this.eventBus.subscribe('MISSION_SUCCESS', (data) => this.completeMission(data));
+        this.eventBus.subscribe('MISSION_FAILED', (data) => this.failMission(data));
     }
 
     /**
@@ -123,14 +145,45 @@ class MissionManager {
         // Mission 3: Terre -> Mars, 5 Fuel ET 5 Wrench
         this.createMission("Terre", "Mars", [{ type: "Fuel", quantity: 5 }, { type: "Wrench", quantity: 5 }], 300);
     }
+
+    /**
+     * Gère la complétion d'une mission.
+     * @param {object} data - Données de l'événement contenant la mission.
+     */
+    completeMission(data) {
+        const mission = this.missions.find(m => m.id === data.mission.id && m.status === 'pending');
+        if (mission) {
+            mission.status = "completed";
+            console.log(`✅ Mission accomplie : ${mission.from} → ${mission.to} ! Récompense : +${mission.reward} crédits`);
+            // TODO: Ajouter les crédits au joueur
+            // TODO: Réinitialiser l'état de la mission (ex: générer une nouvelle mission ?)
+            
+            // Optionnel: Publier un événement pour l'UI
+            this.eventBus.publish('UI_UPDATE_CREDITS', { reward: mission.reward }); 
+            this.eventBus.publish('MISSION_COMPLETED', { mission });
+        }
+    }
+
+    /**
+     * Gère l'échec d'une mission.
+     * @param {object} data - Données de l'événement contenant la mission.
+     */
+    failMission(data) {
+        const mission = this.missions.find(m => m.id === data.mission.id && m.status === 'pending');
+        if (mission) {
+            mission.status = "failed";
+            console.log(`❌ Mission échouée : ${mission.from} → ${mission.to}. Fusée détruite ou problème en route.`);
+            // TODO: Remettre la cargaison à zéro (nécessite une référence à RocketCargo)
+            
+            // Optionnel: Publier un événement pour l'UI ou autre logique
+            this.eventBus.publish('MISSION_ABORTED', { mission });
+        }
+    }
 }
 
-// Mission de test initiale (sera ajoutée par resetMissions au début)
-const missionManager = new MissionManager();
-// missionManager.createMission("Terre", "Lune", "Fuel", 20, 100); // Plus nécessaire ici, fait dans resetMissions
-
-// Initialisation au chargement du script
-missionManager.resetMissions();
+// Supprimer l'instanciation globale et l'initialisation ici
+// const missionManager = new MissionManager(); 
+// missionManager.resetMissions();
 
 // Supprimer l'exportation par défaut si elle existe
 // export default missionManager; 

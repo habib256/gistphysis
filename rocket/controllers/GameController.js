@@ -1,10 +1,10 @@
 // import missionManager from './MissionManager.js'; // Supprimer cette ligne
 
 class GameController {
-    constructor(eventBus) {
+    constructor(eventBus, missionManager) {
         // EventBus
         this.eventBus = eventBus;
-        this.missionManager = missionManager; // Réassigner la référence globale
+        this.missionManager = missionManager; // Utilise la variable passée en argument
         
         // Modèles
         this.rocketModel = null;
@@ -721,71 +721,77 @@ class GameController {
     
     // La boucle de jeu principale
     gameLoop(timestamp) {
-        // Calculer le delta time
-        const deltaTime = Math.min((timestamp - this.lastTimestamp) / 1000, 0.1); // Limiter à 0.1s
+        if (!this.isRunning) return;
+
+        const deltaTime = (timestamp - this.lastTimestamp) / 1000; // Convertir en secondes
         this.lastTimestamp = timestamp;
-        
-        this.elapsedTime += deltaTime;
-        
-        // Récupérer les missions actives
-        const activeMissions = this.missionManager.getActiveMissions();
 
-        // Mettre à jour l'état de l'entrée
-        if (this.inputController) {
-            this.inputController.update();
+        // Si le jeu est en pause, ne rien faire d'autre que de demander la prochaine frame
+        if (this.isPaused) {
+            requestAnimationFrame(this.gameLoop.bind(this));
+            return;
         }
-        
-        if (!this.isPaused) {
-            // Mise à jour de la physique
-            if (this.physicsController) {
-                this.physicsController.update(deltaTime);
-            }
-            
-            // Mise à jour du système de particules
-            if (this.particleController) {
-                this.particleController.update(deltaTime);
-                this.particleController.updateEmitterPositions(this.rocketModel);
-            }
-            
-            // Mise à jour de l'univers (y compris la lune)
-            if (this.universeModel) {
-                this.universeModel.update(deltaTime);
-            }
 
-            // Mise à jour de la caméra
-            if (this.cameraModel) {
-                this.cameraModel.update(deltaTime);
-            }
-            
-            // Mise à jour de la trace de la fusée
-            if (this.renderingController && this.rocketModel && !this.rocketModel.isLanded) {
-                this.renderingController.updateTrace();
+        // Mise à jour de la physique
+        if (this.physicsController && this.rocketModel) {
+            this.physicsController.update(deltaTime);
+            // Émettre l'état mis à jour après la physique
+            this.emitUpdatedStates(); 
+        }
+
+        // Mise à jour du système de particules
+        if (this.particleController) {
+            this.particleController.update(deltaTime);
+        }
+
+        // Mise à jour de l'agent IA (si actif)
+        if (this.rocketAgent && this.rocketAgent.isActive) {
+            this.rocketAgent.update(deltaTime);
+        }
+
+        // Mise à jour de la trace
+        if (this.traceView && this.traceView.isVisible) {
+            this.updateTrace();
+        }
+
+        // Vérification de l'état de la mission
+        if (this.rocketModel && this.missionManager) {
+            const activeMissions = this.missionManager.getActiveMissions();
+            if (activeMissions.length > 0) {
+                const currentMission = activeMissions[0]; // Supposons une seule mission active
+
+                // Vérifier l'échec (crash)
+                if (this.rocketModel.isDestroyed && currentMission.status === 'pending') {
+                    this.eventBus.publish('MISSION_FAILED', { mission: currentMission });
+                }
+                // Vérifier le succès (atterrissage sur la cible)
+                else if (this.rocketModel.isLanded && this.rocketModel.landedOn === currentMission.to && currentMission.status === 'pending') {
+                    this.eventBus.publish('MISSION_SUCCESS', { mission: currentMission });
+                }
             }
         }
-        
-        // Rendu
+
+
+        // Rendu graphique
         if (this.renderingController) {
-            // Passer les états nécessaires et les missions actives au RenderingController
+            // Récupérer les missions actives pour le rendu (si missionManager existe)
+            const activeMissions = this.missionManager ? this.missionManager.getActiveMissions() : [];
+            // Passer tous les arguments nécessaires à render
             this.renderingController.render(
-                this.ctx, 
-                this.canvas, 
-                this.rocketModel, 
-                this.universeModel, 
-                this.particleSystemModel, 
+                this.ctx,
+                this.canvas,
+                this.rocketModel,
+                this.universeModel,
+                this.particleSystemModel,
                 this.isPaused,
                 this.cameraModel,
-                activeMissions,
-                this.totalCreditsEarned
+                activeMissions, // Passer les missions actives récupérées
+                this.totalCreditsEarned // Passer les crédits
             );
         }
-        
-        // Émettre les états mis à jour
-        this.emitUpdatedStates();
-        
-        // Demander la prochaine frame
-        if (this.isRunning) {
-            requestAnimationFrame(this.gameLoop.bind(this));
-        }
+
+        // Demander la prochaine frame d'animation
+        requestAnimationFrame(this.gameLoop.bind(this));
     }
     
     // Réinitialiser la fusée
