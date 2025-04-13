@@ -306,7 +306,10 @@ class UIView {
     }
 
     // Afficher les missions actives et le cargo dans un cadre
-    renderMissionAndCargoBox(ctx, canvas, rocketModel, missions) {
+    renderMissionAndCargoBox(ctx, canvas, rocketModel, missions, totalCreditsEarned = 0) {
+        // LOG DE DÉBOGAGE POUR LES CRÉDITS REÇUS
+        // console.log(`[UIView] renderMissionAndCargoBox - totalCreditsEarned reçu: ${totalCreditsEarned}`);
+        
         if (!missions && (!rocketModel || !rocketModel.cargo)) {
             return; // Ne rien faire si pas de missions et pas de cargo
         }
@@ -317,44 +320,64 @@ class UIView {
         const lineHeight = 16;
         const boxX = canvas.width - boxWidth - 15;
         const boxY = 15;
+        let currentY = boxY + boxPadding;
 
-        // --- 1. Calcul du contenu et de la hauteur nécessaire --- 
-        const contentLines = [];
-        let calculatedHeight = boxPadding; // Commencer avec padding haut
-
-        // Titre "Missions:"
-        contentLines.push({ text: "Missions:", color: this.colors.white, bold: true, isTitle: true });
-        calculatedHeight += lineHeight * 1.5; // Hauteur titre + espace après
-
+        // --- Dessin des Crédits (en premier) --- 
+        const creditsStartY = currentY - lineHeight * 0.2; 
+        ctx.fillStyle = 'gold';
+        ctx.font = 'bold 14px ' + this.fontFamily;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        const creditsText = `💰 ${totalCreditsEarned}`;
+        ctx.fillText(creditsText, boxX + boxPadding, currentY);
+        currentY += lineHeight * 1.3; // Espace après crédits
+        const creditsEndY = currentY;
+        
+        // Ajouter un espace avant Missions
+        currentY += lineHeight * 0.5;
+        
+        // --- Dessin des Missions --- 
+        const missionsStartY = currentY;
+        ctx.fillStyle = this.colors.white;
+        ctx.font = 'bold 14px ' + this.fontFamily;
+        ctx.fillText("Missions:", boxX + boxPadding, currentY);
+        currentY += lineHeight * 1.5; // Espace après titre
+        
         const activeMissions = missions.filter(m => m.status === 'pending');
-        const missionToShow = activeMissions.length > 0 ? activeMissions[0] : null; // PRENDRE SEULEMENT LA PREMIÈRE
-
+        const missionToShow = activeMissions.length > 0 ? activeMissions[0] : null;
         if (missionToShow) {
-            // Ligne 1: Origine -> Destination
+            // ... (dessin Origine -> Dest)
+            ctx.font = '14px ' + this.fontFamily;
             const locationText = `${missionToShow.from} -> ${missionToShow.to}`;
-            contentLines.push({ text: locationText, color: this.colors.white, isLocationLine: true });
-            calculatedHeight += lineHeight * 1.2; // Hauteur + espace après
-            
-            // Ligne 2: Détails du cargo sur UNE SEULE ligne
+            ctx.fillText(locationText, boxX + boxPadding, currentY);
+            currentY += lineHeight * 1.2;
+            // ... (dessin détails cargo mission)
             const detailItems = missionToShow.requiredCargo.map(item => {
                 const cargoIcon = item.type === 'Fuel' ? '🛢️' : (item.type === 'Wrench' ? '🔧' : item.type);
                 return `${cargoIcon} x${item.quantity}`;
             });
-            const detailText = `  ${detailItems.join('  ')}`; // Joindre les items avec des espaces
-            contentLines.push({ text: detailText, color: this.colors.white });
-            calculatedHeight += lineHeight;
-
+            const detailText = `  ${detailItems.join('  ')}`; 
+            ctx.fillText(detailText, boxX + boxPadding, currentY);
+            currentY += lineHeight;
         } else {
-            contentLines.push({ text: "Aucune mission active", color: 'grey', italic: true });
-            calculatedHeight += lineHeight;
+            // ... (dessin "Aucune mission")
+             ctx.font = 'italic 14px ' + this.fontFamily;
+             ctx.fillStyle = 'grey';
+             ctx.fillText("Aucune mission active", boxX + boxPadding, currentY);
+             currentY += lineHeight;
         }
+        const missionsEndY = currentY;
         
-        calculatedHeight += lineHeight * 0.5; // Espace avant Cargo
+        // Ajouter un espace avant Cargo
+        currentY += lineHeight * 0.5;
 
-        // Titre "Cargo:"
-        contentLines.push({ text: "Cargo:", color: this.colors.white, bold: true, isTitle: true, isCargoTitle: true });
-        calculatedHeight += lineHeight * 1.3; // Hauteur titre + espace après (augmenté)
-
+        // --- Dessin du Cargo --- 
+        const cargoStartY = currentY;
+        ctx.fillStyle = this.colors.white;
+        ctx.font = 'bold 14px ' + this.fontFamily;
+        ctx.fillText("Cargo:", boxX + boxPadding, currentY);
+        currentY += lineHeight * 1.3; // Espace après titre
+        
         // Contenu Cargo
         let cargoList = [];
         try { 
@@ -362,68 +385,55 @@ class UIView {
                 cargoList = rocketModel.cargo.getCargoList();
             }
         } catch (e) { console.warn("Impossible de récupérer la liste du cargo:", e); }
-
         if (cargoList.length > 0) {
             cargoList.forEach(item => {
-                if (item.type === 'Fuel') {
+                let icon = null;
+                if (item.type === 'Fuel') icon = '🛢️';
+                else if (item.type === 'Wrench') icon = '🔧';
+                
+                if (icon) {
                     const iconsPerLine = 5;
                     const totalIcons = item.quantity;
                     let linesNeeded = Math.ceil(totalIcons / iconsPerLine);
                     for(let i=0; i<linesNeeded; i++){
                          const iconsToShow = Math.min(iconsPerLine, totalIcons - (i * iconsPerLine));
-                         const cargoText = '🛢️'.repeat(iconsToShow);
-                         contentLines.push({ text: cargoText, color: this.colors.white, isIconLine: true });
-                         calculatedHeight += lineHeight * 1.3; // Interligne augmentée
+                         const cargoText = icon.repeat(iconsToShow);
+                         ctx.fillText(cargoText, boxX + boxPadding, currentY);
+                         currentY += lineHeight * 1.3; 
                     }
                 } else {
-                    const cargoText = ` - ${item.type}: ${item.quantity}`;
-                    contentLines.push({ text: cargoText, color: this.colors.white });
-                    calculatedHeight += lineHeight;
+                    const cargoText = ` - ${item.type}: ${item.quantity}`; // Garder le tiret pour les non-icônes
+                    ctx.fillText(cargoText, boxX + boxPadding, currentY);
+                    currentY += lineHeight;
                 }
             });
         } else {
-            contentLines.push({ text: "Vide", color: 'grey', italic: true });
-            calculatedHeight += lineHeight;
+            ctx.fillText("Vide", boxX + boxPadding, currentY);
+            currentY += lineHeight;
         }
-        
-        calculatedHeight += boxPadding; // Ajouter padding bas
-        const finalBoxHeight = Math.max(calculatedHeight, 60); // Hauteur minimale
+        const cargoEndY = currentY;
 
-        // --- 2. Dessin du cadre principal --- 
-        ctx.fillStyle = 'rgba(50, 50, 70, 0.7)'; 
-        ctx.strokeStyle = this.colors.white; 
+        // --- Dessiner les Cadres --- 
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; 
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxWidth, finalBoxHeight, 5);
-        ctx.fill();
-        ctx.stroke();
+        const drawSectionFrame = (startY, endY) => {
+            if (startY >= endY) return; // Ne pas dessiner si vide
+            const framePadding = boxPadding * 0.5;
+            const frameX = boxX + framePadding / 2;
+            const frameY = startY - framePadding;
+            const frameWidth = boxWidth - framePadding;
+            const frameHeight = (endY - startY) + framePadding * 1.5;
+            ctx.beginPath();
+            ctx.roundRect(frameX, frameY, frameWidth, frameHeight, 3);
+            ctx.stroke();
+        }
 
-        // --- 3. Dessin du contenu (sans cadres de mission individuels) --- 
-        let currentY = boxY + boxPadding;
+        drawSectionFrame(creditsStartY, creditsEndY);
+        drawSectionFrame(missionsStartY, missionsEndY);
+        drawSectionFrame(cargoStartY, cargoEndY);
 
-        contentLines.forEach(line => {
-             // Dessiner le texte
-            ctx.fillStyle = line.color;
-            const fontStyle = line.bold ? 'bold ' : (line.italic ? 'italic ' : '');
-            ctx.font = fontStyle + '14px ' + this.fontFamily;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            
-            ctx.fillText(line.text, boxX + boxPadding, currentY);
-            
-            // Calculer l'incrément Y pour la prochaine ligne
-            let yIncrement = lineHeight;
-            if(line.isTitle) yIncrement = lineHeight * (line.isCargoTitle ? 1.3 : 1.5);
-            else if(line.isLocationLine) yIncrement = lineHeight * 1.2;
-            else if(line.isIconLine) yIncrement = lineHeight * 1.3;
-            
-            currentY += yIncrement;
-        });
-
-        // Réinitialiser les styles globaux
-        ctx.font = this.font; 
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
+        // Réinitialiser les styles
+        ctx.font = this.font;
         ctx.fillStyle = this.colors.white;
     }
 
@@ -441,40 +451,52 @@ class UIView {
         cargoList.forEach(item => {
             let icon = '';
             let title = item.type;
+            let iconsPerLine = 5; // Nombre d'icônes par ligne par défaut
+
             if (item.type === 'Fuel') { 
                 icon = '🛢️';
                 title = 'Fuel';
-            } else if (item.type === 'Wrench') { // AJOUTER LE CAS POUR WRENCH
+            } else if (item.type === 'Wrench') { 
                 icon = '🔧';
                 title = 'Clé à molette';
-            }
-            // Ajouter d'autres 'else if' pour d'autres types de cargo si nécessaire
+            } 
+            // Ajouter d'autres types ici si besoin
+            // else if (item.type === 'Autre') { ... }
 
-            if (icon) { // Si une icône est définie pour ce type
-                for (let i = 0; i < item.quantity; i++) {
-                    const span = document.createElement('span');
-                    span.textContent = icon;
-                    span.title = title; // Info-bulle
-                    this.cargoDisplayElement.appendChild(span);
+            if (icon) { // Si une icône est définie
+                let iconsAdded = 0;
+                while (iconsAdded < item.quantity) {
+                    const iconsToShow = Math.min(iconsPerLine, item.quantity - iconsAdded);
+                    const lineDiv = document.createElement('div'); // Utiliser une div pour chaque ligne d'icônes
+                    for (let i = 0; i < iconsToShow; i++) {
+                        const span = document.createElement('span');
+                        span.textContent = icon;
+                        span.title = title; 
+                        lineDiv.appendChild(span);
+                    }
+                    this.cargoDisplayElement.appendChild(lineDiv);
+                    iconsAdded += iconsToShow;
                 }
             } else {
-                // Affichage texte pour les types inconnus (optionnel)
+                // Affichage texte pour les types inconnus
+                 const lineDiv = document.createElement('div'); // Mettre aussi dans une div
                  const span = document.createElement('span');
-                 span.textContent = ` ${item.type}x${item.quantity} `;
+                 // Supprimer le tiret initial et ajuster le style
+                 span.textContent = `${item.type}: ${item.quantity}`;
                  span.title = title;
-                 span.style.fontSize = '12px'; // Plus petit pour le texte
+                 span.style.fontSize = '12px'; 
                  span.style.verticalAlign = 'middle';
-                 this.cargoDisplayElement.appendChild(span);
+                 lineDiv.appendChild(span);
+                 this.cargoDisplayElement.appendChild(lineDiv);
             }
         });
         
-        // Si le cargo est vide, afficher un message ? (Optionnel)
         if (this.cargoDisplayElement.innerHTML === '') {
-            // this.cargoDisplayElement.textContent = 'Vide'; 
+             this.cargoDisplayElement.textContent = 'Vide'; // Afficher "Vide" si rien dans le cargo
         }
     }
 
-    render(ctx, canvas, rocketModel, universeModel, isPaused, activeMissions = [], cargoList = []) {
+    render(ctx, canvas, rocketModel, universeModel, isPaused, activeMissions = [], totalCreditsEarned = 0) {
         if (isPaused) {
             this.renderPause(ctx, canvas);
         } else {
@@ -501,8 +523,8 @@ class UIView {
             // Afficher le bouton des contrôles assistés
             this.renderAssistedControlsButton(ctx, canvas);
 
-            // Afficher les missions et le cargo
-            this.renderMissionAndCargoBox(ctx, canvas, rocketModel, activeMissions);
+            // Afficher les missions et le cargo et les crédits
+            this.renderMissionAndCargoBox(ctx, canvas, rocketModel, activeMissions, totalCreditsEarned);
         }
         
     }

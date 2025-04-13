@@ -43,6 +43,9 @@ class GameController {
         this.dragStartRocketX = 0;
         this.dragStartRocketY = 0;
 
+        // Crédits gagnés - Initialiser à 10
+        this.totalCreditsEarned = 10;
+
         // Initialiser la caméra
         this.cameraModel = new CameraModel();
         
@@ -771,7 +774,8 @@ class GameController {
                 this.particleSystemModel, 
                 this.isPaused,
                 this.cameraModel,
-                activeMissions
+                activeMissions,
+                this.totalCreditsEarned
             );
         }
         
@@ -787,7 +791,7 @@ class GameController {
     // Réinitialiser la fusée
     resetRocket() {
         // Déclarer startLocation au début de la fonction
-        let startLocation = 'Terre'; // On part du principe qu'on commence/réinitialise sur Terre
+        let startLocation = 'Terre';
         
         // Effacer le timer de réinitialisation auto si présent
         if (this.crashResetTimer) {
@@ -806,10 +810,8 @@ class GameController {
             this.rocketModel.reset();
             // Réinitialiser le cargo (VIDE initialement)
             this.rocketModel.cargo = new RocketCargo(); 
-            // Supprimer l'ajout initial fixe de Fuel
-            // console.log(`%c[GameController] Appel de addCargo('Fuel', 10) dans resetRocket. Timestamp: ${performance.now()}`, 'color: orange;');
-            // this.rocketModel.cargo.addCargo('Fuel', 10);
-            // console.log("Cargo initial ajouté: Fuel x10");
+            // Réinitialiser les crédits à 10
+            this.totalCreditsEarned = 10;
 
             // --- Repositionner la fusée sur Terre ---            
             const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
@@ -1070,22 +1072,42 @@ class GameController {
 
     // Gérer l'atterrissage de la fusée
     handleRocketLanded(data) {
-        if (!this.rocketModel || !this.missionManager) return; // Assurer que tout est chargé
-
-        console.log(`La fusée a atterri sur : ${data.landedOn}`);
-
-        // Vérifier et gérer la complétion de mission
-        if (this.missionManager && this.rocketModel.cargo) {
-            const completedMissions = this.missionManager.checkMissionCompletion(this.rocketModel.cargo, data.landedOn);
-            if (completedMissions.length > 0) {
-                // Logique de récompense ou autre si nécessaire
-                console.log(`%c[GameController] ${completedMissions.length} mission(s) complétée(s) !`, 'color: lightgreen;');
-                // Mettre à jour l'UI pour refléter la complétion (peut être déjà fait via l'état)
-            }
-            
-            // TENTER DE CHARGER LE CARGO POUR LA PROCHAINE MISSION
-            this.loadCargoForCurrentLocationMission(data.landedOn);
+        // VÉRIFICATION IMPORTANTE : Ne traiter que si la fusée est ACTUELLEMENT considérée comme posée.
+        // Cela empêche le traitement multiple si l'événement est déclenché par erreur après une fausse détection de décollage.
+        if (!this.rocketModel || !this.rocketModel.isLanded) { 
+            console.log(`%c[GameController] Événement ROCKET_LANDED ignoré pour ${data.landedOn} car rocketModel.isLanded est false.`, 'color: orange;');
+            return; 
         }
+
+        console.log(`%c[GameController] Événement ROCKET_LANDED reçu pour: ${data.landedOn} (isLanded=${this.rocketModel.isLanded})`, 'color: #ADD8E6');
+        
+        // ----- Différer la logique de mission et cargo -----
+        setTimeout(() => {
+             console.log(`%c[GameController] Exécution différée de la logique post-atterrissage sur: ${data.landedOn}`, 'color: #FFD700');
+            
+             // Re-vérifier rocketModel juste avant d'agir (sécurité pour setTimeout)
+             if (!this.rocketModel) return;
+
+            // Vérifier et gérer la complétion de mission
+            if (this.missionManager && this.rocketModel.cargo) {
+                const completedMissions = this.missionManager.checkMissionCompletion(this.rocketModel.cargo, data.landedOn);
+                if (completedMissions.length > 0) {
+                    console.log(`%c[GameController] ${completedMissions.length} mission(s) complétée(s) !`, 'color: lightgreen;');
+                    // Ajouter les récompenses au total
+                    completedMissions.forEach(mission => {
+                        this.totalCreditsEarned += mission.reward;
+                        console.log(`%c[GameController] +${mission.reward} crédits gagnés ! Total: ${this.totalCreditsEarned}`, 'color: gold;');
+                    });
+                }
+                
+                // TENTER DE CHARGER LE CARGO POUR LA PROCHAINE MISSION
+                // S'assurer que rocketModel existe toujours (au cas où setTimeout est lent)
+                if (this.rocketModel) { 
+                   this.loadCargoForCurrentLocationMission(data.landedOn);
+                }
+            }
+        }, 0); // Délai de 0ms pour passer à la prochaine tick
+        // -------------------------------------------------
     }
 
     /**
