@@ -31,6 +31,10 @@
 │   │   ├── crash.mp3
 │   │   └── collision.mp3
 │   └── screenshots/ # Captures d'écran
+│       ├── Trajectoire.png
+│       ├── Lune.png
+│       ├── Startup.png
+│       └── Vectors.png
 ├── controllers/     # Contrôleurs de l'application
 │   ├── MissionManager.js
 │   ├── RocketCargo.js
@@ -50,7 +54,6 @@
 │   ├── CelestialBodyModel.js
 │   ├── ParticleSystemModel.js
 │   ├── RocketModel.js
-│   ├── SputnikModel.js
 │   ├── UniverseModel.js
 │   ├── CameraModel.js
 │   └── ParticleModel.js
@@ -63,54 +66,61 @@
 │   └── ParticleView.js
 ├── constants.js    # Constantes et configurations
 ├── main.js         # Point d'entrée de l'application
-└── index.html      # Page HTML principale
+├── index.html      # Page HTML principale
+├── README.md       # Informations générales sur le projet
+└── favicon.png     # Icône du site
 ```
 
 ## Description des Composants
 
 ### Contrôleurs
-- `GameController.js` : Contrôle principal du jeu
-- `InputController.js` : Gestion des entrées utilisateur
-- `RenderingController.js` : Gestion du rendu graphique
-- `RocketAgent.js` : Intelligence artificielle de la fusée
-- `MissionManager.js` : Gestion des missions
-- `PhysicsController.js` : Gestion de la physique
-- `PhysicsVectors.js` : Calculs vectoriels
-- `ThrusterPhysics.js` : Physique des propulseurs
-- `CollisionHandler.js` : Gestion des collisions
-- `ParticleController.js` : Gestion des particules
-- `SynchronizationManager.js` : Synchronisation des états
-- `EventBus.js` : Système de communication
-- `BodyFactory.js` : Création des corps célestes
-- `RocketCargo.js` : Gestion de la cargaison
+- `GameController.js` (1197 lignes) : Contrôle principal du jeu
+- `InputController.js` (226 lignes) : Gestion des entrées utilisateur
+- `RenderingController.js` (204 lignes) : Gestion du rendu graphique
+- `RocketAgent.js` (587 lignes) : Intelligence artificielle de la fusée
+- `MissionManager.js` (173 lignes) : Gestion des missions
+- `PhysicsController.js` (237 lignes) : Gestion de la physique
+- `PhysicsVectors.js` (221 lignes) : Calculs vectoriels
+- `ThrusterPhysics.js` (282 lignes) : Physique des propulseurs
+- `CollisionHandler.js` (289 lignes) : Gestion des collisions
+- `ParticleController.js` (185 lignes) : Gestion des particules
+- `SynchronizationManager.js` (286 lignes) : Synchronisation des états
+- `EventBus.js` (43 lignes) : Système de communication
+- `BodyFactory.js` (81 lignes) : Création des corps célestes
+- `RocketCargo.js` (114 lignes) : Gestion de la cargaison
 
 ### Modèles
-- `RocketModel.js` : Modèle de la fusée
-- `CelestialBodyModel.js` : Modèle des corps célestes
-- `UniverseModel.js` : Modèle de l'univers
-- `ParticleSystemModel.js` : Système de particules
-- `CameraModel.js` : Gestion de la caméra
-- `ParticleModel.js` : Modèle des particules
-- `SputnikModel.js` : Modèle du spoutnik
+- `RocketModel.js` (292 lignes) : Modèle de la fusée
+- `CelestialBodyModel.js` (95 lignes) : Modèle des corps célestes
+- `UniverseModel.js` (104 lignes) : Modèle de l'univers
+- `ParticleSystemModel.js` (138 lignes) : Système de particules
+- `CameraModel.js` (88 lignes) : Gestion de la caméra
+- `ParticleModel.js` (63 lignes) : Modèle des particules
 
 ### Vues
-- `RocketView.js` : Affichage de la fusée
-- `UniverseView.js` : Affichage de l'univers
-- `CelestialBodyView.js` : Affichage des corps célestes
-- `UIView.js` : Interface utilisateur
-- `TraceView.js` : Affichage des traces
-- `ParticleView.js` : Affichage des particules
+- `RocketView.js` (549 lignes) : Affichage de la fusée
+- `UniverseView.js` (171 lignes) : Affichage de l'univers
+- `CelestialBodyView.js` (122 lignes) : Affichage des corps célestes
+- `UIView.js` (583 lignes) : Interface utilisateur
+- `TraceView.js` (111 lignes) : Affichage des traces
+- `ParticleView.js` (96 lignes) : Affichage des particules
 
 ## Ressources
-- Images : Fusée, spoutnik, crash
-- Sons : Effets sonores et ambiances spatiales
-- Captures d'écran : Documentation visuelle
+- Images : Fusée, spoutnik, crash (`assets/image/`)
+- Sons : Effets sonores et ambiances spatiales (`assets/sound/`)
+- Captures d'écran : Documentation visuelle (`assets/screenshots/`)
 
 ## Points d'Entrée Importants
-- `main.js` : Initialisation de l'application
-- `GameController.js` : Logique principale du jeu
-- `EventBus.js` : Communication entre composants 
+- `main.js` (96 lignes) : Initialisation de l'application
+- `GameController.js` (1197 lignes) : Logique principale du jeu
+- `EventBus.js` (43 lignes) : Communication entre composants
+- `constants.js` (230 lignes) : Constantes et configurations
+- `index.html` (245 lignes) : Structure HTML principale
 
-Ne jamais utiliser la logique des imports : Tous les fichiers Javascript sont référencés dans le fichier index.html 
+## Notes Importantes
 
-L'erreur entre matter.js et matter-attractor n'est pas une erreur. Les deux numéros de version soi-disant incompatibles fonctionnent très très très bien ensemble. N'essaye jamais de réparer cette fausse erreur 
+Il serait judicieux de vérifier la présence éventuelle de fichiers dupliqués ou redondants afin de nettoyer la base de code.
+
+Ne jamais utiliser la logique des imports : Tous les fichiers Javascript sont référencés dans le fichier index.html
+
+L'erreur entre matter.js et matter-attractor n'est pas une erreur. Les deux numéros de version soi-disant incompatibles fonctionnent très très très bien ensemble. N'essaye jamais de réparer cette fausse erreur
