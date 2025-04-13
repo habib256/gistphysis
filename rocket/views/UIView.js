@@ -191,7 +191,6 @@ class UIView {
                         ctx.textAlign = 'center';
                         if (!isUpright) {
                             ctx.fillStyle = this.colors.red;
-                            ctx.fillText('Redressez la fusée!', canvas.width / 2, 110);
                         } else {
                             ctx.fillStyle = this.colors.green;
                             ctx.fillText('Orientation correcte', canvas.width / 2, 110);
@@ -200,7 +199,6 @@ class UIView {
                         const speed = this.calculateSpeed(rocketModel);
                         if (Math.abs(speed) > 1.0) {
                             ctx.fillStyle = this.colors.red;
-                            ctx.fillText('Ralentissez!', canvas.width / 2, 140);
                         }
                     }
                 }
