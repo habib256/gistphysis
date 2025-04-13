@@ -134,7 +134,10 @@ class MissionManager {
     resetMissions() {
         this.missions = []; // Vider les missions actuelles
         console.log("%c[MissionManager] Réinitialisation des missions.", 'color: orange;');
-        this.createMission("Terre", "Lune", "Fuel", 20, 100); // Recréer la mission initiale
+        // Mission 1: Terre -> Lune, 10 Fuel
+        this.createMission("Terre", "Lune", "Fuel", 10, 100); 
+        // Mission 2: Lune -> Terre, 20 Wrench (Clés à molette)
+        this.createMission("Lune", "Terre", "Wrench", 20, 150);
     }
 }
 

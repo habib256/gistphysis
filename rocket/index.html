@@ -60,6 +60,12 @@
         #audioControls button:hover {
             background: rgba(255, 255, 255, 0.3);
         }
+        .cargo-icons img {
+            width: 16px;
+            height: 16px;
+            margin: 1px;
+            vertical-align: middle;
+        }
     </style>
     
     <!-- Bibliothèques externes -->
@@ -226,5 +232,14 @@
     
     <!-- Point d'entrée -->
     <script src="main.js"></script>
+
+    <div class="info-item">
+        <p>Altitude: <span id="altitude">--</span> m</p>
+    </div>
+    <!-- Ajout de la section Cargo -->
+    <div class="info-item">
+        <p>Cargo:</p>
+        <div id="cargo-display" class="cargo-icons"></div> <!-- Conteneur pour les icônes -->
+    </div>
 </body>
 </html> 

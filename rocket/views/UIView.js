@@ -13,6 +13,9 @@ class UIView {
         this.showMoonInfo = true; // Option pour afficher les informations de la lune
         this.assistedControlsActive = true; // Activés par défaut
         
+        // Référence à l'élément d'affichage du cargo
+        this.cargoDisplayElement = document.getElementById('cargo-display');
+        
         // Gestionnaire d'événements
         this.eventBus = eventBus;
         
@@ -70,7 +73,7 @@ class UIView {
         ctx.fillStyle = this.colors.white;
         
         // Afficher le carburant
-        ctx.fillText(`⛽:`, 20, 50);
+        ctx.fillText(`🛢️:`, 20, 50);
         
         // Barre de carburant
         const barYFuel = 55;
@@ -312,15 +315,16 @@ class UIView {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
-        const boxWidth = 200;
-        const boxPadding = 10;
-        const lineHeight = 18; // Espacement vertical ajusté
-        const boxX = canvas.width - boxWidth - 20; // Position X (20px du bord droit)
-        const boxY = 20; // Position Y (20px du haut)
+        // Réduire la largeur de la boîte et ajuster la position X
+        const boxWidth = 120; // Réduit de 200
+        const boxPadding = 8; // Réduire légèrement le padding
+        const lineHeight = 16; // Réduire légèrement l'interligne de base
+        const boxX = canvas.width - boxWidth - 15; // Position X (15px du bord droit)
+        const boxY = 15; // Position Y (15px du haut)
 
         let currentY = boxY + boxPadding; // Position Y de départ pour le contenu
 
-        // --- Calcul du contenu et de la hauteur ---
+        // --- Calcul du contenu et de la hauteur --- 
         const contentLines = [];
 
         // Ajouter les missions en cours
@@ -328,16 +332,24 @@ class UIView {
         const activeMissions = missions.filter(m => m.status === 'pending');
         if (activeMissions.length > 0) {
             activeMissions.forEach(mission => {
-                const missionText = ` - ${mission.from} -> ${mission.to} (${mission.cargoType} x${mission.quantity})`;
-                contentLines.push({ text: missionText, color: this.colors.white });
+                // Ligne 1: Origine -> Destination (sans tiret)
+                const locationText = `${mission.from} -> ${mission.to}`;
+                // Marquer cette ligne pour l'interligne augmentée
+                contentLines.push({ text: locationText, color: this.colors.white, isMissionLocationLine: true });
+                
+                // Ligne 2: Type xQuantité (avec indentation et émoticône pour Fuel)
+                const cargoIcon = mission.cargoType === 'Fuel' ? '🛢️' : mission.cargoType; // Utiliser l'icône si Fuel
+                const detailText = `  ${cargoIcon} x${mission.quantity}`;
+                contentLines.push({ text: detailText, color: this.colors.white, isDetailLine: true }); // Marquer comme ligne de détail
             });
         } else {
             contentLines.push({ text: " - Aucune", color: 'grey' });
         }
         contentLines.push({ text: "", color: this.colors.white }); // Ligne vide
 
-        // Ajouter le contenu du cargo
-        contentLines.push({ text: "Cargo:", color: this.colors.white, bold: true });
+        // Ajouter le contenu du cargo (logique existante modifiée précédemment)
+        // Marquer cette ligne comme étant le titre du cargo
+        contentLines.push({ text: "Cargo:", color: this.colors.white, bold: true, isCargoTitle: true }); 
         let cargoList = [];
         try {
              // Accéder au cargo via rocketModel.cargo (si défini)
@@ -350,32 +362,62 @@ class UIView {
         
         if (cargoList.length > 0) {
             cargoList.forEach(item => {
-                const cargoText = ` - ${item.type}: ${item.quantity}`;
-                contentLines.push({ text: cargoText, color: this.colors.white });
+                if (item.type === 'Fuel') {
+                    // Définir le nombre d'icônes par ligne
+                    const iconsPerLine = 5; // Garder 5 pour la boîte plus étroite
+                    const totalIcons = item.quantity;
+                    let iconsAdded = 0;
+
+                    while (iconsAdded < totalIcons) {
+                        const iconsToShow = Math.min(iconsPerLine, totalIcons - iconsAdded);
+                        // Construire la chaîne d'icônes pour la ligne actuelle, sans tiret
+                        const cargoText = `${'🛢️'.repeat(iconsToShow)}`; 
+                        // Ajouter une propriété pour marquer cette ligne comme contenant des icônes
+                        contentLines.push({ text: cargoText, color: this.colors.white, isIconLine: true });
+                        iconsAdded += iconsToShow;
+                    }
+                } else {
+                    // Pour les autres types, garder l'affichage texte avec tiret
+                    const cargoText = ` - ${item.type}: ${item.quantity}`;
+                    contentLines.push({ text: cargoText, color: this.colors.white });
+                }
             });
         } else {
             contentLines.push({ text: " - Vide", color: 'grey' });
         }
 
-        const boxHeight = (contentLines.length * lineHeight) + (boxPadding * 2);
+        // Ajuster la hauteur de la boîte en fonction du nombre réel de lignes
+        let finalBoxHeight = boxPadding; // Commencer avec le padding du haut
+        contentLines.forEach(line => {
+            const currentLineHeight = (line.isCargoTitle || line.isIconLine || line.isMissionLocationLine) ? lineHeight * 1.3 : (line.isDetailLine ? lineHeight * 0.9 : lineHeight); // Interligne légèrement réduite pour les détails
+            finalBoxHeight += currentLineHeight;
+        });
+        finalBoxHeight += boxPadding; // Ajouter le padding du bas
+        
+        // S'assurer qu'il y a une hauteur minimale
+        finalBoxHeight = Math.max(finalBoxHeight, 60); 
 
-        // --- Dessin du cadre ---
-        ctx.fillStyle = 'rgba(50, 50, 70, 0.7)'; // Fond bleu foncé semi-transparent
-        ctx.strokeStyle = this.colors.white; // Bordure blanche
+        // --- Dessin du cadre --- 
+        ctx.fillStyle = 'rgba(50, 50, 70, 0.7)'; 
+        ctx.strokeStyle = this.colors.white; 
         ctx.lineWidth = 1;
 
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 5); // Coins arrondis
+        ctx.roundRect(boxX, boxY, boxWidth, finalBoxHeight, 5);
         ctx.fill();
         ctx.stroke();
 
-
         // --- Dessin du texte ---
+        currentY = boxY + boxPadding;
         contentLines.forEach(line => {
             ctx.fillStyle = line.color;
             ctx.font = line.bold ? 'bold 14px ' + this.fontFamily : '14px ' + this.fontFamily;
-            ctx.fillText(line.text, boxX + boxPadding, currentY);
-            currentY += lineHeight;
+            const textX = boxX + boxPadding; 
+            ctx.fillText(line.text, textX, currentY);
+            // Augmenter l'interligne après titre Cargo, ligne icône, OU ligne de localisation de mission
+            const isSpacedLine = line.isCargoTitle || line.isIconLine || line.isMissionLocationLine;
+            const currentLineHeight = isSpacedLine ? lineHeight * 1.3 : (line.isDetailLine ? lineHeight * 0.9 : lineHeight);
+            currentY += currentLineHeight;
         });
 
         // Réinitialiser les styles pour les autres éléments
@@ -385,29 +427,69 @@ class UIView {
         ctx.fillStyle = this.colors.white;
     }
 
-    render(ctx, canvas, rocketModel, universeModel, isPaused, activeMissions = []) {
+    /**
+     * Met à jour l'affichage des icônes de cargo.
+     * @param {Array<{type: string, quantity: number}>} cargoList - La liste du cargo.
+     */
+    updateCargoDisplay(cargoList = []) {
+        if (!this.cargoDisplayElement) return;
+
+        // Vider l'affichage actuel
+        this.cargoDisplayElement.innerHTML = '';
+
+        // Boucler sur les items du cargo
+        cargoList.forEach(item => {
+            if (item.type === 'Fuel') { // Pour l'instant, on gère que le Fuel
+                for (let i = 0; i < item.quantity; i++) {
+                    // Créer un span pour l'émoticône au lieu d'une image
+                    const span = document.createElement('span');
+                    span.textContent = '🛢️'; // Remplacer ⛽ par 🛢️
+                    span.title = 'Fuel'; // Info-bulle
+                    // Ajouter un style si nécessaire, par exemple pour la taille
+                    // span.style.fontSize = '16px';
+                    this.cargoDisplayElement.appendChild(span);
+                }
+            }
+            // Ajouter d'autres 'else if' pour d'autres types de cargo si nécessaire
+        });
+        
+        // Si le cargo est vide, afficher un message ? (Optionnel)
+        if (this.cargoDisplayElement.innerHTML === '') {
+            // this.cargoDisplayElement.textContent = 'Vide'; 
+        }
+    }
+
+    render(ctx, canvas, rocketModel, universeModel, isPaused, activeMissions = [], cargoList = []) {
         if (isPaused) {
             this.renderPause(ctx, canvas);
-            return;
-        }
-
-        if (rocketModel) {
-            this.renderRocketInfo(ctx, rocketModel);
-            this.renderLandingGuidance(ctx, canvas, rocketModel, universeModel);
-            this.renderMoonInfo(ctx, canvas, rocketModel, universeModel);
-
-            // Afficher la boîte des missions et du cargo
-            this.renderMissionAndCargoBox(ctx, canvas, rocketModel, activeMissions);
-
-            // Rendre le bouton des contrôles assistés
-            this.assistedControlsButtonBounds = this.renderAssistedControlsButton(ctx, canvas);
-
-            if (rocketModel.isDestroyed) {
-                this.renderCrashed(ctx, canvas, rocketModel);
-            } else if (rocketModel.isLanded) {
-                this.renderLandingSuccess(ctx, canvas, rocketModel);
+        } else {
+            // Afficher les infos de la fusée (santé, fuel numérique, vitesse)
+            if (rocketModel) {
+                this.renderRocketInfo(ctx, rocketModel);
+                
+                // Afficher l'état d'atterrissage ou de crash
+                if (rocketModel.isLanded) {
+                    this.renderLandingSuccess(ctx, canvas, rocketModel);
+                } else if (rocketModel.isDestroyed) {
+                    this.renderCrashed(ctx, canvas, rocketModel);
+                } else {
+                    // Optionnel: Afficher le guide d'atterrissage
+                    // this.renderLandingGuidance(ctx, canvas, rocketModel, universeModel);
+                }
             }
+            
+            // Afficher les infos de la lune
+            if (universeModel) {
+                this.renderMoonInfo(ctx, canvas, rocketModel, universeModel);
+            }
+            
+            // Afficher le bouton des contrôles assistés
+            this.renderAssistedControlsButton(ctx, canvas);
+
+            // Afficher les missions et le cargo
+            this.renderMissionAndCargoBox(ctx, canvas, rocketModel, activeMissions);
         }
+        
     }
     
     // Basculer l'affichage des informations lunaires

@@ -251,6 +251,14 @@ class GameController {
             const earthDistance = this.calculateEarthDistance();
             const earthAttractionVector = this.calculateEarthAttractionVector();
             
+            // Récupérer la liste du cargo
+            const cargoList = this.rocketModel.cargo ? this.rocketModel.cargo.getCargoList() : [];
+
+            // Mettre à jour l'affichage du cargo dans l'UI
+            if (this.uiView) {
+                this.uiView.updateCargoDisplay(cargoList);
+            }
+            
             // Émettre l'état de la fusée mis à jour
             this.eventBus.emit('ROCKET_STATE_UPDATED', {
                 position: { ...this.rocketModel.position },
