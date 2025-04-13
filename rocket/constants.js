@@ -131,6 +131,33 @@ const CELESTIAL_BODY = {
     },
     // --- Fin Paramètres Terre ---
 
+    // --- Paramètres spécifiques à Mercure ---
+    MERCURY: {
+      MASS: 6.6e10,             // Masse approximative de Mercure (simulation)
+      RADIUS: 488,              // Rayon approximatif de Mercure (simulation)
+      ORBIT_DISTANCE: 8700,     // Distance orbitale Mercure-Soleil (simulation)
+      ORBIT_SPEED: 0.0000,      // Vitesse orbitale (simulation) - À ajuster si besoin
+    },
+    // --- Fin Paramètres Mercure ---
+
+    // --- Paramètres spécifiques à Vénus ---
+    VENUS: {
+      MASS: 1.94e11,            // Masse approximative de Vénus (simulation)
+      RADIUS: 710,              // Rayon approximatif de Vénus (simulation)
+      ORBIT_DISTANCE: 12000,    // Distance orbitale Vénus-Soleil (simulation)
+      ORBIT_SPEED: 0.0000,      // Vitesse orbitale (simulation) - À ajuster si besoin
+    },
+    // --- Fin Paramètres Vénus ---
+
+    // --- Paramètres spécifiques à Mars ---
+    MARS: {
+      MASS: 1.28e10,            // Masse approximative de Mars (simulation)
+      RADIUS: 580,              // Rayon approximatif de Mars (simulation)
+      ORBIT_DISTANCE: 20000,    // Distance orbitale Mars-Soleil (simulation)
+      ORBIT_SPEED: 0.0000,      // Vitesse orbitale (simulation) - À ajuster si besoin
+    },
+    // --- Fin Paramètres Mars ---
+
     // Propriétés de la lune
     MOON: {
         MASS: 10000000000,            // Masse de la lune (25 fois moins que la planète)

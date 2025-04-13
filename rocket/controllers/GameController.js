@@ -523,6 +523,60 @@ class GameController {
             moon.updateOrbit(0); // Calculer la position et la vélocité initiales
             this.universeModel.addCelestialBody(moon);
 
+            // 4. Mercure (Orbite autour du Soleil)
+            const MERCURY_ORBIT_DISTANCE = CELESTIAL_BODY.MERCURY.ORBIT_DISTANCE;
+            const MERCURY_ORBIT_SPEED = CELESTIAL_BODY.MERCURY.ORBIT_SPEED;
+            const mercuryInitialAngle = Math.random() * Math.PI * 2;
+            const mercury = new CelestialBodyModel(
+                'Mercure',
+                CELESTIAL_BODY.MERCURY.MASS,
+                CELESTIAL_BODY.MERCURY.RADIUS,
+                { x: sun.position.x + Math.cos(mercuryInitialAngle) * MERCURY_ORBIT_DISTANCE, y: sun.position.y + Math.sin(mercuryInitialAngle) * MERCURY_ORBIT_DISTANCE },
+                '#A9A9A9', // Couleur gris foncé
+                sun,
+                MERCURY_ORBIT_DISTANCE,
+                mercuryInitialAngle,
+                MERCURY_ORBIT_SPEED
+            );
+            mercury.updateOrbit(0);
+            this.universeModel.addCelestialBody(mercury);
+
+            // 5. Vénus (Orbite autour du Soleil)
+            const VENUS_ORBIT_DISTANCE = CELESTIAL_BODY.VENUS.ORBIT_DISTANCE;
+            const VENUS_ORBIT_SPEED = CELESTIAL_BODY.VENUS.ORBIT_SPEED;
+            const venusInitialAngle = Math.random() * Math.PI * 2;
+            const venus = new CelestialBodyModel(
+                'Vénus',
+                CELESTIAL_BODY.VENUS.MASS,
+                CELESTIAL_BODY.VENUS.RADIUS,
+                { x: sun.position.x + Math.cos(venusInitialAngle) * VENUS_ORBIT_DISTANCE, y: sun.position.y + Math.sin(venusInitialAngle) * VENUS_ORBIT_DISTANCE },
+                '#FFDEAD', // Couleur Navajo White (jaunâtre)
+                sun,
+                VENUS_ORBIT_DISTANCE,
+                venusInitialAngle,
+                VENUS_ORBIT_SPEED
+            );
+            venus.updateOrbit(0);
+            this.universeModel.addCelestialBody(venus);
+
+            // 6. Mars (Orbite autour du Soleil)
+            const MARS_ORBIT_DISTANCE = CELESTIAL_BODY.MARS.ORBIT_DISTANCE;
+            const MARS_ORBIT_SPEED = CELESTIAL_BODY.MARS.ORBIT_SPEED;
+            const marsInitialAngle = Math.random() * Math.PI * 2;
+            const mars = new CelestialBodyModel(
+                'Mars',
+                CELESTIAL_BODY.MARS.MASS,
+                CELESTIAL_BODY.MARS.RADIUS,
+                { x: sun.position.x + Math.cos(marsInitialAngle) * MARS_ORBIT_DISTANCE, y: sun.position.y + Math.sin(marsInitialAngle) * MARS_ORBIT_DISTANCE },
+                '#E57373', // Couleur rougeâtre
+                sun,
+                MARS_ORBIT_DISTANCE,
+                marsInitialAngle,
+                MARS_ORBIT_SPEED
+            );
+            mars.updateOrbit(0);
+            this.universeModel.addCelestialBody(mars);
+
             // --- Fin Création des Corps Célestes ---
             
             // --- Création de la Fusée ---
