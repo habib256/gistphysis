@@ -360,10 +360,10 @@ class UIView {
             ctx.fillText(detailText, boxX + boxPadding, currentY);
             currentY += lineHeight;
         } else {
-            // ... (dessin "Aucune mission")
-             ctx.font = 'italic 14px ' + this.fontFamily;
-             ctx.fillStyle = 'grey';
-             ctx.fillText("Aucune mission active", boxX + boxPadding, currentY);
+             // --- Afficher "Missions réussies !" --- 
+             ctx.font = 'bold 14px ' + this.fontFamily; // Mettre en gras
+             ctx.fillStyle = this.colors.green; // Mettre en vert
+             ctx.fillText("Missions réussies !", boxX + boxPadding, currentY);
              currentY += lineHeight;
         }
         const missionsEndY = currentY;
@@ -552,5 +552,27 @@ class UIView {
             y >= bounds.y && 
             y <= bounds.y + bounds.height
         );
+    }
+
+    // Fonction helper pour dessiner les cadres de section
+    drawSectionFrame(ctx, boxX, boxWidth, boxPadding, lineWidth, color, radius, startY, endY) {
+        if (startY >= endY) return; // Ne pas dessiner si la section est vide
+        
+        // Ajuster le padding horizontal pour élargir le cadre
+        const verticalPadding = boxPadding * 0.5;
+        const horizontalPadding = boxPadding * 0.3; // Réduire le padding horizontal
+        
+        const frameX = boxX + horizontalPadding; // Commencer plus près du bord gauche
+        const frameY = startY - verticalPadding * 0.7; // Garder le padding vertical
+        const frameWidth = boxWidth - horizontalPadding * 2; // Rendre plus large
+        const frameHeight = (endY - startY) + verticalPadding * 1.5; 
+        
+        ctx.save(); 
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        ctx.roundRect(frameX, frameY, frameWidth, frameHeight, radius);
+        ctx.stroke();
+        ctx.restore(); 
     }
 } 
