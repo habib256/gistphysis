@@ -81,7 +81,7 @@
     
     <!-- Contrôles audio -->
     <div id="audioControls">
-        <button id="toggleAudio">🔊</button>
+        <button id="toggleAudio">🔇</button>
         <span id="audioTitle" style="cursor: pointer;" title="Cliquer pour changer de musique">Musique spatiale</span>
     </div>
     
@@ -162,13 +162,6 @@
             
             // Définir un volume initial raisonnable
             audioElement.volume = 0.3;
-        });
-        
-        // Démarrer la musique une fois la page chargée
-        window.addEventListener('load', () => {
-            audioElement.play().catch(e => {
-                console.log('Lecture audio automatique bloquée par le navigateur:', e);
-            });
         });
         
         // Gestion du bouton mute/unmute

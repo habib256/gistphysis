@@ -124,3 +124,5 @@ Il serait judicieux de vérifier la présence éventuelle de fichiers dupliqués
 Ne jamais utiliser la logique des imports : Tous les fichiers Javascript sont référencés dans le fichier index.html
 
 L'erreur entre matter.js et matter-attractor n'est pas une erreur. Les deux numéros de version soi-disant incompatibles fonctionnent très très très bien ensemble. N'essaye jamais de réparer cette fausse erreur
+
+l'EventBus est très important. C'est lui qui permet l'organisation du code avec le model MVC
