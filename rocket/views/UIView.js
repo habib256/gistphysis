@@ -312,11 +312,11 @@ class UIView {
         }
 
         // Dimensions et position (gardons les valeurs précédentes)
-        const boxWidth = 120; 
-        const boxPadding = 8; 
+        const boxWidth = 120;
+        const boxPadding = 8;
         const lineHeight = 16;
         const boxX = canvas.width - boxWidth - 15;
-        const boxY = 15; 
+        const boxY = 15;
 
         // --- 1. Calcul du contenu et de la hauteur nécessaire --- 
         const contentLines = [];
@@ -327,25 +327,23 @@ class UIView {
         calculatedHeight += lineHeight * 1.5; // Hauteur titre + espace après
 
         const activeMissions = missions.filter(m => m.status === 'pending');
-        if (activeMissions.length > 0) {
-            activeMissions.forEach((mission, index) => {
-                const missionContentStartIndex = contentLines.length; // Index où commence le texte de cette mission
-                
-                // Ligne 1: Origine -> Destination
-                const locationText = `${mission.from} -> ${mission.to}`;
-                contentLines.push({ text: locationText, color: this.colors.white, missionIndex: index, isLocationLine: true });
-                calculatedHeight += lineHeight * 1.2; // Hauteur + espace après
-                
-                // Ligne 2: Type xQuantité (avec émoticône)
-                const cargoIcon = mission.cargoType === 'Fuel' ? '🛢️' : (mission.cargoType === 'Wrench' ? '🔧' : mission.cargoType);
-                const detailText = `  ${cargoIcon} x${mission.quantity}`;
-                contentLines.push({ text: detailText, color: this.colors.white, missionIndex: index });
-                calculatedHeight += lineHeight;
+        const missionToShow = activeMissions.length > 0 ? activeMissions[0] : null; // PRENDRE SEULEMENT LA PREMIÈRE
 
-                // Ajouter un marqueur pour savoir où dessiner le cadre
-                contentLines.push({ type: 'draw_mission_box', missionIndex: index, startContentIndex: missionContentStartIndex });
-                calculatedHeight += lineHeight * 0.7; // Espace après la mission (entre les cadres)
+        if (missionToShow) {
+            // Ligne 1: Origine -> Destination
+            const locationText = `${missionToShow.from} -> ${missionToShow.to}`;
+            contentLines.push({ text: locationText, color: this.colors.white, isLocationLine: true });
+            calculatedHeight += lineHeight * 1.2; // Hauteur + espace après
+            
+            // Ligne 2: Détails du cargo sur UNE SEULE ligne
+            const detailItems = missionToShow.requiredCargo.map(item => {
+                const cargoIcon = item.type === 'Fuel' ? '🛢️' : (item.type === 'Wrench' ? '🔧' : item.type);
+                return `${cargoIcon} x${item.quantity}`;
             });
+            const detailText = `  ${detailItems.join('  ')}`; // Joindre les items avec des espaces
+            contentLines.push({ text: detailText, color: this.colors.white });
+            calculatedHeight += lineHeight;
+
         } else {
             contentLines.push({ text: "Aucune mission active", color: 'grey', italic: true });
             calculatedHeight += lineHeight;
@@ -400,55 +398,29 @@ class UIView {
         ctx.fill();
         ctx.stroke();
 
-        // --- 3. Dessin du contenu et des cadres de mission --- 
+        // --- 3. Dessin du contenu (sans cadres de mission individuels) --- 
         let currentY = boxY + boxPadding;
-        const missionStartY = {}; // Pour stocker les Y de début de chaque mission
 
         contentLines.forEach(line => {
-            if (line.type === 'draw_mission_box') {
-                // Dessiner le cadre pour la mission correspondante
-                const missionIndex = line.missionIndex;
-                const startY = missionStartY[missionIndex];
-                const endY = currentY; // Le Y actuel *avant* l'espacement après la mission
-                const missionBoxHeight = endY - startY + boxPadding * 0.5; // Hauteur du contenu + petit padding
-                const missionBoxActualX = boxX + boxPadding / 2;
-                const missionBoxActualY = startY - boxPadding * 0.7; // Un peu au-dessus du texte
-                const missionBoxContentWidth = boxWidth - boxPadding;
-                
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; 
-                ctx.lineWidth = 1;
-                ctx.beginPath(); // Important pour ne pas lier au cadre principal
-                ctx.roundRect(missionBoxActualX, missionBoxActualY, missionBoxContentWidth, missionBoxHeight, 3); // Rayon plus petit
-                ctx.stroke();
-                
-                // Ajouter l'espacement après le cadre de la mission
-                currentY += lineHeight * 0.7;
-            } else {
-                 // Dessiner le texte
-                ctx.fillStyle = line.color;
-                const fontStyle = line.bold ? 'bold ' : (line.italic ? 'italic ' : '');
-                ctx.font = fontStyle + '14px ' + this.fontFamily;
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                
-                // Enregistrer le Y de départ si c'est la première ligne de texte d'une mission
-                if(line.missionIndex !== undefined && missionStartY[line.missionIndex] === undefined){
-                    missionStartY[line.missionIndex] = currentY;
-                }
-                
-                ctx.fillText(line.text, boxX + boxPadding, currentY);
-                
-                // Calculer l'incrément Y pour la prochaine ligne
-                let yIncrement = lineHeight;
-                if(line.isTitle) yIncrement = lineHeight * (line.isCargoTitle ? 1.3 : 1.5);
-                else if(line.isLocationLine) yIncrement = lineHeight * 1.2;
-                else if(line.isIconLine) yIncrement = lineHeight * 1.3;
-                
-                currentY += yIncrement;
-            }
+             // Dessiner le texte
+            ctx.fillStyle = line.color;
+            const fontStyle = line.bold ? 'bold ' : (line.italic ? 'italic ' : '');
+            ctx.font = fontStyle + '14px ' + this.fontFamily;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            ctx.fillText(line.text, boxX + boxPadding, currentY);
+            
+            // Calculer l'incrément Y pour la prochaine ligne
+            let yIncrement = lineHeight;
+            if(line.isTitle) yIncrement = lineHeight * (line.isCargoTitle ? 1.3 : 1.5);
+            else if(line.isLocationLine) yIncrement = lineHeight * 1.2;
+            else if(line.isIconLine) yIncrement = lineHeight * 1.3;
+            
+            currentY += yIncrement;
         });
 
-        // Réinitialiser les styles globaux si nécessaire
+        // Réinitialiser les styles globaux
         ctx.font = this.font; 
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';

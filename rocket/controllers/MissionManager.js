@@ -2,15 +2,7 @@
  * Classe représentant une mission
  */
 class Mission {
-    constructor(from, to, cargoType, quantity, reward) {
-        this.from = from;
-        this.to = to;
-        this.cargoType = cargoType;
-        this.quantity = quantity;
-        this.reward = reward;
-        this.status = "pending";
-        this.deliveredQuantity = 0;
-    }
+    // Le constructeur n'est plus utilisé directement, l'objet est créé dans createMission
 }
 
 /**
@@ -34,95 +26,85 @@ class MissionManager {
      * Crée une nouvelle mission
      * @param {string} from - Planète de départ
      * @param {string} to - Planète de destination
-     * @param {string} cargoType - Type de cargo à transporter
-     * @param {number} quantity - Quantité de cargo
+     * @param {Array<{type: string, quantity: number}>} requiredCargo - Liste des cargaisons requises
      * @param {number} reward - Récompense en crédits
-     * @returns {Mission} - La mission créée
+     * @returns {object} - La mission créée
      */
-    createMission(from, to, cargoType, quantity, reward) {
+    createMission(from, to, requiredCargo, reward) {
+        // Validation simple de requiredCargo
+        if (!Array.isArray(requiredCargo) || requiredCargo.length === 0 || requiredCargo.some(item => !item.type || !item.quantity)) {
+            console.error("[MissionManager] Tentative de création de mission avec requiredCargo invalide.", requiredCargo);
+            return null;
+        }
+        
         const mission = {
             id: `mission_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             from,
             to,
-            cargoType,
-            quantity,
+            requiredCargo, // Utiliser le tableau directement
             reward,
-            status: "pending",
-            deliveredQuantity: 0
+            status: "pending" // Suppression de deliveredQuantity
         };
         this.missions.push(mission);
-        console.log(`%c[MissionManager] Nouvelle mission ajoutée: ${from} -> ${to} (${cargoType} x${quantity}), déjà livré: ${mission.deliveredQuantity}`, 'color: cyan;');
+        const cargoString = requiredCargo.map(item => `${item.type} x${item.quantity}`).join(', ');
+        console.log(`%c[MissionManager] Nouvelle mission ajoutée: ${from} -> ${to} (${cargoString})`, 'color: cyan;');
         return mission;
     }
 
     /**
-     * Vérifie si une mission est complétée
+     * Vérifie si une mission est complétée. 
+     * La complétion nécessite que TOUS les items requis soient présents à destination.
+     * La livraison est désormais tout ou rien.
      * @param {RocketCargo} rocketCargo - Cargo de la fusée
      * @param {string} currentLocation - Position actuelle de la fusée
-     * @returns {Array<Mission>} - Liste des missions complétées
+     * @returns {Array<object>} - Liste des missions complétées
      */
     checkMissionCompletion(rocketCargo, currentLocation) {
         const completedMissions = [];
-        const missionsToUpdate = [];
+        // const missionsToUpdate = []; // Plus nécessaire sans livraison partielle
 
         for (const mission of this.missions) {
             if (mission.status !== "pending") continue;
 
             // Vérifier si la destination est atteinte
             if (mission.to === currentLocation) {
+                let canComplete = true;
                 const cargoList = rocketCargo.getCargoList();
-                const cargoItem = cargoList.find(item => item.type === mission.cargoType);
 
-                if (cargoItem && cargoItem.quantity > 0) {
-                    const quantityToDeliver = Math.min(cargoItem.quantity, mission.quantity - mission.deliveredQuantity);
-
-                    if (quantityToDeliver > 0) {
-                        // Retirer le cargo livré de la fusée
-                        rocketCargo.removeCargo(mission.cargoType, quantityToDeliver);
-                        mission.deliveredQuantity += quantityToDeliver;
-                        missionsToUpdate.push(mission);
-
-                        console.log(`%c[MissionManager] Livraison partielle pour la mission ${mission.id} à ${currentLocation}. Livré: ${quantityToDeliver} ${mission.cargoType}. Total livré: ${mission.deliveredQuantity}/${mission.quantity}`, 'color: yellow;');
-
-                        if (mission.deliveredQuantity >= mission.quantity) {
-                            console.log(`%c[MissionManager] Mission ${mission.id} (${mission.from} -> ${mission.to}) complétée à ${currentLocation}. Total livré: ${mission.deliveredQuantity}/${mission.quantity}`, 'color: green;');
-                            mission.status = "completed";
-                            completedMissions.push(mission);
-                        } 
+                // Vérifier si TOUS les items requis sont présents en quantité suffisante
+                for (const requiredItem of mission.requiredCargo) {
+                    const cargoItem = cargoList.find(item => item.type === requiredItem.type);
+                    if (!cargoItem || cargoItem.quantity < requiredItem.quantity) {
+                        canComplete = false;
+                        break; // Inutile de vérifier les autres items si un manque
                     }
+                }
+                
+                // Si tous les items sont présents
+                if (canComplete) {
+                    // Retirer TOUS les cargos livrés de la fusée
+                    mission.requiredCargo.forEach(requiredItem => {
+                         // La méthode removeCargo gère déjà les erreurs si l'item n'existe pas ou quantité insuffisante, mais on a déjà vérifié
+                         rocketCargo.removeCargo(requiredItem.type, requiredItem.quantity); 
+                    });
+
+                    const cargoString = mission.requiredCargo.map(item => `${item.type} x${item.quantity}`).join(', ');
+                    console.log(`%c[MissionManager] Mission ${mission.id} (${mission.from} -> ${mission.to}) complétée à ${currentLocation}. Cargo livré: ${cargoString}`, 'color: green;');
+                    
+                    // Marquer la mission comme complétée
+                    mission.status = "completed";
+                    completedMissions.push(mission);
                 } 
             }
-            // Logique de rechargement sur la planète d'origine (Terre)
-            else if (mission.from === currentLocation && mission.cargoType === "Fuel" && mission.from === "Terre" && mission.deliveredQuantity > 0 && mission.deliveredQuantity < mission.quantity) {
-                 const fuelItem = rocketCargo.getCargoList().find(item => item.type === "Fuel");
-                 const currentFuel = fuelItem ? fuelItem.quantity : 0;
-                 const neededFuel = mission.quantity - mission.deliveredQuantity;
-
-                 // Calculer l'espace disponible avant de décider combien charger
-                 const currentLoad = rocketCargo.getCurrentLoad();
-                 const availableSpace = rocketCargo.getMaxCapacity() - currentLoad;
-
-                 // Charger au maximum 10 unités, le carburant nécessaire, ou l'espace disponible
-                 const fuelToLoad = Math.min(neededFuel, 10, availableSpace);
-
-                 if(fuelToLoad > 0) {
-                    rocketCargo.addCargo("Fuel", fuelToLoad);
-                    console.log(`%c[MissionManager] Rechargement de ${fuelToLoad} Fuel sur ${currentLocation} pour la mission ${mission.id}.`, 'color: blue;');
-                    // Pas besoin de mettre à jour la mission ici, seulement le cargo
-                 }
-            }
+            // Suppression de la logique de rechargement (liée à deliveredQuantity et mission Fuel unique)
         }
-
-        // Retourner les missions complétées et mettre à jour l'UI si nécessaire
-        // Note: Il faudra peut-être une logique pour déclencher la mise à jour de l'UI depuis ici
-        // EventBus.emit('missionsUpdated', missionsToUpdate);
 
         return completedMissions;
     }
 
     /**
      * Retourne la liste des missions actives
-     * @returns {Array<Mission>}
+     * @returns {Array<object>}
      */
     getActiveMissions() {
         return this.missions.filter(mission => mission.status === "pending");
@@ -135,9 +117,11 @@ class MissionManager {
         this.missions = []; // Vider les missions actuelles
         console.log("%c[MissionManager] Réinitialisation des missions.", 'color: orange;');
         // Mission 1: Terre -> Lune, 10 Fuel
-        this.createMission("Terre", "Lune", "Fuel", 10, 100); 
-        // Mission 2: Lune -> Terre, 20 Wrench (Clés à molette)
-        this.createMission("Lune", "Terre", "Wrench", 20, 150);
+        this.createMission("Terre", "Lune", [{ type: "Fuel", quantity: 10 }], 100); 
+        // Mission 2: Lune -> Terre, 10 Wrench (Clés à molette)
+        this.createMission("Lune", "Terre", [{ type: "Wrench", quantity: 10 }], 150);
+        // Mission 3: Terre -> Mars, 5 Fuel ET 5 Wrench
+        this.createMission("Terre", "Mars", [{ type: "Fuel", quantity: 5 }, { type: "Wrench", quantity: 5 }], 300);
     }
 }
 
