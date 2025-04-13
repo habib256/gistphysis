@@ -13,6 +13,8 @@ class TraceView {
     update(position) { 
         if (!this.isVisible) return;
         
+       // console.log(`%c[TraceView] update: Ajout du point (${position.x.toFixed(2)}, ${position.y.toFixed(2)})`, 'color: orange;');
+        
         // Ajouter simplement le point de position absolue
         this.traces.push({ ...position });
         
@@ -89,11 +91,13 @@ class TraceView {
     
     clear(fullClear = false) {
         if (fullClear) {
+            console.log('%c[TraceView] clear: Effacement COMPLET des traces.', 'color: red; font-weight: bold;');
             // Effacement complet de toutes les traces
             this.traces = [];
             // Suppression de la référence à moonRelativeTraces
             // this.moonRelativeTraces = []; 
         } else {
+            console.log('%c[TraceView] clear: Ajout d\'une discontinuité (null).', 'color: red;');
             // Ajouter un point null pour créer une discontinuité dans la trace
             this.traces.push(null);
             // Suppression de la référence à moonRelativeTraces

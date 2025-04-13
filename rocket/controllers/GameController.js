@@ -1,7 +1,10 @@
+// import missionManager from './MissionManager.js'; // Supprimer cette ligne
+
 class GameController {
     constructor(eventBus) {
         // EventBus
         this.eventBus = eventBus;
+        this.missionManager = missionManager; // Réassigner la référence globale
         
         // Modèles
         this.rocketModel = null;
@@ -41,7 +44,7 @@ class GameController {
         this.dragStartRocketY = 0;
 
         // Initialiser la caméra
-        this.camera = new CameraModel();
+        this.cameraModel = new CameraModel();
         
         // Timer pour réinitialisation auto après crash
         this.crashResetTimer = null;
@@ -65,6 +68,8 @@ class GameController {
         
         // Événement pour les mises à jour d'état de la fusée
         this.eventBus.subscribe('ROCKET_STATE_UPDATED', (data) => this.handleRocketStateUpdated(data));
+        // Événement lorsque la fusée atterrit
+        this.eventBus.subscribe('ROCKET_LANDED', (data) => this.handleRocketLanded(data));
     }
     
     // Gérer les événements d'entrée
@@ -93,10 +98,10 @@ class GameController {
                 this.particleSystemModel.setEmitterActive('right', true);
                 break;
             case 'zoomIn':
-                this.camera.setZoom(this.camera.zoom * (1 + RENDER.ZOOM_SPEED));
+                this.cameraModel.setZoom(this.cameraModel.zoom * (1 + RENDER.ZOOM_SPEED));
                 break;
             case 'zoomOut':
-                this.camera.setZoom(this.camera.zoom / (1 + RENDER.ZOOM_SPEED));
+                this.cameraModel.setZoom(this.cameraModel.zoom / (1 + RENDER.ZOOM_SPEED));
                 break;
         }
         
@@ -152,8 +157,8 @@ class GameController {
                 this.resetRocket();
                 break;
             case 'centerCamera':
-                if (this.camera && this.rocketModel) {
-                    this.camera.setTarget(this.rocketModel, 'rocket');
+                if (this.cameraModel && this.rocketModel) {
+                    this.cameraModel.setTarget(this.rocketModel, 'rocket');
                 }
                 break;
             case 'toggleForces':
@@ -187,20 +192,20 @@ class GameController {
         this.dragStartX = data.x;
         this.dragStartY = data.y;
         
-        if (this.camera) {
-            this.dragStartCameraX = this.camera.x;
-            this.dragStartCameraY = this.camera.y;
+        if (this.cameraModel) {
+            this.dragStartCameraX = this.cameraModel.x;
+            this.dragStartCameraY = this.cameraModel.y;
         }
     }
     
     handleMouseMove(data) {
         if (!this.isDragging || this.isPaused) return;
         
-        const dx = (data.x - this.dragStartX) / this.camera.zoom;
-        const dy = (data.y - this.dragStartY) / this.camera.zoom;
+        const dx = (data.x - this.dragStartX) / this.cameraModel.zoom;
+        const dy = (data.y - this.dragStartY) / this.cameraModel.zoom;
         
-        if (this.camera) {
-            this.camera.setPosition(
+        if (this.cameraModel) {
+            this.cameraModel.setPosition(
                 this.dragStartCameraX - dx,
                 this.dragStartCameraY - dy
             );
@@ -219,14 +224,14 @@ class GameController {
     handleWheel(data) {
         if (this.isPaused) return;
         
-        if (this.camera) {
+        if (this.cameraModel) {
             const zoomFactor = 1 + RENDER.ZOOM_SPEED;
             if (data.delta > 0) {
                 // Zoom out (molette vers le bas)
-                this.camera.setZoom(this.camera.zoom / zoomFactor);
+                this.cameraModel.setZoom(this.cameraModel.zoom / zoomFactor);
             } else {
                 // Zoom in (molette vers le haut)
-                this.camera.setZoom(this.camera.zoom * zoomFactor);
+                this.cameraModel.setZoom(this.cameraModel.zoom * zoomFactor);
             }
         }
     }
@@ -451,11 +456,13 @@ class GameController {
         // Configurer la caméra
         this.setupCamera();
         
-        // Positionner la fusée à sa position initiale
+        // Réinitialiser l'état de la fusée AVANT de démarrer la boucle
         this.resetRocket();
         
-        // Démarrer la boucle de jeu
+        // Démarrer la boucle de jeu principale SEULEMENT après la réinitialisation
         this.start();
+        
+        console.log("GameController initialisé et boucle démarrée.");
     }
     
     // Définir les contrôleurs
@@ -672,11 +679,11 @@ class GameController {
     
     // Configurer la caméra
     setupCamera() {
-        this.camera.setTarget(this.rocketModel, 'rocket');
-        this.camera.offsetX = this.canvas.width / 2;
-        this.camera.offsetY = this.canvas.height / 2;
-        this.camera.width = this.canvas.width;
-        this.camera.height = this.canvas.height;
+        this.cameraModel.setTarget(this.rocketModel, 'rocket');
+        this.cameraModel.offsetX = this.canvas.width / 2;
+        this.cameraModel.offsetY = this.canvas.height / 2;
+        this.cameraModel.width = this.canvas.width;
+        this.cameraModel.height = this.canvas.height;
     }
     
     // Configurer les contrôleurs
@@ -713,6 +720,9 @@ class GameController {
         
         this.elapsedTime += deltaTime;
         
+        // Récupérer les missions actives
+        const activeMissions = this.missionManager.getActiveMissions();
+
         // Mettre à jour l'état de l'entrée
         if (this.inputController) {
             this.inputController.update();
@@ -736,25 +746,35 @@ class GameController {
             }
 
             // Mise à jour de la caméra
-            if (this.camera) {
-                this.camera.update(deltaTime);
+            if (this.cameraModel) {
+                this.cameraModel.update(deltaTime);
             }
             
             // Mise à jour de la trace de la fusée
-            if (this.renderingController) {
+            if (this.renderingController && this.rocketModel && !this.rocketModel.isLanded) {
                 this.renderingController.updateTrace();
             }
         }
         
         // Rendu
         if (this.renderingController) {
-            this.renderingController.render(this.ctx, this.canvas, this.camera, this.isPaused);
+            // Passer les états nécessaires et les missions actives au RenderingController
+            this.renderingController.render(
+                this.ctx, 
+                this.canvas, 
+                this.rocketModel, 
+                this.universeModel, 
+                this.particleSystemModel, 
+                this.isPaused,
+                this.cameraModel,
+                activeMissions
+            );
         }
         
         // Émettre les états mis à jour
         this.emitUpdatedStates();
         
-        // Planifier la prochaine frame
+        // Demander la prochaine frame
         if (this.isRunning) {
             requestAnimationFrame(this.gameLoop.bind(this));
         }
@@ -762,68 +782,82 @@ class GameController {
     
     // Réinitialiser la fusée
     resetRocket() {
-        if (!this.rocketModel || !this.universeModel) return;
-        
-        // Calculer la position initiale
-        const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
-        if (!earth) return;
-        
-        // Position sur Terre (sur sa surface)
-        const rocketX = earth.position.x;
-        const rocketY = earth.position.y - (earth.radius + ROCKET.HEIGHT / 2 + 5);
-        
-        // Réinitialiser la fusée
-        this.rocketModel.setPosition(rocketX, rocketY);
-        this.rocketModel.setVelocity(0, 0);
-        this.rocketModel.setAngle(0);
-        this.rocketModel.setAngularVelocity(0);
-        this.rocketModel.health = ROCKET.MAX_HEALTH;
-        this.rocketModel.fuel = ROCKET.FUEL_MAX;
-        this.rocketModel.attachedTo = null;
-        this.rocketModel.relativePosition = null;
-        this.rocketModel.landedOn = 'Terre';
-        
-        // Réinitialiser les propulseurs
-        for (const thrusterName in this.rocketModel.thrusters) {
-            this.rocketModel.setThrusterPower(thrusterName, 0);
-            this.particleSystemModel.setEmitterActive(thrusterName, false);
+        // Effacer le timer de réinitialisation auto si présent
+        if (this.crashResetTimer) {
+            clearTimeout(this.crashResetTimer);
+            this.crashResetTimer = null;
         }
         
-        // Mettre à jour l'état physique
-        if (this.physicsController && this.universeModel) {
-            // Forcer une réinitialisation complète de la physique
-            this.physicsController.resetPhysics(this.rocketModel, this.universeModel);
-            setTimeout(() => {
-                // S'assurer que la fusée est bien stable après la réinitialisation
-                if (this.physicsController.rocketBody) {
-                    this.physicsController.Body.setStatic(this.physicsController.rocketBody, true);
-                    setTimeout(() => {
-                        if (this.physicsController.rocketBody) {
-                            this.physicsController.Body.setStatic(this.physicsController.rocketBody, false);
-                        }
-                    }, 100);
+        // Nettoyer les traces existantes
+        // this.clearAllTraces(); // Supprimé car fait à la fin
+
+        // Créer les modèles si nécessaire (ou juste réinitialiser)
+        if (!this.rocketModel) {
+            this.setupModels();
+        } else {
+            // Réinitialiser l'état de base du modèle (fuel, health, vitesse, etc.)
+            this.rocketModel.reset();
+            // Réinitialiser le cargo
+            this.rocketModel.cargo = new RocketCargo(); // Assure que le cargo est vide
+            // Ajouter le fuel initial pour la mission Terre->Lune
+            this.rocketModel.cargo.addCargo('Fuel', 20);
+            console.log("Cargo initial ajouté: Fuel x20");
+
+            // --- Repositionner la fusée sur Terre ---            
+            const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
+            if (earth) {
+                const angleVersSoleil = Math.atan2(earth.position.y - this.universeModel.celestialBodies[0].position.y, 
+                                                 earth.position.x - this.universeModel.celestialBodies[0].position.x);
+                const rocketStartX = earth.position.x + Math.cos(angleVersSoleil) * (earth.radius + ROCKET.HEIGHT / 2 + 1);
+                const rocketStartY = earth.position.y + Math.sin(angleVersSoleil) * (earth.radius + ROCKET.HEIGHT / 2 + 1);
+                this.rocketModel.setPosition(rocketStartX, rocketStartY);
+                // Donner la vélocité de la Terre et orienter
+                this.rocketModel.setVelocity(earth.velocity.x, earth.velocity.y);
+                this.rocketModel.setAngle(angleVersSoleil); 
+                this.rocketModel.isLanded = true; // Définir comme posé après repositionnement
+                this.rocketModel.landedOn = 'Terre';
+
+                // --- Mettre à jour la caméra --- 
+                if (this.cameraModel) {
+                    this.cameraModel.setPosition(rocketStartX, rocketStartY);
                 }
-            }, 50);
+                // Supprimer l'update de la trace ici, car elle est faite à la fin
+                // if (this.traceView) {
+                //    this.traceView.update(this.rocketModel.position, false, null); 
+                // }
+                // -----------------------------------------
+
+            } else {
+                console.error("Impossible de trouver la Terre pour repositionner la fusée.");
+            }
+            // -----------------------------------------
+
+            // Réinitialiser le système de particules lié à la fusée
+            if (this.particleSystemModel) {
+                this.particleSystemModel.reset();
+            }
         }
-        
-        // Ajouter une discontinuité dans la trace plutôt que de l'effacer complètement
+
+        // Réinitialiser le moteur physique (positions, vitesses, etc.)
+        if (this.physicsController) {
+            this.physicsController.resetPhysics(this.rocketModel, this.universeModel); // Appeler la méthode resetPhysics du PhysicsController
+        }
+
+        // Réinitialiser le temps et l'état de pause
+        this.lastTimestamp = performance.now();
+        this.elapsedTime = 0;
+        this.isPaused = false;
+
+        // --- Nettoyer la trace et ajouter le premier point --- 
         if (this.traceView) {
-            this.traceView.clear(false); // false = ajouter une discontinuité
+            this.clearAllTraces(); // Effacer les anciennes traces
+            // Ajouter le premier point de trace APRÈS que la position de la fusée soit définie
+            this.traceView.update(this.rocketModel.position);
+            console.log(`%c[GameController] resetRocket: Trace effacée et premier point ajouté à (${this.rocketModel.position.x.toFixed(2)}, ${this.rocketModel.position.y.toFixed(2)})`, 'color: green;');
         }
-        
-        // Réinitialiser les états
-        this.rocketModel.isLanded = true; // Définir comme posée dès le départ
-        this.rocketModel.isDestroyed = false;
-        
-        // Centrer la caméra sur la fusée
-        if (this.camera) {
-            this.camera.setTarget(this.rocketModel, 'rocket');
-            this.camera.x = this.rocketModel.position.x;
-            this.camera.y = this.rocketModel.position.y;
-        }
-        
-        // Émettre l'état mis à jour
-        this.emitUpdatedStates();
+        // --------------------------------------------------
+
+        console.log("Fusée réinitialisée.");
     }
     
     // Nettoyer les ressources
@@ -1011,5 +1045,22 @@ class GameController {
         
         // Retourner le vecteur normalisé qui pointe vers la Terre
         return { x: dx / distance, y: dy / distance };
+    }
+
+    // Gérer l'atterrissage de la fusée
+    handleRocketLanded(data) {
+        if (!this.rocketModel || !this.missionManager) return; // Assurer que tout est chargé
+
+        console.log(`La fusée a atterri sur : ${data.landedOn}`);
+
+        // Vérifier si des missions sont complétées
+        const completedMissions = this.missionManager.checkMissionCompletion(this.rocketModel.cargo, data.landedOn);
+
+        // Afficher un message pour chaque mission complétée
+        completedMissions.forEach(mission => {
+            console.log(`%cMission accomplie : ${mission.cargoType} livré à ${mission.to} ! Récompense : ${mission.reward} crédits`, 'color: lightgreen; font-weight: bold;');
+            // Ici, vous pourriez ajouter la récompense au joueur, etc.
+            // Exemple: this.playerScore += mission.reward;
+        });
     }
 } 

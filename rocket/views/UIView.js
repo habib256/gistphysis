@@ -303,7 +303,90 @@ class UIView {
         };
     }
 
-    render(ctx, canvas, rocketModel, universeModel, isPaused) {
+    // Afficher les missions actives et le cargo dans un cadre
+    renderMissionAndCargoBox(ctx, canvas, rocketModel, missions) {
+        if (!missions && (!rocketModel || !rocketModel.cargo)) {
+            return; // Ne rien faire si pas de missions et pas de cargo
+        }
+
+        ctx.font = '14px ' + this.fontFamily; // Police légèrement plus petite pour le cadre
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        const boxWidth = 200;
+        const boxPadding = 10;
+        const lineHeight = 18; // Espacement vertical ajusté
+        const boxX = canvas.width - boxWidth - 20; // Position X (20px du bord droit)
+        const boxY = 20; // Position Y (20px du haut)
+
+        let currentY = boxY + boxPadding; // Position Y de départ pour le contenu
+
+        // --- Calcul du contenu et de la hauteur ---
+        const contentLines = [];
+
+        // Ajouter les missions en cours
+        contentLines.push({ text: "Missions:", color: this.colors.white, bold: true });
+        const activeMissions = missions.filter(m => m.status === 'pending');
+        if (activeMissions.length > 0) {
+            activeMissions.forEach(mission => {
+                const missionText = ` - ${mission.from} -> ${mission.to} (${mission.cargoType} x${mission.quantity})`;
+                contentLines.push({ text: missionText, color: this.colors.white });
+            });
+        } else {
+            contentLines.push({ text: " - Aucune", color: 'grey' });
+        }
+        contentLines.push({ text: "", color: this.colors.white }); // Ligne vide
+
+        // Ajouter le contenu du cargo
+        contentLines.push({ text: "Cargo:", color: this.colors.white, bold: true });
+        let cargoList = [];
+        try {
+             // Accéder au cargo via rocketModel.cargo (si défini)
+            if (rocketModel && rocketModel.cargo && typeof rocketModel.cargo.getCargoList === 'function') {
+                cargoList = rocketModel.cargo.getCargoList();
+            }
+        } catch (e) {
+            console.warn("Impossible de récupérer la liste du cargo:", e);
+        }
+        
+        if (cargoList.length > 0) {
+            cargoList.forEach(item => {
+                const cargoText = ` - ${item.type}: ${item.quantity}`;
+                contentLines.push({ text: cargoText, color: this.colors.white });
+            });
+        } else {
+            contentLines.push({ text: " - Vide", color: 'grey' });
+        }
+
+        const boxHeight = (contentLines.length * lineHeight) + (boxPadding * 2);
+
+        // --- Dessin du cadre ---
+        ctx.fillStyle = 'rgba(50, 50, 70, 0.7)'; // Fond bleu foncé semi-transparent
+        ctx.strokeStyle = this.colors.white; // Bordure blanche
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 5); // Coins arrondis
+        ctx.fill();
+        ctx.stroke();
+
+
+        // --- Dessin du texte ---
+        contentLines.forEach(line => {
+            ctx.fillStyle = line.color;
+            ctx.font = line.bold ? 'bold 14px ' + this.fontFamily : '14px ' + this.fontFamily;
+            ctx.fillText(line.text, boxX + boxPadding, currentY);
+            currentY += lineHeight;
+        });
+
+        // Réinitialiser les styles pour les autres éléments
+        ctx.font = this.font;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = this.colors.white;
+    }
+
+    render(ctx, canvas, rocketModel, universeModel, isPaused, activeMissions = []) {
         if (isPaused) {
             this.renderPause(ctx, canvas);
             return;
@@ -313,10 +396,13 @@ class UIView {
             this.renderRocketInfo(ctx, rocketModel);
             this.renderLandingGuidance(ctx, canvas, rocketModel, universeModel);
             this.renderMoonInfo(ctx, canvas, rocketModel, universeModel);
-            
+
+            // Afficher la boîte des missions et du cargo
+            this.renderMissionAndCargoBox(ctx, canvas, rocketModel, activeMissions);
+
             // Rendre le bouton des contrôles assistés
             this.assistedControlsButtonBounds = this.renderAssistedControlsButton(ctx, canvas);
-            
+
             if (rocketModel.isDestroyed) {
                 this.renderCrashed(ctx, canvas);
             } else if (rocketModel.isLanded) {

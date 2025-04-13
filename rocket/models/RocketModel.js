@@ -77,6 +77,32 @@ class RocketModel {
         this.attachedTo = null; // Référence au corps céleste auquel la fusée est attachée
     }
     
+    // Réinitialiser l'état de la fusée à ses valeurs par défaut
+    reset() {
+        // Réinitialiser la position et le mouvement
+        this.position = { x: 0, y: 0 };
+        this.velocity = { x: 0, y: 0 };
+        this.acceleration = { x: 0, y: 0 };
+        this.angle = 0;
+        this.angularVelocity = 0;
+
+        // Réinitialiser l'état (santé, carburant)
+        this.fuel = ROCKET.FUEL_MAX;
+        this.health = ROCKET.MAX_HEALTH;
+        this.isDestroyed = false;
+        this.isLanded = false; // Commencer comme non posé, sera défini lors de l'initialisation
+        this.landedOn = null;
+        this.relativePosition = null;
+        this.attachedTo = null;
+
+        // Réinitialiser la puissance des propulseurs
+        for (const thrusterName in this.thrusters) {
+            this.setThrusterPower(thrusterName, 0);
+        }
+
+        // Le cargo est réinitialisé dans GameController.resetRocket
+    }
+    
     setPosition(x, y) {
         this.position.x = x;
         this.position.y = y;

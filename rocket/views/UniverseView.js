@@ -109,18 +109,14 @@ class UniverseView {
     // Rendu des corps célestes
     renderCelestialBodies(ctx, camera, celestialBodies) {
         if (!celestialBodies || celestialBodies.length === 0 || !this.celestialBodyView) {
-            console.log("Pas de corps célestes à afficher ou vue manquante");
             return;
         }
 
-        //console.log("Rendu de", celestialBodies.length, "corps célestes");
-        
         for (const body of celestialBodies) {
             if (!body || !body.position) {
                 console.error("Corps céleste invalide", body);
                 continue;
             }
-            //console.log("Rendu du corps céleste:", body.name, "à la position", body.position.x, body.position.y);
             this.celestialBodyView.render(ctx, body, camera);
         }
     }

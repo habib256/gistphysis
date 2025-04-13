@@ -112,7 +112,7 @@ class RenderingController {
     }
     
     // Méthode principale de rendu
-    render(ctx, canvas, camera, isPaused) {
+    render(ctx, canvas, rocketModel, universeModel, particleSystemModel, isPaused, camera, activeMissions = []) {
         // Effacer le canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
@@ -138,12 +138,12 @@ class RenderingController {
         
         // Rendre les particules
         if (this.particleView) {
-            this.particleView.renderParticles(ctx, this.particleSystemState, camera);
+            this.particleView.renderParticles(ctx, particleSystemModel, camera);
         }
         
         // Rendre la fusée
         if (this.rocketView) {
-            this.rocketView.render(ctx, this.rocketState, camera);
+            this.rocketView.render(ctx, rocketModel, camera);
         }
         
         // Dessiner les vecteurs de force si activés
@@ -153,7 +153,7 @@ class RenderingController {
         
         // Rendre l'interface utilisateur
         if (this.uiView) {
-            this.uiView.render(ctx, canvas, this.rocketState, this.universeState, isPaused);
+            this.uiView.render(ctx, canvas, rocketModel, universeModel, isPaused, activeMissions);
         }
     }
     
