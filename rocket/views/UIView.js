@@ -219,11 +219,12 @@ class UIView {
         ctx.fillText('Utilisez les propulseurs pour décoller', canvas.width / 2, 60);
     }
 
-    renderCrashed(ctx, canvas) {
+    renderCrashed(ctx, canvas, rocketModel) {
         ctx.font = '24px Arial';
         ctx.fillStyle = this.colors.danger;
         ctx.textAlign = 'center';
-        ctx.fillText('Vous êtes crashé', canvas.width / 2, 30);
+        const crashLocation = rocketModel && rocketModel.crashedOn ? ` sur ${rocketModel.crashedOn}` : '';
+        ctx.fillText(`Vous êtes crashé${crashLocation}`, canvas.width / 2, 30);
         ctx.font = 'bold 28px Arial';
         ctx.fillText('THE END', canvas.width / 2, 70);
         // Ajouter le message de redémarrage
@@ -402,7 +403,7 @@ class UIView {
             this.assistedControlsButtonBounds = this.renderAssistedControlsButton(ctx, canvas);
 
             if (rocketModel.isDestroyed) {
-                this.renderCrashed(ctx, canvas);
+                this.renderCrashed(ctx, canvas, rocketModel);
             } else if (rocketModel.isLanded) {
                 this.renderLandingSuccess(ctx, canvas, rocketModel);
             }

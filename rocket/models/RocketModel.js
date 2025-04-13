@@ -71,6 +71,7 @@ class RocketModel {
         this.isDestroyed = false;
         this.isLanded = false;
         this.landedOn = null;
+        this.crashedOn = null;
         
         // Position relative au corps céleste sur lequel on s'est crashé
         this.relativePosition = null; // Position par rapport au corps céleste
@@ -92,6 +93,9 @@ class RocketModel {
         this.isDestroyed = false;
         this.isLanded = false; // Commencer comme non posé, sera défini lors de l'initialisation
         this.landedOn = null;
+        this.crashedOn = null;
+        
+        // Réinitialiser la position relative
         this.relativePosition = null;
         this.attachedTo = null;
 

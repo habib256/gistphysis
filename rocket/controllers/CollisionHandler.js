@@ -262,6 +262,7 @@ class CollisionHandler {
             if (crashReason) {
                 console.error(`CRASH DÉTECTÉ sur ${otherBody.label}! Cause: ${crashReason}`);
                 console.log(`   Détails - Vitesse: ${speed.toFixed(2)}, Angle: ${angleDiffDeg.toFixed(1)}°, Rotation: ${angularVelocity.toFixed(3)}`);
+                rocketModel.crashedOn = otherBody.label;
                 rocketModel.landedOn = otherBody.label;
                 rocketModel.attachedTo = otherBody.label;
                 rocketModel.applyDamage(this.ROCKET.MAX_HEALTH + 1);
