@@ -31,7 +31,7 @@ const PHYSICS = {
     
     // Contrôles assistés
     ASSISTED_CONTROLS: {
-        NORMAL_ANGULAR_DAMPING: 0.2,     // Amortissement angulaire normal (mode réaliste)
+        NORMAL_ANGULAR_DAMPING: 0.0,     // Amortissement angulaire normal (mode réaliste)
         ASSISTED_ANGULAR_DAMPING: 2.0,    // Amortissement angulaire en mode assisté (valeur augmentée pour effet plus visible)
         ROTATION_STABILITY_FACTOR: 0.05   // Facteur de stabilisation supplémentaire pour le mode assisté
     }
@@ -44,11 +44,11 @@ const RENDER = {
     CANVAS_HEIGHT: 600,
     
     // Caméra
-    CAMERA_SMOOTHING: 1,      // Facteur de lissage du mouvement de caméra
+    CAMERA_SMOOTHING: 2,      // Facteur de lissage du mouvement de caméra
     ZOOM_SMOOTHING: 0.1,        // Facteur de lissage du zoom
     ZOOM_SPEED: 0.2,            // Vitesse de zoom avec la molette 
-    MIN_ZOOM: 0.01,              // Zoom minimum
-    MAX_ZOOM: 4.0,              // Zoom maximum 
+    MIN_ZOOM: 0.005,              // Zoom minimum
+    MAX_ZOOM: 6.0,              // Zoom maximum 
     
     // Vecteur de gravité
     GRAVITY_VECTOR_SCALE: 150,  // Échelle du vecteur de gravité pour le rendu
@@ -64,7 +64,7 @@ const RENDER = {
     
     // Couleurs et affichage
     SPACE_COLOR: '#000022',     // Couleur de fond de l'espace
-    STAR_TWINKLE_FACTOR: 0.1,   // Facteur de scintillement des étoiles
+    STAR_TWINKLE_FACTOR: 0.7,   // Facteur de scintillement des étoiles
     STAR_BRIGHTNESS_BASE: 0.5,  // Luminosité de base des étoiles
     STAR_BRIGHTNESS_RANGE: 0.3, // Variation de luminosité des étoiles
     MARGIN_FACTOR: 2            // Facteur de marge pour la visibilité à l'écran
