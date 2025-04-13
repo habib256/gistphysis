@@ -20,8 +20,13 @@ function init() {
     const renderingController = new RenderingController(eventBus);
     const rocketAgent = new RocketAgent(eventBus);
     
+    // Créer le gestionnaire de missions
+    const missionManager = new MissionManager(eventBus);
+    // Initialiser les missions dès le départ
+    missionManager.resetMissions();
+    
     // Créer et initialiser le contrôleur de jeu
-    gameController = new GameController(eventBus);
+    gameController = new GameController(eventBus, missionManager);
     
     // Initialiser avec les dépendances
     gameController.setControllers({
