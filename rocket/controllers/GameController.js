@@ -577,6 +577,42 @@ class GameController {
             mars.updateOrbit(0);
             this.universeModel.addCelestialBody(mars);
 
+            // 7. Phobos (Orbite autour de Mars)
+            const PHOBOS_ORBIT_DISTANCE = CELESTIAL_BODY.PHOBOS.ORBIT_DISTANCE;
+            const PHOBOS_ORBIT_SPEED = CELESTIAL_BODY.PHOBOS.ORBIT_SPEED;
+            const phobosInitialAngle = Math.random() * Math.PI * 2;
+            const phobos = new CelestialBodyModel(
+                'Phobos',
+                CELESTIAL_BODY.PHOBOS.MASS,
+                CELESTIAL_BODY.PHOBOS.RADIUS,
+                { x: mars.position.x + Math.cos(phobosInitialAngle) * PHOBOS_ORBIT_DISTANCE, y: mars.position.y + Math.sin(phobosInitialAngle) * PHOBOS_ORBIT_DISTANCE },
+                '#8B4513', // Couleur SaddleBrown (brunâtre)
+                mars, // Parent = Mars
+                PHOBOS_ORBIT_DISTANCE,
+                phobosInitialAngle,
+                PHOBOS_ORBIT_SPEED
+            );
+            phobos.updateOrbit(0);
+            this.universeModel.addCelestialBody(phobos);
+
+            // 8. Deimos (Orbite autour de Mars)
+            const DEIMOS_ORBIT_DISTANCE = CELESTIAL_BODY.DEIMOS.ORBIT_DISTANCE;
+            const DEIMOS_ORBIT_SPEED = CELESTIAL_BODY.DEIMOS.ORBIT_SPEED;
+            const deimosInitialAngle = Math.random() * Math.PI * 2;
+            const deimos = new CelestialBodyModel(
+                'Deimos',
+                CELESTIAL_BODY.DEIMOS.MASS,
+                CELESTIAL_BODY.DEIMOS.RADIUS,
+                { x: mars.position.x + Math.cos(deimosInitialAngle) * DEIMOS_ORBIT_DISTANCE, y: mars.position.y + Math.sin(deimosInitialAngle) * DEIMOS_ORBIT_DISTANCE },
+                '#D2B48C', // Couleur Tan (beige)
+                mars, // Parent = Mars
+                DEIMOS_ORBIT_DISTANCE,
+                deimosInitialAngle,
+                DEIMOS_ORBIT_SPEED
+            );
+            deimos.updateOrbit(0);
+            this.universeModel.addCelestialBody(deimos);
+
             // --- Fin Création des Corps Célestes ---
             
             // --- Création de la Fusée ---

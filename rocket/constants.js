@@ -126,7 +126,7 @@ const CELESTIAL_BODY = {
 
     // --- Paramètres spécifiques à la Terre ---
     EARTH: {
-      ORBIT_DISTANCE: 15000,    // Distance orbitale Terre-Soleil (valeur de GameController)
+      ORBIT_DISTANCE: 22500,    // Distance orbitale Terre-Soleil (augmentée x1.5)
       ORBIT_SPEED: 0.0000,      // Vitesse orbitale TRÈS LENTE (radians/s)
     },
     // --- Fin Paramètres Terre ---
@@ -135,7 +135,7 @@ const CELESTIAL_BODY = {
     MERCURY: {
       MASS: 6.6e10,             // Masse approximative de Mercure (simulation)
       RADIUS: 488,              // Rayon approximatif de Mercure (simulation)
-      ORBIT_DISTANCE: 8700,     // Distance orbitale Mercure-Soleil (simulation)
+      ORBIT_DISTANCE: 13050,    // Distance orbitale Mercure-Soleil (augmentée x1.5)
       ORBIT_SPEED: 0.0000,      // Vitesse orbitale (simulation) - À ajuster si besoin
     },
     // --- Fin Paramètres Mercure ---
@@ -144,7 +144,7 @@ const CELESTIAL_BODY = {
     VENUS: {
       MASS: 1.94e11,            // Masse approximative de Vénus (simulation)
       RADIUS: 710,              // Rayon approximatif de Vénus (simulation)
-      ORBIT_DISTANCE: 12000,    // Distance orbitale Vénus-Soleil (simulation)
+      ORBIT_DISTANCE: 18000,    // Distance orbitale Vénus-Soleil (augmentée x1.5)
       ORBIT_SPEED: 0.0000,      // Vitesse orbitale (simulation) - À ajuster si besoin
     },
     // --- Fin Paramètres Vénus ---
@@ -153,16 +153,31 @@ const CELESTIAL_BODY = {
     MARS: {
       MASS: 1.28e10,            // Masse approximative de Mars (simulation)
       RADIUS: 580,              // Rayon approximatif de Mars (simulation)
-      ORBIT_DISTANCE: 20000,    // Distance orbitale Mars-Soleil (simulation)
+      ORBIT_DISTANCE: 30000,    // Distance orbitale Mars-Soleil (augmentée x1.5)
       ORBIT_SPEED: 0.0000,      // Vitesse orbitale (simulation) - À ajuster si besoin
     },
     // --- Fin Paramètres Mars ---
 
-    // Propriétés de la lune
+    // --- Lunes de Mars ---
+    PHOBOS: {
+        MASS: 1e8,           // Masse très faible (simulation)
+        RADIUS: 40,            // Rayon petit (augmenté x2)
+        ORBIT_DISTANCE: 1200,  // Distance orbitale de Mars (augmentée x1.5)
+        ORBIT_SPEED: 0.008,    // Vitesse orbitale rapide (simulation)
+    },
+    DEIMOS: {
+        MASS: 2e7,            // Masse encore plus faible (simulation)
+        RADIUS: 30,            // Rayon très petit (augmenté x2)
+        ORBIT_DISTANCE: 1800,  // Distance orbitale plus grande (augmentée x1.5)
+        ORBIT_SPEED: 0.004,    // Vitesse orbitale plus lente (simulation)
+    },
+    // --- Fin Lunes de Mars ---
+
+    // Propriétés de la lune (Lune terrestre)
     MOON: {
         MASS: 10000000000,            // Masse de la lune (25 fois moins que la planète)
         RADIUS: 180,                 // Rayon de la lune
-        ORBIT_DISTANCE: 2500,        // Distance orbitale depuis la planète
+        ORBIT_DISTANCE: 2000,        // Distance orbitale depuis la planète (réduite)
         ORBIT_SPEED: 0.005,         // Vitesse orbitale de la lune (ajustée)
         INITIAL_ANGLE: Math.PI + Math.PI / 4   // Angle initial de la lune sur son orbite
     }
@@ -171,7 +186,7 @@ const CELESTIAL_BODY = {
 // Constantes pour les particules
 const PARTICLES = {
     STAR_COUNT: 800,           // Nombre d'étoiles dans l'espace
-    VISIBLE_RADIUS: 25000,      // Rayon visible de l'espace (doublé de 12000 à 24000)
+    VISIBLE_RADIUS: 50000,      // Rayon visible de l'espace (augmenté x2)
     
     // Propriétés des émetteurs de particules
     EMITTER: {

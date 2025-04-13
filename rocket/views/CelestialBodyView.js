@@ -24,11 +24,6 @@ class CelestialBodyView {
             this.drawRings(ctx, celestialBodyModel, camera);
         }
         
-        // Dessiner la lune si le corps en possède une
-        if (celestialBodyModel.moon) {
-            this.drawMoon(ctx, celestialBodyModel, camera);
-        }
-        
         // Dessiner le nom du corps céleste
         this.drawName(ctx, celestialBodyModel, camera);
         
@@ -94,6 +89,11 @@ class CelestialBodyView {
     }
     
     drawName(ctx, body, camera) {
+        // Ne pas afficher le nom pour Phobos et Deimos
+        if (body.name === 'Phobos' || body.name === 'Deimos') {
+            return;
+        }
+
         const screenPos = camera.worldToScreen(body.position.x, body.position.y);
         const fontSize = Math.max(12, 24 * camera.zoom);
         
@@ -102,43 +102,6 @@ class CelestialBodyView {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(body.name, screenPos.x, screenPos.y);
-    }
-    
-    drawMoon(ctx, body, camera) {
-        console.log("drawMoon appelée pour", body.name, "qui a une lune:", body.moon);
-        
-        if (!body.moon || !body.moon.position) {
-            console.log("La lune n'existe pas ou sa position est manquante");
-            return;
-        }
-        
-        const screenPos = camera.worldToScreen(body.moon.position.x, body.moon.position.y);
-        const screenRadius = body.moon.radius * camera.zoom;
-        
-        console.log("Position de la lune:", body.moon.position, "position écran:", screenPos, "rayon écran:", screenRadius);
-        
-        // Dessiner la lune
-        ctx.beginPath();
-        ctx.arc(screenPos.x, screenPos.y, screenRadius, 0, Math.PI * 2);
-        ctx.fillStyle = body.moon.color || '#CCCCCC'; // Couleur grise par défaut pour la lune
-        ctx.fill();
-        
-        // Ajouter un contour
-        ctx.strokeStyle = this.getLighterColor(body.moon.color || '#CCCCCC');
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        
-        // Dessiner le nom de la lune si nécessaire
-        if (body.moon.name) {
-            const fontSize = Math.max(10, 18 * camera.zoom);
-            ctx.font = `${fontSize}px Arial`;
-            ctx.fillStyle = 'white';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(body.moon.name, screenPos.x, screenPos.y - screenRadius - 10);
-        }
-        
-        console.log("Rendu de la lune terminé");
     }
     
     // Utilitaire pour éclaircir une couleur
