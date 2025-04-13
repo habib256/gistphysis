@@ -795,9 +795,10 @@ class GameController {
             this.rocketModel.reset();
             // Réinitialiser le cargo
             this.rocketModel.cargo = new RocketCargo(); // Assure que le cargo est vide
-            // Ajouter le fuel initial pour la mission Terre->Lune
-            this.rocketModel.cargo.addCargo('Fuel', 20);
-            console.log("Cargo initial ajouté: Fuel x20");
+            // Ajouter un log pour vérifier les appels multiples
+            console.log(`%c[GameController] Appel de addCargo('Fuel', 10) dans resetRocket. Timestamp: ${performance.now()}`, 'color: orange;');
+            this.rocketModel.cargo.addCargo('Fuel', 10);
+            console.log("Cargo initial ajouté: Fuel x10");
 
             // --- Repositionner la fusée sur Terre ---            
             const earth = this.universeModel.celestialBodies.find(body => body.name === 'Terre');
@@ -852,6 +853,11 @@ class GameController {
             console.log(`%c[GameController] resetRocket: Trace effacée et premier point ajouté à (${this.rocketModel.position.x.toFixed(2)}, ${this.rocketModel.position.y.toFixed(2)})`, 'color: green;');
         }
         // --------------------------------------------------
+
+        // Réinitialiser les missions
+        if (this.missionManager) {
+            this.missionManager.resetMissions();
+        }
 
         console.log("Fusée réinitialisée.");
     }

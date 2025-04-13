@@ -13,20 +13,65 @@ class RocketCargo {
          * Liste des éléments de cargaison
          */
         this.cargoItems = [];
+        /**
+         * @type {number}
+         * Capacité maximale du cargo (depuis constants.js)
+         */
+        this.maxCapacity = ROCKET.CARGO_CAPACITY;
     }
 
     /**
-     * Ajoute un élément à la cargaison
+     * Retourne la charge actuelle du cargo (somme des quantités).
+     * @returns {number}
+     */
+    getCurrentLoad() {
+        return this.cargoItems.reduce((total, item) => total + item.quantity, 0);
+    }
+
+    /**
+     * Retourne la capacité maximale du cargo.
+     * @returns {number}
+     */
+    getMaxCapacity() {
+        return this.maxCapacity;
+    }
+
+    /**
+     * Ajoute un élément à la cargaison, en respectant la capacité maximale.
      * @param {string} type - Type de cargo (ex: "Fuel", "Supplies")
      * @param {number} quantity - Quantité à ajouter
+     * @returns {boolean} - True si l'ajout (partiel ou total) a réussi, false si impossible (déjà plein).
      */
     addCargo(type, quantity) {
+        const currentLoad = this.getCurrentLoad();
+        const availableSpace = this.maxCapacity - currentLoad;
+
+        if (availableSpace <= 0) {
+            console.warn(`[RocketCargo] Impossible d'ajouter ${type}. Cargo plein (${currentLoad}/${this.maxCapacity}).`);
+            return false; // Cargo déjà plein
+        }
+
+        const quantityToAdd = Math.min(quantity, availableSpace);
+
+        if (quantityToAdd <= 0) {
+             console.warn(`[RocketCargo] Espace insuffisant pour ajouter ${type}. Espace disponible: ${availableSpace}.`);
+             return false; // Pas assez d'espace pour ajouter quoi que ce soit
+        }
+
         const existingItem = this.cargoItems.find(item => item.type === type);
         if (existingItem) {
-            existingItem.quantity += quantity;
+            existingItem.quantity += quantityToAdd;
         } else {
-            this.cargoItems.push({ type, quantity });
+            this.cargoItems.push({ type, quantity: quantityToAdd });
         }
+
+        if (quantityToAdd < quantity) {
+            console.log(`%c[RocketCargo] Ajout partiel de ${type}: ${quantityToAdd}/${quantity} ajouté(s). Capacité atteinte (${this.getCurrentLoad()}/${this.maxCapacity}).`, 'color: orange;');
+        } else {
+             console.log(`%c[RocketCargo] Ajout de ${type}: ${quantityToAdd} unité(s). Charge actuelle: ${this.getCurrentLoad()}/${this.maxCapacity}.`, 'color: green;');
+        }
+        
+        return true; // Ajout (au moins partiel) réussi
     }
 
     /**

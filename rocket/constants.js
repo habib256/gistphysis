@@ -80,6 +80,9 @@ const ROCKET = {
     MAX_HEALTH: 100,            // Santé maximale de la fusée
     ROTATION_SPEED: 100,        // Vitesse de rotation
     
+    // Capacité du cargo
+    CARGO_CAPACITY: 10,         // Capacité maximale du cargo
+    
     // Carburant
     FUEL_MAX: 5000,             // Quantité maximale de carburant
     FUEL_CONSUMPTION: {
