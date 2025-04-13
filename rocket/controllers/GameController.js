@@ -762,11 +762,11 @@ class GameController {
 
                 // Vérifier l'échec (crash)
                 if (this.rocketModel.isDestroyed && currentMission.status === 'pending') {
-                    this.eventBus.publish('MISSION_FAILED', { mission: currentMission });
+                    this.eventBus.emit('MISSION_FAILED', { mission: currentMission });
                 }
                 // Vérifier le succès (atterrissage sur la cible)
                 else if (this.rocketModel.isLanded && this.rocketModel.landedOn === currentMission.to && currentMission.status === 'pending') {
-                    this.eventBus.publish('MISSION_SUCCESS', { mission: currentMission });
+                    this.eventBus.emit('MISSION_SUCCESS', { mission: currentMission });
                 }
             }
         }
@@ -979,9 +979,6 @@ class GameController {
             const moon = this.universeModel.celestialBodies.find(body => body.name === 'Lune');
             if (moon) {
                 moonPosition = moon.position;
-                
-                // Mettre à jour les traces existantes pour qu'elles suivent la lune
-                this.traceView.updateTracesForMoon(moonPosition);
             }
         }
         

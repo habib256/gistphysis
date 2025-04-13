@@ -159,8 +159,8 @@ class MissionManager {
             // TODO: Réinitialiser l'état de la mission (ex: générer une nouvelle mission ?)
             
             // Optionnel: Publier un événement pour l'UI
-            this.eventBus.publish('UI_UPDATE_CREDITS', { reward: mission.reward }); 
-            this.eventBus.publish('MISSION_COMPLETED', { mission });
+            this.eventBus.emit('UI_UPDATE_CREDITS', { reward: mission.reward });
+            this.eventBus.emit('MISSION_COMPLETED', { mission });
         }
     }
 
@@ -176,7 +176,7 @@ class MissionManager {
             // TODO: Remettre la cargaison à zéro (nécessite une référence à RocketCargo)
             
             // Optionnel: Publier un événement pour l'UI ou autre logique
-            this.eventBus.publish('MISSION_ABORTED', { mission });
+            this.eventBus.emit('MISSION_ABORTED', { mission });
         }
     }
 }
