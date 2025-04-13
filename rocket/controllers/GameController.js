@@ -77,7 +77,14 @@ class GameController {
     
     // Gérer les événements d'entrée
     handleKeyDown(data) {
-        if (this.isPaused && data.action !== 'pauseGame') return;
+        // MODIFICATION: Si en pause, n'importe quelle touche (détectée par keydown) doit reprendre le jeu.
+        if (this.isPaused) {
+            this.isPaused = false;
+            console.log("Jeu repris par keydown");
+            // On ne traite pas l'action de la touche qui a repris le jeu.
+            return; 
+        }
+        // FIN MODIFICATION
         
         switch (data.action) {
             case 'thrustForward':
@@ -150,8 +157,14 @@ class GameController {
     }
     
     handleKeyPress(data) {
-        if (this.isPaused && data.action !== 'pauseGame') return;
-        
+        // MODIFICATION: Si en pause et que l'action n'est PAS pauseGame, reprendre le jeu.
+        if (this.isPaused && data.action !== 'pauseGame') { 
+             this.isPaused = false;
+             console.log("Jeu repris par keypress");
+             return; 
+        }
+        // FIN MODIFICATION
+
         switch (data.action) {
             case 'pauseGame':
                 this.togglePause();
@@ -728,9 +741,30 @@ class GameController {
 
         // Si le jeu est en pause, ne rien faire d'autre que de demander la prochaine frame
         if (this.isPaused) {
+            // Mettre à jour le rendu même en pause pour afficher le message "PAUSE"
+            if (this.renderingController) {
+                this.renderingController.render(this.ctx, this.canvas, this.rocketModel, this.universeModel, this.particleSystemModel, this.isPaused, this.cameraModel, [], this.totalCreditsEarned);
+            }
             requestAnimationFrame(this.gameLoop.bind(this));
             return;
         }
+
+        // Mettre à jour l'état des entrées (pour les keypress ponctuels)
+        if (this.inputController) {
+            this.inputController.update();
+        }
+
+        // Mettre à jour la caméra pour suivre sa cible
+        if (this.cameraModel) {
+            this.cameraModel.update(deltaTime);
+        }
+
+        // ---- AJOUT ----
+        // Mettre à jour la position des émetteurs de particules AVANT de mettre à jour les particules
+        if (this.particleController && this.rocketModel) {
+            this.particleController.updateEmitterPositions(this.rocketModel);
+        }
+        // -------------
 
         // Mise à jour de la physique
         if (this.physicsController && this.rocketModel) {
@@ -885,6 +919,13 @@ class GameController {
         if(startLocation){
             this.loadCargoForCurrentLocationMission(startLocation);
         }
+
+        // ---- AJOUT ----
+        // Rétablir le suivi de la caméra sur la fusée
+        if (this.cameraModel && this.rocketModel) {
+            this.cameraModel.setTarget(this.rocketModel, 'rocket');
+        }
+        // -------------
 
         console.log("Fusée réinitialisée.");
     }

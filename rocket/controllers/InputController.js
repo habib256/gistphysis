@@ -57,12 +57,11 @@ class InputController {
             'd': 'rotateRight',
             
             // Autres touches
-            ' ': 'pauseGame',           // Espace
             'r': 'resetRocket',
             'c': 'centerCamera',
             'v': 'toggleVectors',
             't': 'toggleTraces',        // Afficher/masquer les traces
-            'p': 'increaseThrustMultiplier',
+            'p': 'pauseGame',
             'm': 'decreaseThrustMultiplier',
             'i': 'toggleAI'             // Activer/désactiver l'IA
         };
