@@ -1,7 +1,7 @@
-# Simulation Solaire Interactive 🚀🌌✨
+# Orbitarium : Simulation Solaire Interactive 🚀🌌✨
 
 ## Description 🌟
-"Simulation Solaire Interactive" est une application web qui vous permet de visualiser et d'explorer en temps réel le système solaire. Cette simulation dynamique vous offre la possibilité d'observer le ballet cosmique du Soleil 🌞, des planètes 🌍, des satellites 🛸 et même de la comète Halley ☄️ grâce à des animations basées sur des calculs orbitaux réalistes.
+"Orbitarium" est une application web qui vous permet de visualiser et d'explorer le système solaire. Cette simulation dynamique vous offre la possibilité d'observer le ballet cosmique du Soleil 🌞, des planètes 🌍, des satellites 🛸 et même de la comète Halley ☄️ grâce à des animations basées sur des calculs orbitaux réalistes.
 
 ## Fonctionnalités Principales 🎮
 - **Visualisation en Temps Réel** ⏱️  

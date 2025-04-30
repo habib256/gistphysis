@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <!-- Ajout de la balise viewport pour les affichages mobiles -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Simulation Solaire</title>
+    <title>Orbitarium</title>
+    <link rel="icon" type="image/png" href="../resources/icon.png">
+    <link rel="apple-touch-icon" href="../resources/icon.png">
     <style>
         /* Styles de base */
         body {
@@ -99,8 +101,8 @@
 
         /* Réduction du bouton Options */
         #optionsControls summary {
-            padding: 4px 8px !important;
-            font-size: 14px !important;
+            padding: 6px 12px !important;
+            font-size: 21px !important;
             cursor: pointer;
             display: inline-block;
             width: auto;
@@ -123,7 +125,7 @@
 </head>
 <body>
     <!-- Menu principal -->
-    <div id="menu" class="control-panel" style="position: absolute; top: 10px; left: 10px; z-index: 100;">
+    <div id="menu" class="control-panel" style="position: absolute; top: 10px; left: 10px; z-index: 100; max-width: 250px;">
         <label for="planetSelect">🎯 Centrer sur :</label>
         <select id="planetSelect">
             <option value="soleil">☀️ Soleil</option>
@@ -235,6 +237,19 @@
                 }
             }
         });
+    </script>
+
+    <!-- Masquer le bouton plein écran si en mode natif Capacitor -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // Vérifier si l'objet Capacitor existe et si la plateforme est native
+        if (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+          const fullscreenButton = document.getElementById('toggleFullscreen');
+          if (fullscreenButton) {
+            fullscreenButton.style.display = 'none'; 
+          }
+        }
+      });
     </script>
 </body>
 </html> 

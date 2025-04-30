@@ -1,6 +1,6 @@
 {
-  "name": "Simulation Solaire Interactive",
-  "short_name": "SimSolaire",
+  "name": "Orbitarium",
+  "short_name": "Orbitarium",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",

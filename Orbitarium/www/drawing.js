@@ -37,7 +37,7 @@ function drawOrbit(ctx, planet, originX, originY, zoom) {
     if (planet.name === "Ceres") return; // Ne pas tracer l'orbite de Ceres
 
     ctx.beginPath();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
     ctx.lineWidth = 1;
     
     if (planet.isComet) {
@@ -105,7 +105,7 @@ function drawSatellite(ctx, sat, planetX, planetY, zoom, timeMultiplier) {
     
     if (showOrbits) {
         ctx.beginPath();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
         ctx.lineWidth = 1;
         ctx.arc(planetX, planetY, sat.orbit * zoom, 0, Math.PI * 2);
         ctx.stroke();
