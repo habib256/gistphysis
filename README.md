@@ -9,20 +9,20 @@ Bienvenue dans **gistphysis** - Un laboratoire d'applications interactives !
 - [Lancer JSMecanique Video](https://habib256.github.io/gistphysis/jsmecavideo/index.html)  
   _(Cliquez pour lancer l'application JSMega Video)_
 
-- [Lancer Système Solaire](https://habib256.github.io/gistphysis/SystemeSolaire/index.html)  
-  _(Cliquez pour lancer l'application Systèmes Solaire)_
+- [Lancer Orbitarium](https://habib256.github.io/gistphysis/orbitarium/www/index.html)
+  _(Cliquez pour lancer l'application Orbitarium)_
 
 > **Note :** Pour une expérience optimale, utilisez un navigateur moderne ! 🌐
 
 ## 📖 À propos
 
-Ce projet regroupe trois applications interactives pour explorer et visualiser différents aspects de la science et de l'informatique. Chaque application est conçue pour être intuitive et éducative.
+Ce projet regroupe plusieurs applications interactives pour explorer et visualiser différents aspects de la science et de l'informatique. Chaque application est conçue pour être intuitive et éducative.
 
 ## 🛠️ Installation locale
 
 1. Clonez le dépôt :
 ```bash
-git clone https://github.com/votre-utilisateur/gistphysis.git
+git clone https://github.com/VOTRE_NOM_UTILISATEUR/gistphysis.git
 ```
 
 2. Ouvrez simplement le fichier `index.html` de l'application souhaitée dans votre navigateur !
