@@ -43,3 +43,18 @@ window.addEventListener('wheel', function(e) {
         updateZoom(newZoom); // Utilise la fonction updateZoom pour mettre à jour le zoom et effacer les traces
     }
 }); 
+
+// Enregistrement du Service Worker pour la PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js') // Chemin corrigé : relatif au dossier courant
+      .then(
+        (registration) => { // Fonction fléchée explicite pour then
+          console.log('Service Worker enregistré avec succès:', registration);
+        })
+      .catch(
+        (error) => { // Fonction fléchée explicite pour catch
+          console.log('Échec de l\'enregistrement du Service Worker:', error);
+      });
+  });
+} 
