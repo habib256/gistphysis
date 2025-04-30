@@ -1,5 +1,13 @@
 {
   "appId": "com.example.orbitarium",
   "appName": "Orbitarium",
-  "webDir": "www"
+  "webDir": "www",
+  "android": {
+    "path": "android",
+    "sdkPath": "/Users/gistair/Library/Android/sdk"
+  },
+  "ios": {
+    "path": "ios",
+    "minVersion": "13.0"
+  }
 }
