@@ -1,91 +1,71 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Équilibrer les réactions chimiques</title>
+    <meta charset="UTF-8" />
+    <title>Équilibrage de réactions chimiques – Prototype</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+        :root{
+            --primary:#004080;
+            --primary-dark:#00325f;
+            --accent:#0066cc;
+            --accent-dark:#0055aa;
         }
-        h1 {
-            color: #2E86C1;
-        }
-        .container {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-        .section {
-            width: 45%;
-            border: 1px solid #ccc;
-            padding: 10px;
-            border-radius: 4px;
-        }
-        .section h2 {
-            text-align: center;
-        }
-        .molecule-row {
-            margin-bottom: 10px;
-        }
-        input[type="number"],
-        input[type="text"] {
-            padding: 5px;
-            margin-right: 5px;
-            width: 80px;
-        }
-        button {
-            padding: 5px 10px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-        #result {
-            margin-top: 20px;
-            padding: 10px;
-            border: 2px solid #2E86C1;
-            border-radius: 4px;
-        }
-        .balanced {
-            color: green;
-            font-weight: bold;
-        }
-        .not-balanced {
-            color: red;
-            font-weight: bold;
-        }
-        #game {
-            margin-top: 20px;
-        }
-        #score {
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        #reaction {
-            margin-bottom: 10px;
+        *{box-sizing:border-box;}
+        body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:#f7f7f7;color:#111;}
+        header{background:var(--primary);color:#fff;padding:1rem;text-align:center;}
+        main{max-width:900px;margin:2rem auto;padding:1rem;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);}    
+        h1,h2{margin-top:0;}
+        .menu button{margin:0.5rem;padding:0.8rem 1.4rem;font-size:1.1rem;border:none;border-radius:8px;cursor:pointer;background:var(--accent);color:#fff;transition:background .2s ease;}
+        .menu button:hover{background:var(--accent-dark);}    
+        .hidden{display:none;}
+        .equation{font-size:1.4rem;margin:1.2rem 0;line-height:1.6em;min-height:2em; display: flex; align-items: center; justify-content: center; flex-wrap: wrap;}
+        .coeff-input{width:70px;margin:4px;padding:6px;font-size:1.1rem;text-align:center;border:1px solid #ccc;border-radius:6px;}
+        .coeff{display:inline-block;min-width:1.3em;text-align:right;font-weight:600;}
+        .feedback{margin:1rem 0;font-weight:bold; text-align: center; min-height: 1.2em;}
+        .scoreboard{margin:1rem 0;font-size:1.1rem; text-align: center;}
+        #answerForm { text-align: center; }
+        .btn-control{margin-top:1rem;padding:0.6rem 1rem;font-size:1rem;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;}
+        .btn-control:hover{background:var(--accent-dark);}    
+        #progress{font-style:italic;color:#555; text-align: center; margin-bottom: 1rem;}
+        #inputsContainer span { margin: 0 2px; }
+        #inputsContainer span sub { vertical-align: sub; font-size: 0.8em; }
+        @media(max-width:600px){
+            .coeff-input{width:55px;}
+            .equation{font-size:1.2rem;} 
         }
     </style>
-    <script src="equation.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="equilibre.js"></script>
-    <script src="game.js"></script>
 </head>
 <body>
-    <h1>Équilibrer les réactions chimiques</h1>
-    <div id="score">Score: 0</div>
-    <!-- Bouton Documentation -->
-    <button id="doc-button" onclick="window.location.href='documentation.html'">Documentation</button>
-    
-    <div id="app"></div>
-    <div id="model-viewer" style="width: 100%; height: 200px;"></div>
-    <script src="model.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof Game !== 'undefined') {
-                const game = new Game();
-                game.startGame();
-                window.currentGame = game;
-            }
-        });
-    </script>
+    <header>
+        <h1>Équilibrer les équations chimiques</h1>
+    </header>
+    <main>
+        <section id="menu" class="menu">
+            <h2>Choisissez votre niveau :</h2>
+            <button data-level="4eme">4<sup>ème</sup></button>
+            <button data-level="3eme">3<sup>ème</sup></button>
+            <button data-level="seconde">Seconde</button>
+        </section>
+
+        <section id="quiz" class="hidden">
+            <div id="progress"></div>
+            <div id="reactionDescription" style="text-align: center; margin-bottom: 1rem; font-style: italic; color: #444;"></div>
+            <form id="answerForm">
+                <div id="inputsContainer" class="equation"></div>
+                <button type="submit" class="btn-control">Valider</button>
+            </form>
+            <div id="feedback" class="feedback"></div>
+            <div id="score" class="scoreboard">Score: 0 / 0</div>
+        </section>
+
+        <section id="end" class="hidden">
+            <h2>Bravo !</h2>
+            <p id="finalScore"></p>
+            <button id="backToMenu" class="btn-control">Retour au menu principal</button>
+        </section>
+    </main>
+
+<script src="equation.js"></script>
+<script src="game.js"></script>
 </body>
 </html> 
