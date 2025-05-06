@@ -18,6 +18,7 @@
             this.questions = [];
             this.currentQuestionIndex = 0;
             this.score = 0;
+            this.attemptsLeft = 1; // Ajouter pour suivre les essais
 
             this.menuSection = document.getElementById('menu');
             this.quizSection = document.getElementById('quiz');
@@ -30,6 +31,7 @@
             this.scoreDiv = document.getElementById('score');
             this.finalScoreP = document.getElementById('finalScore');
             this.backToMenuButton = document.getElementById('backToMenu');
+            this.endTitle = document.getElementById('endTitle'); // Ajout référence titre fin
 
             console.log("Game constructor: Binding events..."); // Log constructor
             this.bindMenuEvents();
@@ -86,6 +88,7 @@
             this.questions = this.shuffleArray([...this.reactionsData[level]]); // Copie et mélange les questions
             this.currentQuestionIndex = 0;
             this.score = 0;
+            this.attemptsLeft = 1; // Réinitialiser les essais pour le nouveau niveau
             
             console.log("startLevel: Masquage du menu et affichage du quiz..."); // Log avant changement de visibilité
             this.menuSection.classList.add('hidden');
@@ -103,6 +106,7 @@
                 return;
             }
 
+            this.attemptsLeft = 1; // Réinitialiser les essais pour la nouvelle question
             const question = this.questions[this.currentQuestionIndex];
             this.inputsContainer.innerHTML = '';
             this.feedbackDiv.innerHTML = '';
@@ -173,27 +177,28 @@
 
             if (userInputs.length !== correctCoefficients.length) {
                 console.error("Incohérence entre le nombre d'inputs et de coefficients attendus.");
-                isCorrect = false;
+                isCorrect = false; // Devrait idéalement gérer cette erreur plus robustement
             } else {
                 for (let i = 0; i < correctCoefficients.length; i++) {
                     const userInput = userInputs[i];
+                    // Considérer 1 si le champ est vide, invalide ou <= 0
                     const userValue = parseInt(userInput.value, 10);
-                    // Considérer 1 si le champ est vide ou invalide, comme souvent attendu
-                    const effectiveValue = (!userValue || userValue < 1) ? 1 : userValue;
+                    const effectiveValue = (!userValue || userValue < 1) ? 1 : userValue; 
                     
+                    // Réinitialiser le style avant la vérification
+                    userInput.style.border = '1px solid #ccc'; 
+
                     if (effectiveValue !== correctCoefficients[i]) {
                         isCorrect = false;
-                        userInput.style.border = '2px solid red'; // Highlight incorrect input
-                    } else {
-                        userInput.style.border = '1px solid #ccc'; // Reset border
+                        userInput.style.border = '2px solid red'; // Mettre en évidence l'erreur
                     }
                 }
             }
 
             if (isCorrect) {
                 this.score++;
-                this.feedbackDiv.textContent = 'Correct !';
-                this.feedbackDiv.style.color = 'green';
+                this.feedbackDiv.textContent = '✅ Correct !';
+                this.feedbackDiv.className = 'feedback correct';
                  // Passer à la question suivante après un court délai
                 setTimeout(() => {
                     this.currentQuestionIndex++;
@@ -201,24 +206,88 @@
                     this.updateScoreDisplay();
                 }, 1000); // Délai de 1 seconde
             } else {
-                this.feedbackDiv.textContent = 'Incorrect. Essayez encore.';
-                this.feedbackDiv.style.color = 'red';
+                 if (this.attemptsLeft > 0) {
+                    this.attemptsLeft--;
+                    this.feedbackDiv.textContent = '🤔 Incorrect. Il vous reste 1 essai.';
+                    this.feedbackDiv.className = 'feedback incorrect';
+                } else {
+                    // Aucun essai restant, afficher la bonne réponse et passer à la suite
+                    this.feedbackDiv.innerHTML = `❌ Incorrect. La bonne réponse était : <div class="equation">${this.formatCorrectAnswer(question)}</div>`;
+                    this.feedbackDiv.className = 'feedback final-incorrect';
+
+                    // Désactiver les inputs pour éviter modifications pendant l'attente
+                    userInputs.forEach(input => { input.disabled = true; }); // Assurer la désactivation
+
+                    setTimeout(() => {
+                        this.currentQuestionIndex++;
+                        this.displayQuestion(); // Affichera la question suivante
+                        this.updateScoreDisplay(); // Le score n'est pas incrémenté
+                    }, 9000); // Délai plus long pour voir la réponse (12 secondes)
+                }
             }
-           
         }
         
+        // Méthode pour formater l'affichage de la réponse correcte
+        formatCorrectAnswer(question) {
+            let htmlString = '';
+            let coeffIndex = 0;
+            const formatFormula = (formula) => formula.replace(/(\d+)/g, '<sub>$1</sub>');
+
+            // Réactifs
+            question.r.forEach((reactant, index) => {
+                htmlString += `<span class="coeff" style="color: green; font-weight: bold; margin-right: 2px;">${question.c[coeffIndex++]}</span>`;
+                htmlString += `<span>${formatFormula(reactant)}</span>`;
+                if (index < question.r.length - 1) {
+                    htmlString += ' + ';
+                }
+            });
+
+            // Flèche
+            htmlString += '<span style="margin: 0 10px;"> → </span>';
+
+            // Produits
+            question.p.forEach((product, index) => {
+                htmlString += `<span class="coeff" style="color: green; font-weight: bold; margin-right: 2px;">${question.c[coeffIndex++]}</span>`;
+                htmlString += `<span>${formatFormula(product)}</span>`;
+                if (index < question.p.length - 1) {
+                    htmlString += ' + ';
+                }
+            });
+
+            return htmlString;
+        }
+
         updateScoreDisplay() {
-            this.scoreDiv.textContent = `Score: ${this.score} / ${this.questions.length}`;
+            this.scoreDiv.textContent = `Score: ${this.score} / ${this.questions.length} ✨`;
         }
 
         updateProgress() {
-            this.progressDiv.textContent = `Question ${this.currentQuestionIndex + 1} sur ${this.questions.length}`;
+            this.progressDiv.textContent = `➡️ Question ${this.currentQuestionIndex + 1} sur ${this.questions.length}`;
         }
 
         endQuiz() {
             this.quizSection.classList.add('hidden');
             this.endSection.classList.remove('hidden');
-            this.finalScoreP.textContent = `Votre score final est de ${this.score} sur ${this.questions.length}.`;
+            const score = this.score;
+            const totalQuestions = this.questions.length;
+
+            // Paliers de messages et titres en fonction du score
+            if (score === totalQuestions) { // 100%
+                this.endTitle.textContent = 'Félicitations !';
+                this.finalScoreP.textContent = `🏆 Score parfait ! ${score} sur ${totalQuestions}.`;
+            } else if (score >= totalQuestions * 0.75) { // 75% - 99% (Score 15-19 for 20 questions)
+                this.endTitle.textContent = 'Excellent !';
+                this.finalScoreP.textContent = `🎉 Votre score final est de ${score} sur ${totalQuestions}.`;
+            } else if (score >= totalQuestions * 0.5) { // 50% - 74% (Score 10-14 for 20 questions)
+                this.endTitle.textContent = 'Bon travail !';
+                this.finalScoreP.textContent = `👍 Votre score final est de ${score} sur ${totalQuestions}.`;
+            } else if (score >= totalQuestions * 0.25) { // 25% - 49% (Score 5-9 for 20 questions)
+                this.endTitle.textContent = 'Quiz terminé'; // Titre neutre
+                this.finalScoreP.textContent = `Votre score final est de ${score} sur ${totalQuestions}.`; // Message neutre
+            } else { // Moins de 25% (Score < 5 for 20 questions)
+                this.endTitle.textContent = 'Entraînement nécessaire';
+                this.finalScoreP.textContent = `🙁 Votre score final est de ${score} sur ${totalQuestions}.`;
+            }
         }
 
         showMenu() {
