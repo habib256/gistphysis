@@ -102,8 +102,8 @@ function setup() {
   // Définir une fonction de rappel pour le changement de vidéo
   dropdown3.changed(() => {
     etat = 'Pointage Vidéo';
+    initVideoPlayer(); // Init avant loop
     loop();
-    initVideoPlayer();
   });
 }
 
@@ -111,11 +111,15 @@ function draw() {
 
   switch (etat) {
     case 'Pointage Vidéo':
-      videoPlayer.draw();
+      if (videoPlayer) {
+        videoPlayer.draw();
+      }
       drawCursor();
       break;
     case 'Pointage Webcam':
-      webcamPlayer.draw();
+      if (webcamPlayer) {
+        webcamPlayer.draw();
+      }
       drawCursor();
       break;
     case 'Graphique':
@@ -162,12 +166,11 @@ function optionChanged() {
   console.log(etat);
 
   if (etat === 'Pointage Vidéo') {
-    loop();
+    initVideoPlayer(); // Init avant loop
     frameRate(60);
-    initVideoPlayer();
+    loop();
   }
   if (etat === 'Pointage Webcam') {
-    loop();
     if (videoPlayer) {
       videoPlayer.removeElements();
       videoPlayer = null; // Détruire l'objet videoPlayer
@@ -177,6 +180,7 @@ function optionChanged() {
     webcamPlayer = new WebcamPlayer(15); // L'argument correspond au framerate de capture de la webcam
     webcamPlayer.addElements();
     webcamPlayer.jumpToStart(); // Remettre la vidéo au début
+    loop();
   }
   if (etat === 'Graphique') {
     noLoop();
