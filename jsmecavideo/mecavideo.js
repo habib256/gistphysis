@@ -171,10 +171,10 @@ function optionChanged() {
     loop();
   }
   if (etat === 'Pointage Webcam') {
+    data.clearAllPoints(); // Toujours effacer les points lors du passage au mode webcam
     if (videoPlayer) {
       videoPlayer.removeElements();
       videoPlayer = null; // Détruire l'objet videoPlayer
-      data.clearAllPoints();
     }
     graph.destroy();
     webcamPlayer = new WebcamPlayer(15); // L'argument correspond au framerate de capture de la webcam
