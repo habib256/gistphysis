@@ -3,6 +3,19 @@ class VideoPlayer {
         this.video = createVideo([videoFile]);
         this.video.hide();
 
+        // Initialiser le flag de chargement
+        this.isLoaded = false;
+
+        // Écouter l'événement loadedmetadata sur l'élément DOM natif
+        this.video.elt.onloadedmetadata = () => {
+            this.isLoaded = true;
+        };
+
+        // Vérification de secours si l'événement a déjà été déclenché
+        if (this.video.elt.readyState >= 1) {
+            this.isLoaded = true;
+        }
+
         this.framerate = framerate;
 
         this.isPlaying = false;
@@ -76,7 +89,7 @@ class VideoPlayer {
     }
 
     draw() {
-                if (this.video.loadedmetadata) {
+                if (this.isLoaded) {
                     let ratio = this.video.width / this.video.height;
                     let w = height * ratio;
                     let h = height;
@@ -109,7 +122,7 @@ class VideoPlayer {
     }
 
     sliderUpdate() {
-        if (this.video.loadedmetadata && this.video.duration() > 0) {
+        if (this.isLoaded && this.video.duration() > 0) {
             // Si temps actuel + incrément de 1 frame est supérieur ou égal à la durée,
             // on considère que c'est la dernière frame et on positionne le slider à 100%
             if (this.video.time() + (1 / this.framerate) >= this.video.duration()) {

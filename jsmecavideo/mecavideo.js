@@ -102,7 +102,7 @@ function setup() {
   // Définir une fonction de rappel pour le changement de vidéo
   dropdown3.changed(() => {
     etat = 'Pointage Vidéo';
-    data.clearAllPoints();
+    loop();
     initVideoPlayer();
   });
 }
@@ -141,10 +141,10 @@ function drawCursor() {
 }
 
 function initVideoPlayer() {
+  data.clearAllPoints(); // Effacer les points à chaque initialisation du lecteur vidéo
   graph.destroy();
   dropdown.selected(' Pointage Vidéo'); // Réinitialiser la valeur de dropdown à 'Pointage'
   if (webcamPlayer) {
-    data.clearAllPoints();
     webcamPlayer.removeElements();
     webcamPlayer = null; // Détruire l'objet webcamPlayer
     videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
@@ -162,10 +162,12 @@ function optionChanged() {
   console.log(etat);
 
   if (etat === 'Pointage Vidéo') {
+    loop();
     frameRate(60);
     initVideoPlayer();
   }
   if (etat === 'Pointage Webcam') {
+    loop();
     if (videoPlayer) {
       videoPlayer.removeElements();
       videoPlayer = null; // Détruire l'objet videoPlayer
@@ -177,6 +179,7 @@ function optionChanged() {
     webcamPlayer.jumpToStart(); // Remettre la vidéo au début
   }
   if (etat === 'Graphique') {
+    noLoop();
     if (videoPlayer) {
       videoPlayer.removeElements();
     }

@@ -3,6 +3,15 @@ class WebcamPlayer {
         this.cam = createCapture(VIDEO);
         this.cam.hide();
 
+        this.isLoaded = false;
+        this.cam.elt.onloadedmetadata = () => {
+            this.isLoaded = true;
+        };
+        // Vérification de secours
+        if (this.cam.elt.readyState >= 1) {
+            this.isLoaded = true;
+        }
+
         frameRate(framerate);
         this.framerate = framerate;
         this.frameIndex = 0;
@@ -94,7 +103,8 @@ class WebcamPlayer {
     }
 
     draw() {
-        if (this.cam.loadedmetadata) {
+        background(0); // Toujours nettoyer le fond (écran noir par défaut)
+        if (this.isLoaded && this.cam.width > 0 && this.cam.height > 0) {
             if (this.isRecording) {   
                     let pic = this.cam.get();
                     this.images.push(pic);
@@ -121,7 +131,7 @@ class WebcamPlayer {
             }
         
         } else {
-            background(0);
+            // background(0) est déjà fait au début
             textAlign(CENTER, CENTER);
             textSize(40);
             color(255, 255, 255);
