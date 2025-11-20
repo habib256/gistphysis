@@ -1,12 +1,13 @@
 class VideoPlayer {
     constructor(videoFile, framerate) {
-        this.video = createVideo([videoFile]);
+        this.isLoaded = false;
+        this.video = createVideo([videoFile], () => {
+            this.isLoaded = true;
+            this.video.volume(0);
+        });
         this.video.hide();
 
-        // Initialiser le flag de chargement
-        this.isLoaded = false;
-
-        // Écouter l'événement loadedmetadata sur l'élément DOM natif
+        // Écouter l'événement loadedmetadata sur l'élément DOM natif (fallback)
         this.video.elt.onloadedmetadata = () => {
             this.isLoaded = true;
         };

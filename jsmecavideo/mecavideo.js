@@ -151,7 +151,6 @@ function initVideoPlayer() {
   if (webcamPlayer) {
     webcamPlayer.removeElements();
     webcamPlayer = null; // Détruire l'objet webcamPlayer
-    videoPlayer = new VideoPlayer('videos/chute.mp4', 25);
   }
   if (videoPlayer) {
     videoPlayer.removeElements();
