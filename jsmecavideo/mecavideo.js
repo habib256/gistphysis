@@ -10,6 +10,7 @@ let yConversionFactor = 1; // Echelle de pixels en mètres
 let timeConversionFactor = 1;
 let data = new Data();
 let graph;
+let calibrator;
 
 let etat = 'Pointage Vidéo';
 
@@ -42,7 +43,12 @@ function setup() {
   let canvas = createCanvas(800, 600).parent('canvas-container');
   graph = new Graph(data, canvas);
   visor = new Visor();
+  calibrator = new Calibrator();
   noCursor();
+  
+  // Gestion des boutons de calibration
+  document.getElementById('validate-calibration').addEventListener('click', validateCalibration);
+  document.getElementById('reset-calibration').addEventListener('click', resetCalibration);
 
   // Créer un menu déroulant
   dropdown = createSelect();
@@ -50,18 +56,25 @@ function setup() {
   dropdown.style("font-size", "20px"); // Augmente la taille de la police
   dropdown.option(' Pointage Vidéo');
   dropdown.option(' Pointage Webcam');
+  dropdown.option(' Calibration');
   dropdown.option(' Graphique');
   // Définir une fonction de rappel pour le changement d'option
   dropdown.changed(optionChanged);
 
-  // Créer un menu déroulant 2
+  // Créer un menu déroulant 2 pour le nombre de mobiles
   dropdown2 = createSelect();
   dropdown2.parent('menu');
   dropdown2.style("font-size", "20px"); // Augmente la taille de la police
-  dropdown2.option('1 point');
-  dropdown2.option('2 points');
-  dropdown2.option('3 points');
-  dropdown2.option('4 points');
+  dropdown2.option('1 mobile', 1);
+  dropdown2.option('2 mobiles', 2);
+  dropdown2.option('3 mobiles', 3);
+  dropdown2.option('4 mobiles', 4);
+  dropdown2.changed(() => {
+    let numMobiles = parseInt(dropdown2.value());
+    data.setNumMobiles(numMobiles);
+    data.clearAllPoints();
+    console.log('Nombre de mobiles: ' + numMobiles);
+  });
 
   // Créer un menu déroulant 3
   dropdown3 = createSelect();
@@ -115,12 +128,22 @@ function draw() {
         videoPlayer.draw();
       }
       drawCursor();
+      updateFrameInfo();
       break;
     case 'Pointage Webcam':
       if (webcamPlayer) {
         webcamPlayer.draw();
       }
       drawCursor();
+      updateFrameInfo();
+      break;
+    case 'Calibration':
+      if (videoPlayer) {
+        videoPlayer.draw();
+      }
+      calibrator.draw();
+      drawCalibrationCursor();
+      updateInstructions(calibrator.getInstructionMessage());
       break;
     case 'Graphique':
       cursor();
@@ -131,17 +154,120 @@ function draw() {
   }
 }
 
+// Dessine le curseur en mode calibration
+function drawCalibrationCursor() {
+  noCursor();
+  stroke(0, 255, 0);
+  noFill();
+  ellipse(mouseX, mouseY, 20, 20);
+  line(mouseX - 10, mouseY, mouseX - 2, mouseY);
+  line(mouseX + 2, mouseY, mouseX + 10, mouseY);
+  line(mouseX, mouseY - 10, mouseX, mouseY - 2);
+  line(mouseX, mouseY + 2, mouseX, mouseY + 10);
+}
+
+// Met à jour la zone d'instructions
+function updateInstructions(message) {
+  document.getElementById('instructions').textContent = message;
+}
+
+// Met à jour les informations de frame et temps
+function updateFrameInfo() {
+  let frameNum = 0;
+  let currentTime = 0;
+  
+  if (videoPlayer && videoPlayer.isLoaded) {
+    currentTime = videoPlayer.video.time();
+    frameNum = Math.round(currentTime * videoPlayer.framerate);
+  } else if (webcamPlayer && webcamPlayer.isRecorded) {
+    frameNum = webcamPlayer.frameIndex;
+    currentTime = frameNum / webcamPlayer.framerate;
+  }
+  
+  // Affiche les infos de frame et le nombre de points
+  let pointInfo = data.getTotalPointCount() + ' pts';
+  if (data.numMobiles > 1) {
+    pointInfo = 'M' + (data.getCurrentMobile() + 1) + ' | ' + pointInfo;
+  }
+  
+  document.getElementById('frame-info').textContent = 
+    'Frame: ' + frameNum + ' | t=' + currentTime.toFixed(3) + 's | ' + pointInfo;
+  
+  // Met à jour les instructions selon le mode et l'état de la calibration
+  let instruction = '';
+  
+  if (calibrator.isCalibrated) {
+    instruction = '✅ Échelle: 1px = ' + (calibrator.scaleFactor * 1000).toFixed(2) + 'mm | ';
+  } else {
+    instruction = '⚠️ Échelle non calibrée | ';
+  }
+  
+  if (data.numMobiles > 1) {
+    let col = data.getCurrentColor();
+    instruction += 'Pointer le mobile ' + (data.getCurrentMobile() + 1) + ' | ';
+  }
+  
+  instruction += 'Clic: pointer | Ctrl+clic: annuler';
+  
+  updateInstructions(instruction);
+}
+
+// Valide la calibration avec la distance entrée
+function validateCalibration() {
+  let distanceInput = document.getElementById('real-distance');
+  let distance = parseFloat(distanceInput.value);
+  
+  if (calibrator.setRealDistance(distance)) {
+    // Met à jour les facteurs de conversion globaux
+    xConversionFactor = calibrator.scaleFactor;
+    yConversionFactor = calibrator.scaleFactor;
+    
+    // Cache l'input et affiche le message de succès
+    document.getElementById('calibration-input').style.display = 'none';
+    updateInstructions(calibrator.getInstructionMessage());
+    
+    console.log('Calibration réussie: 1 pixel = ' + calibrator.scaleFactor + ' mètres');
+  }
+}
+
+// Réinitialise la calibration
+function resetCalibration() {
+  calibrator.reset();
+  document.getElementById('calibration-input').style.display = 'none';
+  updateInstructions(calibrator.getInstructionMessage());
+}
+
 function drawCursor() {
   noCursor();
+  
+  // Change la couleur du viseur selon le mobile courant
+  let currentColor = data.getCurrentColor();
+  visor.color = color(currentColor.r, currentColor.g, currentColor.b);
+  visor.setMobileNumber(data.getCurrentMobile() + 1);
   visor.update(mouseX, mouseY);
   visor.draw();
-  data.getAllPoints().forEach((point) => {
-    let x = point.x / xConversionFactor;
-    let y = 600 - point.y / yConversionFactor;
-    // Dessine une croix
-    line(x - 3, y - 3, x + 3, y + 3);
-    line(x + 3, y - 3, x - 3, y + 3);
-  });
+  
+  // Affiche la légende des mobiles si nécessaire
+  visor.drawLegend(data);
+  
+  // Dessine les points de chaque mobile avec sa couleur
+  for (let m = 0; m < data.numMobiles; m++) {
+    let pts = data.getPointsForMobile(m);
+    let col = data.getColor(m);
+    stroke(col.r, col.g, col.b);
+    strokeWeight(2);
+    
+    pts.forEach((point, index) => {
+      let x = point.x / xConversionFactor;
+      let y = 600 - point.y / yConversionFactor;
+      
+      // Dessine une croix
+      line(x - 5, y - 5, x + 5, y + 5);
+      line(x + 5, y - 5, x - 5, y + 5);
+    });
+  }
+  
+  strokeWeight(1);
 }
 
 function initVideoPlayer() {
@@ -165,11 +291,13 @@ function optionChanged() {
   console.log(etat);
 
   if (etat === 'Pointage Vidéo') {
+    document.getElementById('calibration-input').style.display = 'none';
     initVideoPlayer(); // Init avant loop
     frameRate(60);
     loop();
   }
   if (etat === 'Pointage Webcam') {
+    document.getElementById('calibration-input').style.display = 'none';
     data.clearAllPoints(); // Toujours effacer les points lors du passage au mode webcam
     if (videoPlayer) {
       videoPlayer.removeElements();
@@ -181,7 +309,24 @@ function optionChanged() {
     webcamPlayer.jumpToStart(); // Remettre la vidéo au début
     loop();
   }
+  if (etat === 'Calibration') {
+    // Assure que le videoPlayer est visible pour la calibration
+    if (!videoPlayer) {
+      let selectedVideoIndex = dropdown3.value();
+      videoPlayer = new VideoPlayer(videoFiles[selectedVideoIndex].path, videoFiles[selectedVideoIndex].framerate);
+    }
+    if (webcamPlayer) {
+      webcamPlayer.removeElements();
+      webcamPlayer = null;
+    }
+    graph.destroy();
+    calibrator.reset();
+    updateInstructions(calibrator.getInstructionMessage());
+    frameRate(60);
+    loop();
+  }
   if (etat === 'Graphique') {
+    document.getElementById('calibration-input').style.display = 'none';
     noLoop();
     if (videoPlayer) {
       videoPlayer.removeElements();
@@ -197,6 +342,22 @@ function optionChanged() {
 
 // Ajoute une fonction pour ajouter ou retirer un point dans data à chaque clic sur la vidéo
 function mouseClicked(event) {
+  // Gestion du mode calibration
+  if (etat === 'Calibration' && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    if (mouseButton === LEFT) {
+      let result = calibrator.addPoint(mouseX, mouseY);
+      
+      if (result === 'point2_set') {
+        // Affiche l'input pour la distance réelle
+        document.getElementById('calibration-input').style.display = 'block';
+      }
+      
+      updateInstructions(calibrator.getInstructionMessage());
+    }
+    return;
+  }
+  
+  // Gestion du pointage vidéo/webcam
   if ((etat === 'Pointage Vidéo' || etat === 'Pointage Webcam') && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
 
     if (mouseButton === LEFT && keyIsDown(CONTROL)) {
@@ -209,14 +370,16 @@ function mouseClicked(event) {
       }
     } else if (mouseButton === LEFT) {
       let calibratedX = mouseX * xConversionFactor;
-      let calibratedY = 600 - mouseY * yConversionFactor;
+      let calibratedY = (600 - mouseY) * yConversionFactor;
 
       if (videoPlayer) {
-        data.addPoint(videoPlayer.time, calibratedX, calibratedY);
+        let currentTime = videoPlayer.video.time();
+        data.addPoint(currentTime, calibratedX, calibratedY);
         videoPlayer.nextFrame();
       }
       if (webcamPlayer) {
-        data.addPoint(webcamPlayer.time, calibratedX, calibratedY);
+        let currentTime = webcamPlayer.frameIndex / webcamPlayer.framerate;
+        data.addPoint(currentTime, calibratedX, calibratedY);
         webcamPlayer.nextFrame();
       }
 
