@@ -90,36 +90,41 @@ class VideoPlayer {
     }
 
     draw() {
-                if (this.isLoaded) {
-                    let ratio = this.video.width / this.video.height;
-                    let w = height * ratio;
-                    let h = height;
+        background(0); // Toujours nettoyer le fond (éviter les artefacts visuels)
 
-                    if (w > width) {
-                        w = width;
-                        h = width / ratio;
-                    }
+        // Utiliser videoWidth/videoHeight natifs qui fonctionnent même si l'élément est masqué
+        let vw = this.video.elt.videoWidth;
+        let vh = this.video.elt.videoHeight;
 
-                    let x = (width - w) / 2;
-                    let y = (height - h) / 2;
+        if (this.isLoaded && vw > 0 && vh > 0) {
+            let ratio = vw / vh;
+            let w = height * ratio;
+            let h = height;
 
-                    stroke(0); // Couleur des bandes en noir
-                    fill(0);
-                    rect(0, 0, width, y); // Bande horizontale supérieure
-                    rect(0, y + h + 1, width, height); // Bande horizontale inférieure
-                    rect(0, 0, x, height); // Bande verticale gauche
-                    rect(x + w + 1, 0, width, height); // Bande verticale droite
-                    image(this.video, x, y, w, h);
+            if (w > width) {
+                w = width;
+                h = width / ratio;
+            }
 
-                } else {
-                    background(0);
-                    stroke(255);
-                    fill(255);
-                    textSize(48);
-                    textAlign(CENTER, CENTER);
-                    text('Charge la vidéo', width / 2, height / 2);
-                }   
-                this.sliderUpdate();
+            let x = (width - w) / 2;
+            let y = (height - h) / 2;
+
+            stroke(0); // Couleur des bandes en noir
+            fill(0);
+            rect(0, 0, width, y); // Bande horizontale supérieure
+            rect(0, y + h + 1, width, height); // Bande horizontale inférieure
+            rect(0, 0, x, height); // Bande verticale gauche
+            rect(x + w + 1, 0, width, height); // Bande verticale droite
+            image(this.video, x, y, w, h);
+
+        } else {
+            stroke(255);
+            fill(255);
+            textSize(48);
+            textAlign(CENTER, CENTER);
+            text('Charge la vidéo', width / 2, height / 2);
+        }
+        this.sliderUpdate();
     }
 
     sliderUpdate() {
