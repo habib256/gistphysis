@@ -10,9 +10,10 @@ class VideoPlayer {
         this.video.elt.preload = 'auto'; // Demander le préchargement complet
 
         // Écouter loadeddata (readyState >= 2 = données de la première image disponibles)
-        this.video.elt.addEventListener('loadeddata', () => {
+        this._onLoadedData = () => {
             this._forceFirstFrame();
-        });
+        };
+        this.video.elt.addEventListener('loadeddata', this._onLoadedData);
 
         // Vérification de secours si l'événement a déjà été déclenché
         if (this.video.elt.readyState >= 2) {
@@ -143,6 +144,7 @@ class VideoPlayer {
     }
 
     removeElements() {
+        this.video.elt.removeEventListener('loadeddata', this._onLoadedData);
         this.video.remove();
         this.buttonStart.remove();
         this.buttonBack.remove();

@@ -1,15 +1,22 @@
 class WebcamPlayer {
     constructor(framerate) {
-        this.cam = createCapture(VIDEO);
-        this.cam.hide();
+        try {
+            this.cam = createCapture(VIDEO);
+            this.cam.hide();
+        } catch (e) {
+            console.error('Erreur accès webcam:', e);
+            this.cam = null;
+        }
 
         this.isLoaded = false;
-        this.cam.elt.onloadedmetadata = () => {
-            this.isLoaded = true;
-        };
-        // Vérification de secours
-        if (this.cam.elt.readyState >= 1) {
-            this.isLoaded = true;
+        if (this.cam) {
+            this.cam.elt.onloadedmetadata = () => {
+                this.isLoaded = true;
+            };
+            // Vérification de secours
+            if (this.cam.elt.readyState >= 1) {
+                this.isLoaded = true;
+            }
         }
 
         frameRate(framerate);
@@ -89,7 +96,7 @@ class WebcamPlayer {
                 this.nextFrame();
             });
 
-            this.slider = createSlider(0, 1, 0.5, 0.01);
+            this.slider = createSlider(0, 1, 0, 0.01);
             this.slider.parent('controls'); // Place le slider dans le conteneur 'controls'
             this.slider.style('width', '800px');
             this.slider.style('float', 'right'); // Align the slider to the right
@@ -144,6 +151,10 @@ class WebcamPlayer {
     }
 
     sliderUpdate() {
+        if (this.images.length <= 1) {
+            this.slider.value(0);
+            return;
+        }
         if (this.isRecorded && this.sliderActive) {
             this.frameIndex = Math.round(this.slider.value() * (this.images.length - 1));
         } else {
@@ -159,6 +170,20 @@ class WebcamPlayer {
     }
 
     removeElements() {
+        // Arrêter le flux webcam et libérer les ressources
+        if (this.cam) {
+            let stream = this.cam.elt.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            this.cam.remove();
+        }
+        // Arrêter le clignotement d'enregistrement si actif
+        if (this.recordBlinkInterval) {
+            clearInterval(this.recordBlinkInterval);
+            this.recordBlinkInterval = null;
+        }
+        this.isRecording = false;
         this.buttonRecord.remove();
         this.buttonStart.remove();
         this.buttonBack.remove();

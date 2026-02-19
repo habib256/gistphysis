@@ -4,12 +4,6 @@ class Visor {
         this.y = 0;
         this.color = color(255, 0, 0, 255); // Couleur du viseur (modifiable)
         this.mobileNumber = 1; // Numéro du mobile à afficher
-        // Initialisation pour le suivi du curseur
-        this.cursorX = 0;
-        this.targetX = 0;
-        // Valeurs par défaut pour les marges
-        this.leftMargin = 0;
-        this.rightMargin = width || 800;
     }
 
     update(mouseX, mouseY) {
@@ -88,12 +82,5 @@ class Visor {
         }
         
         pop();
-    }
-
-    updateCursor() {
-        // Calcul de la position cible selon la valeur du slider
-        this.targetX = map(slider.value(), 0, 1, this.leftMargin, this.rightMargin);
-        // Interpolation plus rapide pour une meilleure réactivité du curseur
-        this.cursorX = lerp(this.cursorX, this.targetX, 0.5);
     }
 }
