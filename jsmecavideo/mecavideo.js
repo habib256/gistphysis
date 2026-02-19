@@ -216,16 +216,23 @@ function updateFrameInfo() {
 function validateCalibration() {
   let distanceInput = document.getElementById('real-distance');
   let distance = parseFloat(distanceInput.value);
-  
+
+  if (isNaN(distance) || distance <= 0) {
+    distanceInput.style.border = '2px solid red';
+    updateInstructions('⚠️ Entrez une distance valide (nombre positif en mètres)');
+    return;
+  }
+  distanceInput.style.border = '';
+
   if (calibrator.setRealDistance(distance)) {
     // Met à jour les facteurs de conversion globaux
     xConversionFactor = calibrator.scaleFactor;
     yConversionFactor = calibrator.scaleFactor;
-    
+
     // Cache l'input et affiche le message de succès
     document.getElementById('calibration-input').style.display = 'none';
     updateInstructions(calibrator.getInstructionMessage());
-    
+
     console.log('Calibration réussie: 1 pixel = ' + calibrator.scaleFactor + ' mètres');
   }
 }
@@ -259,7 +266,7 @@ function drawCursor() {
     
     pts.forEach((point, index) => {
       let x = point.x / xConversionFactor;
-      let y = 600 - point.y / yConversionFactor;
+      let y = height - point.y / yConversionFactor;
       
       // Dessine une croix
       line(x - 5, y - 5, x + 5, y + 5);
@@ -330,9 +337,11 @@ function optionChanged() {
     noLoop();
     if (videoPlayer) {
       videoPlayer.removeElements();
+      videoPlayer = null;
     }
     if (webcamPlayer) {
       webcamPlayer.removeElements();
+      webcamPlayer = null;
     }
     graph.destroy();
     graph.create();
@@ -370,7 +379,7 @@ function mouseClicked(event) {
       }
     } else if (mouseButton === LEFT) {
       let calibratedX = mouseX * xConversionFactor;
-      let calibratedY = (600 - mouseY) * yConversionFactor;
+      let calibratedY = (height - mouseY) * yConversionFactor;
 
       if (videoPlayer) {
         let currentTime = videoPlayer.video.time();
