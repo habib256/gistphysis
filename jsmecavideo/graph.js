@@ -174,17 +174,8 @@ class Graph {
         let xMargin = (xMax - xMin) * 0.1 || 0.1;
         let yMargin = (yMax - yMin) * 0.1 || 0.1;
 
-        // Texte du sous-titre pour la moyenne d'accélération
-        let subtitleText = '';
-        if (averages.length > 0) {
-            if (averages.length === 1) {
-                subtitleText = 'Moyenne : ' + averages[0].avg.toFixed(2) + ' m/s²';
-            } else {
-                subtitleText = averages.map(a =>
-                    'Moyenne Mobile ' + (a.mobile + 1) + ' : ' + a.avg.toFixed(2) + ' m/s²'
-                ).join('  |  ');
-            }
-        }
+        // Stocke les moyennes pour affichage en dehors du graphique
+        this.averages = averages;
 
         return {
             type: 'scatter',
@@ -197,12 +188,6 @@ class Graph {
                         display: true,
                         text: this.getGraphTitle(),
                         font: { size: 18 }
-                    },
-                    subtitle: {
-                        display: subtitleText !== '',
-                        text: subtitleText,
-                        font: { size: 14 },
-                        padding: { bottom: 10 }
                     },
                     legend: {
                         display: this.data.numMobiles > 1 || averages.length > 0
@@ -258,12 +243,40 @@ class Graph {
         // Crée le nouveau graphique
         let config = this.getChartConfig();
         this.chart = new Chart(this.ctx.elt, config);
+
+        // Affiche la moyenne d'accélération en dessous du graphique
+        this.updateAccelerationInfo();
+    }
+
+    updateAccelerationInfo() {
+        let infoDiv = document.getElementById('acceleration-info');
+        if (!infoDiv) return;
+
+        if (this.graphType === 'a(t)' && this.averages && this.averages.length > 0) {
+            let text;
+            if (this.averages.length === 1) {
+                text = 'Moyenne : ' + this.averages[0].avg.toFixed(2) + ' m/s²';
+            } else {
+                text = this.averages.map(a =>
+                    'Moyenne Mobile ' + (a.mobile + 1) + ' : ' + a.avg.toFixed(2) + ' m/s²'
+                ).join('  |  ');
+            }
+            infoDiv.textContent = text;
+            infoDiv.style.display = 'block';
+        } else {
+            infoDiv.style.display = 'none';
+        }
     }
 
     destroy() {
         if (this.chart) {
             this.chart.destroy();
             this.chart = null;
+        }
+        // Masque la moyenne d'accélération
+        let infoDiv = document.getElementById('acceleration-info');
+        if (infoDiv) {
+            infoDiv.style.display = 'none';
         }
         if (this.selector) {
             this.selector.remove();
