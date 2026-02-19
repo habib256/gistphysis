@@ -60,8 +60,8 @@ class Graph {
     getChartConfig() {
         let datasets = [];
         let selectedMobile = parseInt(this.mobileSelector.value());
-        let mobilesToShow = selectedMobile === -1 
-            ? [...Array(this.data.numMobiles).keys()] 
+        let mobilesToShow = selectedMobile === -1
+            ? [...Array(this.data.numMobiles).keys()]
             : [selectedMobile];
 
         // Configuration des axes selon le type de graphique
@@ -69,6 +69,7 @@ class Graph {
         let yAxisConfig = {};
         let xLabel = '';
         let yLabel = '';
+        let averages = []; // Stocke les moyennes d'accélération par mobile
 
         for (let m of mobilesToShow) {
             let points = this.data.getPointsForMobile(m);
@@ -135,6 +136,25 @@ class Graph {
                 showLine: true,
                 tension: 0
             });
+
+            // Ajout de la ligne de moyenne pour le mode accélération
+            if (this.graphType === 'a(t)' && chartData.length > 0) {
+                let avgA = chartData.reduce((sum, p) => sum + p.y, 0) / chartData.length;
+                averages.push({ mobile: m, avg: avgA });
+                datasets.push({
+                    label: mobilesToShow.length > 1 ? `Moyenne Mobile ${m + 1}` : 'Moyenne',
+                    data: [
+                        { x: chartData[0].x, y: avgA },
+                        { x: chartData[chartData.length - 1].x, y: avgA }
+                    ],
+                    borderColor: colorStr,
+                    borderDash: [8, 4],
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    showLine: true,
+                    tension: 0
+                });
+            }
         }
 
         // Calcule les limites des axes automatiquement
@@ -154,6 +174,18 @@ class Graph {
         let xMargin = (xMax - xMin) * 0.1 || 0.1;
         let yMargin = (yMax - yMin) * 0.1 || 0.1;
 
+        // Texte du sous-titre pour la moyenne d'accélération
+        let subtitleText = '';
+        if (averages.length > 0) {
+            if (averages.length === 1) {
+                subtitleText = 'Moyenne : ' + averages[0].avg.toFixed(2) + ' m/s²';
+            } else {
+                subtitleText = averages.map(a =>
+                    'Moyenne Mobile ' + (a.mobile + 1) + ' : ' + a.avg.toFixed(2) + ' m/s²'
+                ).join('  |  ');
+            }
+        }
+
         return {
             type: 'scatter',
             data: { datasets: datasets },
@@ -166,8 +198,14 @@ class Graph {
                         text: this.getGraphTitle(),
                         font: { size: 18 }
                     },
+                    subtitle: {
+                        display: subtitleText !== '',
+                        text: subtitleText,
+                        font: { size: 14 },
+                        padding: { bottom: 10 }
+                    },
                     legend: {
-                        display: this.data.numMobiles > 1
+                        display: this.data.numMobiles > 1 || averages.length > 0
                     }
                 },
                 scales: {
