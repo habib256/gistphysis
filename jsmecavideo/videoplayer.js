@@ -2,19 +2,21 @@ class VideoPlayer {
     constructor(videoFile, framerate) {
         this.isLoaded = false;
         this.video = createVideo([videoFile], () => {
-            this.isLoaded = true;
+            // Le callback p5.js se déclenche sur canplaythrough
             this.video.volume(0);
+            this._forceFirstFrame();
         });
         this.video.hide();
+        this.video.elt.preload = 'auto'; // Demander le préchargement complet
 
-        // Écouter l'événement loadedmetadata sur l'élément DOM natif (fallback)
-        this.video.elt.onloadedmetadata = () => {
-            this.isLoaded = true;
-        };
+        // Écouter loadeddata (readyState >= 2 = données de la première image disponibles)
+        this.video.elt.addEventListener('loadeddata', () => {
+            this._forceFirstFrame();
+        });
 
         // Vérification de secours si l'événement a déjà été déclenché
-        if (this.video.elt.readyState >= 1) {
-            this.isLoaded = true;
+        if (this.video.elt.readyState >= 2) {
+            this._forceFirstFrame();
         }
 
         this.framerate = framerate;
@@ -174,7 +176,22 @@ class VideoPlayer {
     }
 
     jumpToStart() {
-        this.video.time(0);
+        if (this.isLoaded) {
+            this.video.time(0);
+        }
+        // Si pas encore chargé, la première image sera affichée automatiquement
+        // par _forceFirstFrame() une fois le chargement terminé
+    }
+
+    // Force le décodage de la première image via un micro-seek
+    _forceFirstFrame() {
+        if (this.isLoaded) return; // Déjà chargé, ne rien faire
+        const vid = this.video.elt;
+        vid.currentTime = 0.001; // Force le décodage de la première image
+        vid.onseeked = () => {
+            vid.onseeked = null; // Nettoyer le gestionnaire
+            this.isLoaded = true;
+        };
     }
 }
 
