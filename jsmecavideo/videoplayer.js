@@ -25,6 +25,9 @@ class VideoPlayer {
         }
 
         this.framerate = framerate;
+        // Instant de la première image + 1 ms (voir _forceFirstFrame). Toutes les images sont
+        // ensuite atteintes sur la grille debut + k / framerate : pas d'erreur qui s'accumule.
+        this.debut = 0.001;
 
         this.isPlaying = false;
 
@@ -123,15 +126,26 @@ class VideoPlayer {
         this.ElementsOff = true;
     }
 
+    // Numéro de l'image affichée (0 = première image de la vidéo)
+    indiceImage(t = this.video.time()) {
+        return Math.max(0, Math.round((t - this.debut) * this.framerate));
+    }
+
+    // Va à l'image k (1 ms après son début, pour que le navigateur affiche bien cette image
+    // et pas la précédente). Renvoie faux si l'image k n'existe pas.
+    allerImage(k) {
+        let t = this.debut + Math.max(0, k) / this.framerate;
+        if (k > 0 && t >= this.video.duration()) return false;
+        this.video.time(t);
+        return true;
+    }
+
     nextFrame() {
-        if (this.video.duration() > this.video.time() + (1 / (this.framerate))) {
-            this.video.time(this.video.time() + (1 / this.framerate)); // Avance de 1/framerate de seconde
-        }
+        return this.allerImage(this.indiceImage() + 1); // Avance d'une image
     }
 
     previousFrame() {
-        let newTime = this.video.time() - (1 / this.framerate);  // Recule de 1/framerate de seconde
-        this.video.time(newTime < 0 ? 0 : newTime);
+        this.allerImage(this.indiceImage() - 1); // Recule d'une image (pas avant la première)
     }
 
     play() {
@@ -148,7 +162,7 @@ class VideoPlayer {
 
     jumpToStart() {
         if (this.isLoaded) {
-            this.video.time(0);
+            this.video.time(this.debut);
         }
         // Si pas encore chargé, la première image sera affichée automatiquement
         // par _forceFirstFrame() une fois le chargement terminé
@@ -161,6 +175,12 @@ class VideoPlayer {
         vid.currentTime = 0.001; // Force le décodage de la première image
         vid.onseeked = () => {
             vid.onseeked = null; // Nettoyer le gestionnaire
+            // Certaines vidéos commencent après 0 s (première image à 0,12 s pour
+            // TableHorizRectiligneUniforme) : le navigateur ramène alors la position au début réel.
+            if (vid.currentTime > 0.0015) {
+                this.debut = vid.currentTime + 0.001;
+                vid.currentTime = this.debut;
+            }
             this.isLoaded = true;
         };
     }

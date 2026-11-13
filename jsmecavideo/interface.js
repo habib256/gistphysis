@@ -69,7 +69,7 @@ function installerMiseAEchelle() {
   // calibration affichée…) : on recalcule la taille du canevas
   if (typeof ResizeObserver !== 'undefined') {
     const observateur = new ResizeObserver(demanderAjustementTaille);
-    ['menu', 'info-bar', 'calibration-input', 'acceleration-info', 'barre-outils'].forEach(id => {
+    ['menu', 'info-bar', 'guide', 'calibration-input', 'acceleration-info', 'barre-outils'].forEach(id => {
       const el = document.getElementById(id);
       if (el) observateur.observe(el);
     });
@@ -190,8 +190,8 @@ function positionViseur() {
 // Message d'aide pendant un pointage au doigt (null sinon)
 function messagePointageTactile() {
   if (!pointeurTactile.actif) return null;
-  if (!pointeurTactile.dansImage) return '✋ Relâchez ici pour annuler ce pointage, ou revenez sur l’image';
-  return '🔍 Ajustez en regardant la loupe, puis relâchez le doigt pour pointer';
+  if (!pointeurTactile.dansImage) return '✋ Relâche ici pour annuler ce pointage, ou reviens sur l’image';
+  return '🔍 Ajuste en regardant la loupe, puis relâche le doigt pour pointer';
 }
 
 // Dessine une loupe (×3) de la zone autour de (x, y), placée au-dessus du doigt

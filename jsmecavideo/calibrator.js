@@ -76,13 +76,13 @@ class Calibrator {
     getInstructionMessage() {
         switch (this.state) {
             case 'waiting_point1':
-                return '📏 Calibration : pointez (clic ou doigt) une extrémité de l’objet de longueur connue';
+                return '📏 Étalonnage : pointe (clic ou doigt) une extrémité d’un objet de longueur connue (une règle dans l’image)';
             case 'waiting_point2':
-                return '📏 Calibration : pointez l’autre extrémité de l’objet de longueur connue';
+                return '📏 Étalonnage : pointe l’autre extrémité de l’objet de longueur connue';
             case 'waiting_distance':
-                return '📏 Calibration : saisissez la distance réelle entre les deux points (en mètres), puis Valider';
+                return '📏 Étalonnage : écris la longueur réelle entre les deux points, en mètres (10 cm = 0,1 m), puis « Valider »';
             case 'calibrated':
-                return '✅ Calibration terminée : 1 pixel = ' + this.scaleFactor.toFixed(6).replace('.', ',') + ' m — choisissez « Pointage Vidéo » pour pointer';
+                return '✅ Étalonnage terminé : 1 pixel = ' + (this.scaleFactor * 1000).toFixed(2).replace('.', ',') + ' mm — choisis maintenant « 🎯 Pointage vidéo » pour pointer';
             default:
                 return '';
         }
@@ -125,10 +125,10 @@ class Calibrator {
             strokeWeight(3);
             textSize(16);
             textAlign(CENTER, CENTER);
-            text(this.pixelDistance.toFixed(1) + ' px', midX, midY - 15);
+            text(this.pixelDistance.toFixed(1).replace('.', ',') + ' px', midX, midY - 15);
             
             if (this.isCalibrated) {
-                text(this.realDistance.toFixed(3) + ' m', midX, midY + 15);
+                text(this.realDistance.toFixed(3).replace('.', ',') + ' m', midX, midY + 15);
             }
         }
         

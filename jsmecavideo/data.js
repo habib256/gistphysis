@@ -45,12 +45,17 @@ class Data {
     }
 
     // Ajoute un nouveau point à la liste pour le mobile courant
-    // avec le temps en seconde ainsi que x et y en mètres.
-    addPoint(time, x, y) {
+    // avec le temps en seconde ainsi que x et y en mètres (en pixels sans étalonnage).
+    // Options : xpx, ypx = position en pixels du canevas (axe y vers le haut) et
+    // etalonne = vrai si une échelle était validée au moment du pointage.
+    addPoint(time, x, y, options = {}) {
         this.points[this.currentMobile].push({
             time: time, 
             x: x, 
             y: y,
+            xpx: options.xpx !== undefined ? options.xpx : x,
+            ypx: options.ypx !== undefined ? options.ypx : y,
+            etalonne: !!options.etalonne,
             mobile: this.currentMobile
         });
         
@@ -88,7 +93,7 @@ class Data {
         this.currentMobile = 0;
     }
 
-    // Supprime le dernier point (du mobile précédent si multi-points)
+    // Supprime le dernier point (du mobile précédent si multi-points) et le renvoie
     removeLastPoint() {
         if (this.numMobiles > 1) {
             // Revient au mobile précédent
@@ -96,14 +101,55 @@ class Data {
         }
         
         if (this.points[this.currentMobile].length > 0) {
-            this.points[this.currentMobile].pop();
+            return this.points[this.currentMobile].pop();
         }
+        return null;
+    }
+
+    // Unité des positions d'un mobile : « m » si tous ses points ont été pointés après
+    // un étalonnage, sinon « px » (on ne mélange jamais pixels et mètres).
+    getUnite(mobileIndex = 0) {
+        let pts = this.getPointsForMobile(mobileIndex);
+        return pts.length > 0 && pts.every(p => p.etalonne) ? 'm' : 'px';
+    }
+
+    // Positions d'un mobile dans son unité (voir getUnite)
+    getPositions(mobileIndex = 0) {
+        let enMetres = this.getUnite(mobileIndex) === 'm';
+        return this.getPointsForMobile(mobileIndex).map((p, i) => ({
+            numero: i + 1,
+            time: p.time,
+            x: enMetres ? p.x : p.xpx,
+            y: enMetres ? p.y : p.ypx
+        }));
+    }
+
+    // Lecture de la chronophotographie : pour chaque intervalle entre deux points
+    // successifs, la distance parcourue d, la durée t et la vitesse moyenne v = d / t.
+    // (Intervalles de durée nulle ignorés : deux points sur la même image.)
+    getIntervalles(mobileIndex = 0) {
+        let pos = this.getPositions(mobileIndex);
+        let intervalles = [];
+        for (let i = 1; i < pos.length; i++) {
+            let a = pos[i - 1], b = pos[i];
+            let duree = b.time - a.time;
+            if (!(duree > 1e-6)) continue;
+            let d = Math.hypot(b.x - a.x, b.y - a.y);
+            intervalles.push({
+                de: a.numero,
+                a: b.numero,
+                duree: duree,
+                d: d,
+                v: d / duree
+            });
+        }
+        return intervalles;
     }
 
     // Calcule les vitesses pour un mobile donné
     // Utilise la dérivation centrée : v[i] = (pos[i+1] - pos[i-1]) / (2 * dt)
     getVelocities(mobileIndex = 0) {
-        let pts = this.getPointsForMobile(mobileIndex);
+        let pts = this.getPositions(mobileIndex);
         let velocities = [];
         
         if (pts.length < 3) return velocities;

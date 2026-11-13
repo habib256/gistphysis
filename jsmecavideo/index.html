@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <!-- Largeur de l'appareil : indispensable sur tablette (sinon la page est rendue sur 980 px puis réduite) -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>jsmecavideo</title>
+    <title>jsMecaVidéo — pointage vidéo</title>
     <!-- Pas d'icône à télécharger (évite une requête inutile) -->
     <link rel="icon" href="data:,">
 
@@ -13,12 +13,14 @@
     <script src="lib/p5.min.js"></script>
     <script src="lib/chart.js"></script>
     <script src="data.js"></script>
+    <script src="mesures.js"></script>
     <script src="graph.js"></script>
     <script src="interface.js"></script>
     <script src="videoplayer.js"></script>
     <script src="webcamplayer.js"></script>
     <script src="visor.js"></script>
     <script src="calibrator.js"></script>
+    <script src="guide.js"></script>
     <script src="mecavideo.js"></script>
 
     <style>
@@ -69,16 +71,117 @@
         }
 
         #menu select {
-            flex: 1 1 200px;
+            flex: 1 1 150px;
             min-width: 0;
             max-width: 100%;
             min-height: 48px;
-            font-size: 18px;
+            font-size: 16px;
             padding: 6px 8px;
             border: 1px solid #95a5a6;
             border-radius: 6px;
             background: #fff;
             color: #2c3e50;
+        }
+
+        /* Largeurs de base : tout tient sur une ligne dès 740 px de large */
+        #menu select.menu-mode {
+            flex: 1 1 145px;
+        }
+
+        #menu select.menu-video {
+            flex: 2 1 195px;
+        }
+
+        #menu select.menu-etroit {
+            flex: 1 1 105px;
+        }
+
+        #menu select.menu-pas {
+            flex: 1 1 150px;
+        }
+
+        #menu select.menu-graphique {
+            flex: 3 1 260px;
+        }
+
+        #bouton-guide {
+            flex: 0 0 auto;
+            min-height: 48px;
+            padding: 6px 10px;
+            font-size: 16px;
+            font-weight: bold;
+            border: 1px solid #b7950b;
+            border-radius: 6px;
+            background: #fef9e7;
+            color: #7d6608;
+            cursor: pointer;
+        }
+
+        /* Guide de l'activité : 5 étapes + texte de l'étape (hauteur fixe : l'image ne
+           bouge pas quand l'étape change) */
+        #guide {
+            padding: 4px 8px 6px;
+            background: #fef9e7;
+            border-bottom: 1px solid #f1c40f;
+        }
+
+        #guide[hidden] {
+            display: none;
+        }
+
+        #guide-etapes {
+            display: flex;
+            gap: 4px;
+            list-style: none;
+        }
+
+        #guide-etapes li {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .guide-etape {
+            width: 100%;
+            min-height: 44px;
+            padding: 2px 4px;
+            border: 1px solid #d4ac0d;
+            border-radius: 22px;
+            background: #fff;
+            color: #5d4d07;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .guide-etape.actif {
+            background: #1f618d;
+            border-color: #1f618d;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .guide-num {
+            font-weight: bold;
+        }
+
+        #guide-texte {
+            height: 57px;
+            margin-top: 4px;
+            overflow-y: auto;
+            font-size: 14.5px;
+            line-height: 19px;
+            color: #2c3e50;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        /* Écran étroit : seulement les numéros des étapes */
+        @media (max-width: 520px) {
+            .guide-titre {
+                display: none;
+            }
         }
 
         /* Hauteur fixe (2 lignes) : le texte change pendant le pointage, l'image ne doit
@@ -130,15 +233,41 @@
             touch-action: none;
         }
 
+        /* Résumé des mesures sous le graphique (plusieurs lignes possibles) */
         #acceleration-info {
             display: none;
             width: 100%;
             background: #2c3e50;
             color: #ecf0f1;
-            padding: 10px 12px;
-            font-size: 16px;
+            padding: 8px 12px;
+            font-size: 15px;
+            line-height: 20px;
             text-align: center;
             font-weight: bold;
+            white-space: pre-line;
+        }
+
+        #bouton-export {
+            flex: 1 1 auto;
+            min-height: 48px;
+            padding: 6px 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            background: #1e8449;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        #bouton-export[hidden] {
+            display: none;
+        }
+
+        #bouton-export:disabled {
+            background: #bdc3c7;
+            color: #7f8c8d;
+            cursor: default;
         }
 
         /* Barre du bas : boutons de lecture, curseur de temps, bouton Annuler */
@@ -317,11 +446,15 @@
             <!-- Les menus déroulants seront créés ici -->
         </div>
         <div id="info-bar">
-            <span id="instructions">Sélectionnez une vidéo puis pointez (clic ou doigt)</span>
+            <span id="instructions">Choisis une vidéo puis pointe le mobile (clic ou doigt)</span>
             <span id="frame-info">Image : 0 | t = 0,000 s</span>
         </div>
+        <div id="guide" role="region" aria-label="Guide de l’activité">
+            <ol id="guide-etapes"></ol>
+            <p id="guide-texte" aria-live="polite"></p>
+        </div>
         <div id="calibration-input">
-            <label for="real-distance">Distance réelle (en mètres) :</label>
+            <label for="real-distance">Longueur réelle (en mètres) :</label>
             <!-- type texte + clavier décimal : accepte la virgule française (1,5) -->
             <input type="text" id="real-distance" inputmode="decimal" enterkeyhint="done" autocomplete="off"
                 value="1,0">
@@ -329,13 +462,16 @@
             <button type="button" id="reset-calibration">Recommencer</button>
         </div>
         <div id="canvas-container"></div>
-        <div id="acceleration-info"></div>
+        <div id="acceleration-info" role="status"></div>
         <div id="barre-outils">
             <div id="controls">
                 <!-- Les boutons de lecture seront créés ici -->
             </div>
             <button type="button" id="bouton-annuler" title="Annuler le dernier point (ou Ctrl+clic sur l'image)"
                 disabled>↶ Annuler le dernier point</button>
+            <button type="button" id="bouton-export" hidden
+                title="Fichier CSV (séparateur point-virgule, virgule décimale) pour LibreOffice Calc ou un autre tableur. Rien n’est envoyé sur Internet.">💾
+                Enregistrer les mesures (tableur)</button>
         </div>
     </div>
 </body>

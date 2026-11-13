@@ -6,13 +6,13 @@ const WEBCAM_MAX_IMAGES = 300;
 function messageErreurCamera(err) {
   let nom = err && err.name ? err.name : '';
   if (nom === 'NotAllowedError' || nom === 'SecurityError' || nom === 'PermissionDeniedError') {
-    return 'Caméra refusée. Autorisez la caméra dans le navigateur. Si l’app est intégrée dans une page, ouvrez-la plutôt dans un onglet.';
+    return 'Caméra refusée. Autorise la caméra dans le navigateur. Si l’app est intégrée dans une page, ouvre-la plutôt dans un onglet.';
   }
   if (nom === 'NotFoundError' || nom === 'DevicesNotFoundError' || nom === 'OverconstrainedError') {
     return 'Aucune caméra n’a été trouvée sur cet appareil.';
   }
   if (nom === 'NotReadableError' || nom === 'TrackStartError' || nom === 'AbortError') {
-    return 'La caméra est déjà utilisée par une autre application. Fermez-la puis réessayez.';
+    return 'La caméra est déjà utilisée par une autre application. Ferme-la puis réessaie.';
   }
   return 'Caméra indisponible (' + (nom || 'erreur inconnue') + ').';
 }
@@ -26,7 +26,7 @@ class WebcamPlayer {
 
         if (!window.isSecureContext) {
             // Les navigateurs n'autorisent la caméra qu'en HTTPS (ou sur localhost)
-            this.erreur = 'Caméra indisponible : le navigateur ne l’autorise que sur une adresse sécurisée (https://…). Ouvrez le site en https, ou utilisez une vidéo de la liste.';
+            this.erreur = 'Caméra indisponible : le navigateur ne l’autorise que sur une adresse sécurisée (https://…). Ouvre le site en https, ou utilise une vidéo de la liste.';
         } else if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
             this.erreur = 'Ce navigateur ne donne pas accès à la caméra.';
         } else {
@@ -144,7 +144,7 @@ class WebcamPlayer {
             }
         
         } else {
-            this.dessinerMessage('Ouverture de la caméra…\nAutorisez l’accès à la caméra si le navigateur le demande.');
+            this.dessinerMessage('Ouverture de la caméra…\nAutorise l’accès à la caméra si le navigateur le demande.');
         }
         this.sliderUpdate();
         this.buttonPlayUpdate();

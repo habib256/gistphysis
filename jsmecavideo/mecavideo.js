@@ -14,6 +14,14 @@ let calibrator;
 
 let etat = 'Pointage Vidéo';
 
+// Vrai quand une échelle a été validée pour la vidéo courante (sinon : mesures en pixels)
+let echelleEtalonnee = false;
+// Nombre d'images dont la vidéo avance après chaque pointage (1, 2 ou 5)
+let imagesParPoint = 1;
+let dropdownPas;
+// Message affiché quelques secondes dans la barre d'information
+let messageTemporaire = { texte: '', fin: 0 };
+
 let videoFiles = [
   { path: 'videos/chute.mp4', framerate: 25 },
   { path: 'videos/parabolique.mp4', framerate: 25 },
@@ -51,6 +59,8 @@ function setup() {
 
   // Bouton visible « Annuler le dernier point » (équivalent de Ctrl+clic)
   document.getElementById('bouton-annuler').addEventListener('click', annulerDernierPoint);
+  // Export des mesures pour un tableur (mode Graphiques)
+  document.getElementById('bouton-export').addEventListener('click', exporterCSV);
 
   // Gestion des boutons de calibration
   document.getElementById('validate-calibration').addEventListener('click', validateCalibration);
@@ -63,10 +73,12 @@ function setup() {
   dropdown = createSelect();
   dropdown.parent('menu');
   dropdown.attribute('aria-label', 'Mode');
-  dropdown.option(' Pointage Vidéo');
-  dropdown.option(' Pointage Webcam');
-  dropdown.option(' Calibration');
-  dropdown.option(' Graphique');
+  dropdown.class('menu-mode');
+  // Les valeurs (' Pointage Vidéo'…) servent d'identifiants internes ; seuls les libellés changent
+  dropdown.option('🎯 Pointage vidéo', ' Pointage Vidéo');
+  dropdown.option('📷 Pointage webcam', ' Pointage Webcam');
+  dropdown.option('📏 Étalonnage', ' Calibration');
+  dropdown.option('📈 Graphiques', ' Graphique');
   // Définir une fonction de rappel pour le changement d'option
   dropdown.changed(optionChanged);
 
@@ -74,6 +86,7 @@ function setup() {
   dropdown2 = createSelect();
   dropdown2.parent('menu');
   dropdown2.attribute('aria-label', 'Nombre de mobiles');
+  dropdown2.class('menu-etroit');
   dropdown2.option('1 mobile', 1);
   dropdown2.option('2 mobiles', 2);
   dropdown2.option('3 mobiles', 3);
@@ -89,6 +102,7 @@ function setup() {
   dropdown3 = createSelect();
   dropdown3.parent('menu');
   dropdown3.attribute('aria-label', 'Vidéo');
+  dropdown3.class('menu-video');
   videoFiles.forEach((videoFile, index) => {
     let emoji = "";
     if (videoFile.path.includes("chute")) {
@@ -124,10 +138,31 @@ function setup() {
   // Définir une fonction de rappel pour le changement de vidéo
   dropdown3.changed(() => {
     etat = 'Pointage Vidéo';
+    // L'échelle dépend de la vidéo : un étalonnage ne vaut que pour sa vidéo
+    if (oublierEtalonnage()) {
+      afficherMessageTemporaire('🎞️ Nouvelle vidéo : étalonnage effacé, car l’échelle change d’une vidéo à l’autre.');
+    }
     initVideoPlayer(); // Init avant loop
     majModeAffichage();
     loop();
   });
+
+  // Menu « 1 image sur … » : durée entre deux points pointés
+  dropdownPas = createSelect();
+  dropdownPas.parent('menu');
+  dropdownPas.class('menu-pas');
+  dropdownPas.attribute('aria-label', 'Images à pointer');
+  dropdownPas.attribute('title', 'Après chaque point, la vidéo avance de 1, 2 ou 5 images');
+  dropdownPas.option('Chaque image', 1);
+  dropdownPas.option('1 image sur 2', 2);
+  dropdownPas.option('1 image sur 5', 5);
+  dropdownPas.changed(() => {
+    imagesParPoint = parseInt(dropdownPas.value()) || 1;
+    majGuide();
+  });
+
+  // Guide de l'activité (démarche en 5 étapes)
+  installerGuide();
 
   // Taille d'affichage adaptée à l'écran (une fois tous les menus créés)
   installerMiseAEchelle();
@@ -156,7 +191,8 @@ function draw() {
       }
       calibrator.draw();
       drawCalibrationCursor();
-      updateInstructions(messagePointageTactile() || calibrator.getInstructionMessage());
+      updateInstructions(messagePointageTactile() || messageTemporaireActif() || calibrator.getInstructionMessage());
+      majGuide();
       break;
     case 'Graphique':
       cursor();
@@ -198,7 +234,7 @@ function updateFrameInfo() {
   
   if (videoPlayer && videoPlayer.isLoaded) {
     currentTime = videoPlayer.video.time();
-    frameNum = Math.round(currentTime * videoPlayer.framerate);
+    frameNum = videoPlayer.indiceImage(currentTime);
   } else if (webcamPlayer && webcamPlayer.isRecorded) {
     frameNum = webcamPlayer.frameIndex;
     currentTime = frameNum / webcamPlayer.framerate;
@@ -220,20 +256,22 @@ function updateFrameInfo() {
     boutonAnnuler.disabled = sansPoint;
   }
 
+  majGuide();
+
   // Pendant un pointage au doigt, on guide l'élève
-  let messageTactile = messagePointageTactile();
+  let messageTactile = messagePointageTactile() || messageTemporaireActif();
   if (messageTactile) {
     updateInstructions(messageTactile);
     return;
   }
 
-  // Met à jour les instructions selon le mode et l'état de la calibration
+  // Met à jour les instructions selon le mode et l'état de l'étalonnage
   let instruction = '';
   
-  if (calibrator.isCalibrated) {
-    instruction = '✅ Échelle : 1 px = ' + (calibrator.scaleFactor * 1000).toFixed(2).replace('.', ',') + ' mm | ';
+  if (echelleEtalonnee) {
+    instruction = '✅ Échelle : 1 px = ' + nombreFr(xConversionFactor * 1000, 2) + ' mm | ';
   } else {
-    instruction = '⚠️ Échelle non calibrée | ';
+    instruction = '⚠️ Pas d’étalonnage : mesures en pixels | ';
   }
   
   if (data.numMobiles > 1) {
@@ -260,7 +298,7 @@ function validateCalibration() {
 
   if (isNaN(distance) || distance <= 0) {
     distanceInput.classList.add('erreur');
-    updateInstructions('⚠️ Entrez une distance valide (nombre positif en mètres, par exemple 0,5)');
+    updateInstructions('⚠️ Écris une longueur valide : un nombre positif en mètres, par exemple 0,5');
     return;
   }
   distanceInput.classList.remove('erreur');
@@ -269,6 +307,7 @@ function validateCalibration() {
     // Met à jour les facteurs de conversion globaux
     xConversionFactor = calibrator.scaleFactor;
     yConversionFactor = calibrator.scaleFactor;
+    echelleEtalonnee = true;
 
     distanceInput.blur(); // Referme le clavier virtuel
     majSaisieCalibration();
@@ -276,6 +315,34 @@ function validateCalibration() {
 
     console.log('Calibration réussie: 1 pixel = ' + calibrator.scaleFactor + ' mètres');
   }
+}
+
+// Oublie l'échelle validée (changement de vidéo, webcam). Renvoie vrai s'il y en avait une.
+function oublierEtalonnage() {
+  let avait = echelleEtalonnee;
+  echelleEtalonnee = false;
+  xConversionFactor = 1;
+  yConversionFactor = 1;
+  calibrator.reset();
+  return avait;
+}
+
+// Affiche un message quelques secondes dans la barre d'information
+function afficherMessageTemporaire(texte, duree = 6000) {
+  messageTemporaire = { texte: texte, fin: performance.now() + duree };
+  updateInstructions(texte);
+  // En mode Graphiques, l'image n'est plus redessinée : on remet la consigne ensuite
+  setTimeout(() => {
+    if (etat === 'Graphique' && !messageTemporaireActif()) updateInstructions(consigneGraphique());
+  }, duree + 50);
+}
+
+function messageTemporaireActif() {
+  return performance.now() < messageTemporaire.fin ? messageTemporaire.texte : null;
+}
+
+function consigneGraphique() {
+  return '📈 Choisis un graphique dans le menu. Les mesures sont résumées sous le graphique.';
 }
 
 // Réinitialise la calibration
@@ -300,9 +367,19 @@ function majSaisieCalibration() {
 // et visibilité des barres propres à chaque mode
 function majModeAffichage() {
   document.body.classList.toggle('mode-pointage', modePointageActif());
-  document.getElementById('bouton-annuler').style.display =
-    (etat === 'Pointage Vidéo' || etat === 'Pointage Webcam') ? '' : 'none';
+  let pointage = etat === 'Pointage Vidéo' || etat === 'Pointage Webcam';
+  document.getElementById('bouton-annuler').style.display = pointage ? '' : 'none';
+  // Numéro d'image et temps : utiles pour pointer ; ailleurs, la place va aux consignes
+  document.getElementById('frame-info').style.display = pointage ? '' : 'none';
+  // Menus utiles seulement pour pointer (changer le nombre de mobiles efface les points)
+  dropdown2.style('display', etat === 'Graphique' ? 'none' : '');
+  dropdownPas.style('display', etat === 'Graphique' ? 'none' : '');
+  // Export des mesures : en mode Graphiques
+  let exporter = document.getElementById('bouton-export');
+  exporter.hidden = etat !== 'Graphique';
+  exporter.disabled = data.getTotalPointCount() === 0;
   majSaisieCalibration();
+  majGuide();
 }
 
 // Vrai dans les modes où l'on pointe sur l'image (pointage et calibration)
@@ -321,20 +398,34 @@ function drawCursor() {
   // Affiche la légende des mobiles si nécessaire
   visor.drawLegend(data);
 
-  // Dessine les points de chaque mobile avec sa couleur
+  // Dessine les points de chaque mobile avec sa couleur, numérotés (1, 2, 3…) comme sur
+  // une chronophotographie ; un numéro est omis s'il chevaucherait le précédent
   for (let m = 0; m < data.numMobiles; m++) {
     let pts = data.getPointsForMobile(m);
     let col = data.getColor(m);
-    stroke(col.r, col.g, col.b);
-    strokeWeight(2);
-    
+    let dernierNumero = null;
+
     pts.forEach((point, index) => {
-      let x = point.x / xConversionFactor;
-      let y = height - point.y / yConversionFactor;
+      let x = point.xpx;
+      let y = height - point.ypx;
       
       // Dessine une croix
+      stroke(col.r, col.g, col.b);
+      strokeWeight(2);
       line(x - 5, y - 5, x + 5, y + 5);
       line(x + 5, y - 5, x - 5, y + 5);
+
+      if (!dernierNumero || dist(x, y, dernierNumero.x, dernierNumero.y) > 22) {
+        push();
+        stroke(255);
+        strokeWeight(3);
+        fill(col.r, col.g, col.b);
+        textSize(13);
+        textAlign(CENTER, BOTTOM);
+        text(index + 1, x, y - 7);
+        pop();
+        dernierNumero = { x: x, y: y };
+      }
     });
   }
 
@@ -378,6 +469,7 @@ function optionChanged() {
     loop();
   }
   if (etat === 'Pointage Webcam') {
+    oublierEtalonnage(); // L'échelle d'une vidéo ne vaut pas pour la webcam
     data.clearAllPoints(); // Toujours effacer les points lors du passage au mode webcam
     if (videoPlayer) {
       videoPlayer.removeElements();
@@ -417,7 +509,7 @@ function optionChanged() {
     }
     graph.destroy();
     graph.create();
-    updateInstructions('📈 Choisissez la grandeur à tracer et le mobile dans les menus ci-dessus');
+    updateInstructions(messageTemporaireActif() || consigneGraphique());
   }
   majModeAffichage();
 }
@@ -438,32 +530,48 @@ function traiterPointage(x, y) {
 
   // Gestion du pointage vidéo/webcam
   if (etat === 'Pointage Vidéo' || etat === 'Pointage Webcam') {
-    let calibratedX = x * xConversionFactor;
-    let calibratedY = (height - y) * yConversionFactor;
+    let lecteur = videoPlayer || webcamPlayer;
+    if (!lecteur) return;
+    let currentTime = videoPlayer
+      ? videoPlayer.video.time()
+      : webcamPlayer.frameIndex / webcamPlayer.framerate;
 
-    if (videoPlayer) {
-      let currentTime = videoPlayer.video.time();
-      data.addPoint(currentTime, calibratedX, calibratedY);
-      videoPlayer.nextFrame();
+    // Fin de la vidéo : on ne pointe pas deux fois la même image pour un même mobile
+    let precedents = data.getPointsForMobile(data.getCurrentMobile());
+    let dernier = precedents[precedents.length - 1];
+    if (dernier && Math.abs(dernier.time - currentTime) < 0.5 / lecteur.framerate) {
+      afficherMessageTemporaire('🎬 Image déjà pointée (fin de la vidéo ?) : passe au menu « 📈 Graphiques ».');
+      return;
     }
-    if (webcamPlayer) {
-      let currentTime = webcamPlayer.frameIndex / webcamPlayer.framerate;
-      data.addPoint(currentTime, calibratedX, calibratedY);
-      webcamPlayer.nextFrame();
+
+    let xpx = x;
+    let ypx = height - y; // axe y vers le haut
+    data.addPoint(currentTime, xpx * xConversionFactor, ypx * yConversionFactor,
+      { xpx: xpx, ypx: ypx, etalonne: echelleEtalonnee });
+    messageTemporaire.fin = 0; // l'élève pointe : le message d'information a été vu
+
+    // Avec plusieurs mobiles, on pointe tous les mobiles sur la même image avant d'avancer
+    if (data.getCurrentMobile() === 0) {
+      for (let i = 0; i < imagesParPoint; i++) {
+        lecteur.nextFrame();
+      }
     }
   }
 }
 
-// Retire le dernier point et recule d'une image (bouton « Annuler » ou Ctrl+clic)
+// Retire le dernier point et revient à l'image où il avait été pointé
+// (bouton « Annuler » ou Ctrl+clic)
 function annulerDernierPoint() {
   if (etat !== 'Pointage Vidéo' && etat !== 'Pointage Webcam') return;
   if (data.getTotalPointCount() === 0) return;
-  data.removeLastPoint();
+  let point = data.removeLastPoint();
+  if (!point) return;
   if (videoPlayer) {
-    videoPlayer.previousFrame();
+    videoPlayer.video.time(point.time);
   }
   if (webcamPlayer) {
-    webcamPlayer.previousFrame();
+    webcamPlayer.isPlaying = false;
+    webcamPlayer.frameIndex = Math.round(point.time * webcamPlayer.framerate);
   }
 }
 
