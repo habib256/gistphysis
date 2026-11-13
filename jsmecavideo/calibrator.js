@@ -76,13 +76,13 @@ class Calibrator {
     getInstructionMessage() {
         switch (this.state) {
             case 'waiting_point1':
-                return '📏 Calibration : Cliquez sur le premier point de référence';
+                return '📏 Calibration : pointez (clic ou doigt) une extrémité de l’objet de longueur connue';
             case 'waiting_point2':
-                return '📏 Calibration : Cliquez sur le deuxième point de référence';
+                return '📏 Calibration : pointez l’autre extrémité de l’objet de longueur connue';
             case 'waiting_distance':
-                return '📏 Calibration : Entrez la distance réelle (en mètres)';
+                return '📏 Calibration : saisissez la distance réelle entre les deux points (en mètres), puis Valider';
             case 'calibrated':
-                return '✅ Calibration terminée : 1 pixel = ' + this.scaleFactor.toFixed(6) + ' m';
+                return '✅ Calibration terminée : 1 pixel = ' + this.scaleFactor.toFixed(6).replace('.', ',') + ' m — choisissez « Pointage Vidéo » pour pointer';
             default:
                 return '';
         }

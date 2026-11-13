@@ -7,6 +7,10 @@ class VideoPlayer {
             this._forceFirstFrame();
         });
         this.video.hide();
+        // Tablettes (iPad, Android) : vidéo muette et lue dans la page, pas en plein écran
+        this.video.elt.muted = true;
+        this.video.elt.setAttribute('muted', '');
+        this.video.elt.setAttribute('playsinline', '');
         this.video.elt.preload = 'auto'; // Demander le préchargement complet
 
         // Écouter loadeddata (readyState >= 2 = données de la première image disponibles)
@@ -39,55 +43,18 @@ class VideoPlayer {
     addElements() {
         if (this.ElementsOff) {
 
-            this.buttonStart = createButton('Début');
-            this.buttonStart.parent('controls');
-            this.buttonStart.style('width', '48px'); // Définir la largeur
-            this.buttonStart.style('height', '32px'); // Définir la hauteur
-            this.buttonStart.html('');
-            this.buttonStart.style('background-image', 'url("img/tango/media-skip-backward.png")');
-            this.buttonStart.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonStart.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonStart.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonStart.mousePressed(() => this.jumpToStart());
+            // Boutons de 52×48 px et curseur de temps, utilisables au doigt (voir interface.js)
+            this.buttonStart = creerBoutonIcone('Revenir au début', 'media-skip-backward.png', () => this.jumpToStart());
+            this.buttonBack = creerBoutonIcone('Image précédente', 'media-step-backward.png', () => this.previousFrame());
+            this.buttonPlay = creerBoutonIcone('Lire / pause', 'media-playback-start.png', () => this.play());
+            this.buttonForward = creerBoutonIcone('Image suivante', 'media-step-forward.png', () => this.nextFrame());
 
-            this.buttonBack = createButton('Retour');
-            this.buttonBack.parent('controls');
-            this.buttonBack.style('width', '48px'); // Définir la largeur
-            this.buttonBack.style('height', '32px'); // Définir la hauteur
-            this.buttonBack.html('');
-            this.buttonBack.style('background-image', 'url("img/tango/media-step-backward.png")');
-            this.buttonBack.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonBack.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonBack.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonBack.mousePressed(() => this.previousFrame());
-
-            this.buttonPlay = createButton('Lire');
-            this.buttonPlay.parent('controls');
-            this.buttonPlay.style('width', '48px'); // Définir la largeur
-            this.buttonPlay.style('height', '32px'); // Définir la hauteur
-            this.buttonPlay.html('');
-            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
-            this.buttonPlay.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonPlay.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonPlay.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonPlay.mousePressed(() => this.play());
-
-            this.buttonForward = createButton('Avancer');
-            this.buttonForward.parent('controls');
-            this.buttonForward.style('width', '48px'); // Définir la largeur
-            this.buttonForward.style('height', '32px'); // Définir la hauteur
-            this.buttonForward.html('');
-            this.buttonForward.style('background-image', 'url("img/tango/media-step-forward.png")');
-            this.buttonForward.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonForward.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonForward.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonForward.mousePressed(() => this.nextFrame());
-
-            this.slider = createSlider(0, 1, 0, 0.01);
-            this.slider.parent('controls'); // Place le slider dans le conteneur 'controls'
-            this.slider.style('width', '800px');
-            this.slider.style('float', 'right'); // Align the slider to the right
-            this.slider.input(() => this.video.time(this.slider.value() * this.video.duration()));
+            this.slider = creerCurseurTemps();
+            this.slider.input(() => {
+                if (this.video.duration() > 0) {
+                    this.video.time(this.slider.value() * this.video.duration());
+                }
+            });
             this.ElementsOff = false;
         }
     }
@@ -131,6 +98,8 @@ class VideoPlayer {
     }
 
     sliderUpdate() {
+        // Pendant qu'on le manipule, on ne repositionne pas le curseur (il sauterait sous le doigt)
+        if (this.slider.actif) return;
         if (this.isLoaded && this.video.duration() > 0) {
             // Si temps actuel + incrément de 1 frame est supérieur ou égal à la durée,
             // on considère que c'est la dernière frame et on positionne le slider à 100%

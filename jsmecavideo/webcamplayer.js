@@ -1,22 +1,36 @@
+// Nombre maximal d'images enregistrées (20 s à 15 images/s) : au-delà, la mémoire
+// d'une tablette peut saturer. L'enregistrement s'arrête alors tout seul.
+const WEBCAM_MAX_IMAGES = 300;
+
+// Message clair (en français) expliquant pourquoi la caméra est indisponible
+function messageErreurCamera(err) {
+  let nom = err && err.name ? err.name : '';
+  if (nom === 'NotAllowedError' || nom === 'SecurityError' || nom === 'PermissionDeniedError') {
+    return 'Caméra refusée. Autorisez la caméra dans le navigateur. Si l’app est intégrée dans une page, ouvrez-la plutôt dans un onglet.';
+  }
+  if (nom === 'NotFoundError' || nom === 'DevicesNotFoundError' || nom === 'OverconstrainedError') {
+    return 'Aucune caméra n’a été trouvée sur cet appareil.';
+  }
+  if (nom === 'NotReadableError' || nom === 'TrackStartError' || nom === 'AbortError') {
+    return 'La caméra est déjà utilisée par une autre application. Fermez-la puis réessayez.';
+  }
+  return 'Caméra indisponible (' + (nom || 'erreur inconnue') + ').';
+}
+
 class WebcamPlayer {
     constructor(framerate) {
-        try {
-            this.cam = createCapture(VIDEO);
-            this.cam.hide();
-        } catch (e) {
-            console.error('Erreur accès webcam:', e);
-            this.cam = null;
-        }
-
+        this.cam = null;
+        this.erreur = null;   // message affiché si la caméra est indisponible
+        this.retire = false;  // vrai une fois le lecteur supprimé (flux à couper s'il arrive après)
         this.isLoaded = false;
-        if (this.cam) {
-            this.cam.elt.onloadedmetadata = () => {
-                this.isLoaded = true;
-            };
-            // Vérification de secours
-            if (this.cam.elt.readyState >= 1) {
-                this.isLoaded = true;
-            }
+
+        if (!window.isSecureContext) {
+            // Les navigateurs n'autorisent la caméra qu'en HTTPS (ou sur localhost)
+            this.erreur = 'Caméra indisponible : le navigateur ne l’autorise que sur une adresse sécurisée (https://…). Ouvrez le site en https, ou utilisez une vidéo de la liste.';
+        } else if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+            this.erreur = 'Ce navigateur ne donne pas accès à la caméra.';
+        } else {
+            this.ouvrirCamera();
         }
 
         frameRate(framerate);
@@ -33,77 +47,64 @@ class WebcamPlayer {
         this.images = [];
     }
 
+    // Ouvre la caméra (caméra arrière de préférence sur tablette, 640×480 pour limiter la mémoire)
+    ouvrirCamera() {
+        const elt = document.createElement('video');
+        elt.setAttribute('playsinline', '');
+        elt.muted = true;
+        document.body.appendChild(elt);
+        this.cam = new p5.MediaElement(elt, p5.instance);
+        this.cam.hide();
+
+        elt.addEventListener('loadedmetadata', () => {
+            // Comme createCapture de p5.js : dimensions nécessaires à image() et get()
+            elt.width = elt.videoWidth;
+            elt.height = elt.videoHeight;
+            this.cam.width = elt.videoWidth;
+            this.cam.height = elt.videoHeight;
+            this.cam.loadedmetadata = true;
+            const lecture = elt.play();
+            if (lecture && lecture.catch) lecture.catch(() => {});
+            this.isLoaded = true;
+        });
+
+        const contraintes = {
+            audio: false,
+            video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        };
+        navigator.mediaDevices.getUserMedia(contraintes).then(stream => {
+            if (this.retire) {
+                stream.getTracks().forEach(track => track.stop());
+                return;
+            }
+            elt.srcObject = stream;
+        }).catch(err => {
+            console.warn('Erreur accès webcam:', err);
+            this.erreur = messageErreurCamera(err);
+        });
+    }
+
     addElements() {
         if (this.ElementsOff) {
-            this.buttonRecord = createButton('Enregistrer');
-            this.buttonRecord.parent('controls');
-            this.buttonRecord.style('width', '48px'); // Définir la largeur
-            this.buttonRecord.style('height', '32px'); // Définir la hauteur
-            this.buttonRecord.html('');
-            this.buttonRecord.style('background-image', 'url("img/tango/media-record.png")');
-            this.buttonRecord.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonRecord.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonRecord.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonRecord.mousePressed(() => this.toggleRecording()); // Ajoutez une fonction de rappel pour le clic sur le bouton
+            // Boutons de 52×48 px et curseur de temps, utilisables au doigt (voir interface.js)
+            this.buttonRecord = creerBoutonIcone('Enregistrer / arrêter', 'media-record.png', () => this.toggleRecording());
+            this.buttonStart = creerBoutonIcone('Revenir au début', 'media-skip-backward.png', () => this.jumpToStart());
+            this.buttonBack = creerBoutonIcone('Image précédente', 'media-step-backward.png', () => this.previousFrame());
+            this.buttonPlay = creerBoutonIcone('Lire / pause', 'media-playback-start.png', () => this.play());
+            this.buttonForward = creerBoutonIcone('Image suivante', 'media-step-forward.png', () => this.nextFrame());
 
-            this.buttonStart = createButton('Début');
-            this.buttonStart.parent('controls');
-            this.buttonStart.style('width', '48px'); // Définir la largeur
-            this.buttonStart.style('height', '32px'); // Définir la hauteur
-            this.buttonStart.html('');
-            this.buttonStart.style('background-image', 'url("img/tango/media-skip-backward.png")');
-            this.buttonStart.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonStart.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonStart.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonStart.mousePressed(() => this.jumpToStart());
-
-            this.buttonBack = createButton('Retour');
-            this.buttonBack.parent('controls');
-            this.buttonBack.style('width', '48px'); // Définir la largeur
-            this.buttonBack.style('height', '32px'); // Définir la hauteur
-            this.buttonBack.html('');
-            this.buttonBack.style('background-image', 'url("img/tango/media-step-backward.png")');
-            this.buttonBack.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonBack.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonBack.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonBack.mousePressed(() => {
-                this.previousFrame();
+            this.slider = creerCurseurTemps();
+            this.slider.input(() => {
+                // Déplacement au curseur (souris ou doigt) : on va à l'image correspondante
+                if (this.isRecorded && this.images.length > 1) {
+                    this.isPlaying = false;
+                    this.frameIndex = Math.round(this.slider.value() * (this.images.length - 1));
+                }
             });
-
-            this.buttonPlay = createButton('Lire');
-            this.buttonPlay.parent('controls');
-            this.buttonPlay.style('width', '48px'); // Définir la largeur
-            this.buttonPlay.style('height', '32px'); // Définir la hauteur
-            this.buttonPlay.html('');
-            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
-            this.buttonPlay.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonPlay.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonPlay.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonPlay.mousePressed(() => {
-                this.play();
-            });
-
-            this.buttonForward = createButton('Avancer');
-            this.buttonForward.parent('controls');
-            this.buttonForward.style('width', '48px'); // Définir la largeur
-            this.buttonForward.style('height', '32px'); // Définir la hauteur
-            this.buttonForward.html('');
-            this.buttonForward.style('background-image', 'url("img/tango/media-step-forward.png")');
-            this.buttonForward.style('background-size', 'cover'); // Pour s'assurer que l'image couvre tout le bouton
-            this.buttonForward.style('background-repeat', 'no-repeat'); // Pour éviter que l'image ne se répète
-            this.buttonForward.style('background-position', 'center'); // Pour centrer l'image
-            this.buttonForward.mousePressed(() => {
-                this.nextFrame();
-            });
-
-            this.slider = createSlider(0, 1, 0, 0.01);
-            this.slider.parent('controls'); // Place le slider dans le conteneur 'controls'
-            this.slider.style('width', '800px');
-            this.slider.style('float', 'right'); // Align the slider to the right
-            this.slider.input(() => this.sliderUpdate());
-            this.slider.mousePressed(() => this.sliderActive = true);
-            this.slider.mouseReleased(() => this.sliderActive = false);
-            this.sliderActive = false;
 
             this.ElementsOff = false;
         }
@@ -111,10 +112,15 @@ class WebcamPlayer {
 
     draw() {
         background(0); // Toujours nettoyer le fond (écran noir par défaut)
-        if (this.isLoaded && this.cam.width > 0 && this.cam.height > 0) {
-            if (this.isRecording) {   
+        if (this.erreur) {
+            this.dessinerMessage(this.erreur);
+        } else if (this.isLoaded && this.cam && this.cam.width > 0 && this.cam.height > 0) {
+            if (this.isRecording) {
                     let pic = this.cam.get();
                     this.images.push(pic);
+                    if (this.images.length >= WEBCAM_MAX_IMAGES) {
+                        this.stopRecording(); // Limite mémoire atteinte
+                    }
                     image(pic, 0, 0, width, height);
                     color(255, 0, 0);
                     fill(255, 0, 0);
@@ -138,16 +144,22 @@ class WebcamPlayer {
             }
         
         } else {
-            // background(0) est déjà fait au début
-            textAlign(CENTER, CENTER);
-            textSize(40);
-            color(255, 255, 255);
-            stroke(255, 255, 255);
-            fill(255, 255, 255);
-            text('NO WEBCAM', width / 2, height / 2);
+            this.dessinerMessage('Ouverture de la caméra…\nAutorisez l’accès à la caméra si le navigateur le demande.');
         }
         this.sliderUpdate();
         this.buttonPlayUpdate();
+    }
+
+    // Texte centré sur fond noir (caméra en attente ou indisponible)
+    dessinerMessage(message) {
+        push();
+        noStroke();
+        fill(255);
+        textAlign(CENTER, CENTER);
+        textSize(26);
+        textWrap(WORD);
+        text(message, 60, 0, width - 120, height);
+        pop();
     }
 
     sliderUpdate() {
@@ -155,11 +167,11 @@ class WebcamPlayer {
             this.slider.value(0);
             return;
         }
-        if (this.isRecorded && this.sliderActive) {
-            this.frameIndex = Math.round(this.slider.value() * (this.images.length - 1));
-        } else {
-            this.slider.value(this.frameIndex / (this.images.length - 1));
+        if (this.slider.actif) {
+            // Pendant qu'on le manipule, c'est le curseur qui choisit l'image (voir input)
+            return;
         }
+        this.slider.value(this.frameIndex / (this.images.length - 1));
     }
     buttonPlayUpdate() {
         if (this.isPlaying) {
@@ -171,6 +183,7 @@ class WebcamPlayer {
 
     removeElements() {
         // Arrêter le flux webcam et libérer les ressources
+        this.retire = true;
         if (this.cam) {
             let stream = this.cam.elt.srcObject;
             if (stream) {
@@ -222,6 +235,7 @@ class WebcamPlayer {
     }
 
     toggleRecording() {
+        if (!this.isLoaded || this.erreur) return; // Pas de caméra : rien à enregistrer
         this.isRecording = !this.isRecording;
         if (this.isRecording) {
             this.startRecording();
