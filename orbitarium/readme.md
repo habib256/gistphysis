@@ -1,7 +1,7 @@
 # Orbitarium : Simulation Solaire Interactive 🚀🌌✨
 
 ## Description 🌟
-"Orbitarium" est une application web qui vous permet de visualiser et d'explorer le système solaire. Cette simulation dynamique vous offre la possibilité d'observer le ballet cosmique du Soleil 🌞, des planètes 🌍, des satellites 🛸 et même de la comète Halley ☄️ grâce à des animations basées sur des calculs orbitaux réalistes.
+"Orbitarium" est une application web qui vous permet de visualiser et d'explorer le système solaire. Cette simulation dynamique vous offre la possibilité d'observer le ballet cosmique du Soleil 🌞, des planètes 🌍, des satellites 🛸 et même de la comète de Halley ☄️ grâce à des animations basées sur des calculs orbitaux réalistes.
 
 ## Fonctionnalités Principales 🎮
 - **Visualisation en Temps Réel** ⏱️  
@@ -14,11 +14,32 @@
 - **Affichage Personnalisable** 🎨  
   - Activez/désactivez l'affichage des orbites et des noms via les boutons correspondants.  
   - Visualisez des trajectoires (traces) pour chaque corps céleste en activant les cases à cocher dans le panneau des options.
+- **Fiche d'un astre** 🪪  
+  Toucher ou cliquer un astre (ou le choisir dans le menu) affiche sa fiche : type (étoile, planète tellurique ou gazeuse, planète naine, satellite, comète), distance moyenne au Soleil, durée de révolution, vitesse sur l'orbite, diamètre et une remarque liée au cours. Zoomé sur une planète, on peut aussi toucher un satellite (la Lune, Io…). Le bouton ✕ ferme la fiche.
+- **Horloge et mesure d'une révolution** ⏱️  
+  Le panneau du haut affiche le temps écoulé dans la simulation (jours et années terrestres) et la vitesse (« 1 s ≈ 6,5 jours »). ⏸️ met en pause, ↺ remet le chrono à zéro et trace un petit trait à la place de chaque astre : quand un astre repasse sur son trait, il a fait un tour, on lit sa période sur le chrono (Terre 365 jours, Mars 687 jours, Lune 27,3 jours…).
+- **Pas à l'échelle** ⚠️  
+  Le bouton en bas à droite explique que tailles et distances ne sont pas à l'échelle (exemple du ballon de 10 cm) ; seules les durées sont respectées.
+- **À observer** 🔭  
+  Dans Options, un guide replié reprend les consignes des cours de 6e (les 8 planètes dans l'ordre, la plus rapide, la plus lente), de 5e (la Lune autour de la Terre, la révolution de la Terre) et de 3e (plus près du Soleil, plus vite ; la comète de Halley).
+- **Classification** 🗂️  
+  Le menu « Centrer sur » range les astres en planètes telluriques, planètes gazeuses, planètes naines (Cérès, Pluton) et comète. L'orbite de Cérès, dans la ceinture d'astéroïdes, n'est pas tracée (lisibilité).
 - **Rendus Spécifiques** 🎆  
-  - L'orbite de Ceres est volontairement masquée pour faciliter la lecture de la simulation.  
-  - Pluton ❄️, Saturne 🪐 et Jupiter 🌟 bénéficient de traitements visuels particuliers (orbite orientée, ellipses avec rotations et dégradés) pour enrichir l'expérience.
+  Pluton ❄️, Saturne 🪐 et Jupiter bénéficient de traitements visuels particuliers (orbite orientée, anneaux, dégradés). Les noms des astres ne se chevauchent pas : un nom qui n'a pas de place libre n'est pas écrit en vue d'ensemble (il apparaît en zoomant).
 - **Ceintures d'Astéroïdes** 💫  
-  L'ajout de deux ceintures d'astéroïdes fournissent des effets de groupe dynamiques et aléatoires, renforçant le réalisme du système solaire.
+  Ceinture principale (entre Mars et Jupiter) et ceinture de Kuiper (au-delà de Neptune), chacune tournant à la vitesse que donne sa distance au Soleil.
+
+## Exactitude scientifique 🔬
+- **Durées respectées** : chaque astre avance de (2π / période) × 1,74 × multiplicateur par image ; une image correspond donc à 1,74 × multiplicateur jours pour tous les astres, et l'horloge compte ce même temps. Périodes mesurées dans la simulation (test Chrome headless) : Mercure 87,97 j, Terre 365,25 j, Mars 686,98 j, Lune 27,32 j, Phobos 0,319 j.
+- **Tailles et distances non à l'échelle** : rayons d'orbite resserrés (Neptune 6,4 fois plus loin que Mercure à l'écran, 78 fois en réalité), astres très agrandis.
+- **Corrections (novembre 2026)** :
+  - les satellites avançaient deux fois par image, avec un facteur 2,0 au lieu de 1,74 : la Lune faisait le tour de la Terre en 11,9 jours au lieu de 27,3 (30,7 tours par an au lieu de 13,4) ;
+  - la comète de Halley se déplaçait régulièrement sur son ellipse, donc lentement près du Soleil, et son périhélie tombait dans le disque dessiné du Soleil. Elle suit maintenant la loi de Kepler (équation de Kepler, anomalie moyenne régulière) : très rapide près du Soleil, lente au loin ; ses distances réelles (0,575 à 35,3 UA) sont converties avec l'échelle resserrée des planètes, son périhélie passe entre les orbites de Mercure et de Vénus et son aphélie entre Neptune et Pluton. L'orbite affichée est donc une ellipse déformée par l'échelle, ce que dit sa fiche ;
+  - les astéroïdes de la ceinture principale tournaient plus vite que Mars, ceux de la ceinture de Kuiper plus vite que Jupiter : leur vitesse suit maintenant la troisième loi de Kepler (période en années = distance en UA puissance 1,5) ;
+  - Triton tourne dans le sens rétrograde ; « Ceres » s'écrit « Cérès » ; Io est dessiné plus gros qu'Europe, comme en réalité ;
+  - Pluton n'est plus rangé parmi les planètes dans le menu ; les émojis d'étoiles (🌟, ⭐, 💫) des planètes ont été remplacés (une planète n'est pas une étoile).
+- **Relecture** : textes des fiches, du guide et de l'avertissement d'échelle relus par un relecteur indépendant (valeurs recalculées et comparées aux sources) ; ses corrections ont été appliquées.
+- **Sources des données des fiches** : NASA, [Planetary Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) (mise à jour du 18/03/2025) et Sun Fact Sheet ; JPL [Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) (1 Cérès, 1P/Halley) ; JPL [Planetary Satellite Mean Elements](https://ssd.jpl.nasa.gov/sats/elem/). Valeurs arrondies pour le collège. Pour Saturne, Uranus et Neptune, les périodes de la NASA (10 747, 30 589, 59 800 jours) et les périodes sidérales usuelles utilisées par la simulation (10 759, 30 685, 60 190 jours) diffèrent de moins de 1 % ; les fiches donnent des valeurs vraies pour les deux (« environ 29 ans et demi », « 84 ans », « près de 165 ans »).
 
 ## Comment Utiliser ? 🎯
 1. **Lancement** 🚀  
@@ -29,18 +50,20 @@
      - Sur ordinateur 🖥️ : la molette (ou le pincement du pavé tactile) zoome autour de l'astre au centre ; glisser avec le bouton gauche déplace la vue ; un clic sur un astre le centre.  
      - Sur tablette ou téléphone 📱 : pincez à deux doigts pour zoomer autour du point situé entre vos doigts, glissez un doigt pour déplacer la vue, touchez un astre pour le suivre au centre (la zone de toucher est élargie à environ 24 px autour de l'astre, car les astres sont minuscules en vue d'ensemble), touchez deux fois le fond pour revenir à la vue d'ensemble.  
      - Le rappel de ces gestes est dans **Options → Commandes**.
+   - **Mesurer une révolution** ⏱️ : ⏸️ pause, ↺ chrono à zéro (un trait marque la place de chaque astre), ⏩ accélérer, ⏸️ relancer ; quand l'astre repasse sur son trait, mettre en pause et lire le temps écoulé.
 3. **Personnalisation de l'Affichage** 🎨  
    - Activez/désactivez l'affichage des orbites et des noms grâce aux boutons "Orbites" et "Noms".  
    - Dans le panneau des options situé en bas, cochez les cases correspondantes pour afficher les trajectoires de différents corps (Soleil, planètes, satellites, etc.).
 
 ## Utilisation sur tablette et dans une page web 📱
-- Boutons, menu et cases à cocher ont des cibles d'au moins 44 px ; toute la ligne d'une case « Traces » se touche.
+- Boutons, menu et cases à cocher ont des cibles d'au moins 44 px (en pixels de l'application ; réduite à 0,78 dans un cours, un bouton de 48 px mesure 37 px à l'écran) ; toute la ligne d'une case « Traces » se touche.
+- La fiche d'un astre se place en haut à droite (en bas sur un écran de moins de 620 px de large) ; le panneau Options se ferme quand une fiche s'ouvre par-dessus en portrait, et inversement. « Options » et « Pas à l'échelle » ne restent pas ouverts ensemble.
 - Le panneau Options défile au doigt si la fenêtre est basse ; l'aide des gestes y est repliée pour ne pas masquer le système.
 - Le canvas est dessiné à la densité de l'écran (plafonnée à 2 pour ménager les tablettes modestes) : rendu net sur écran Retina.
 - Rotation et redimensionnement conservent la portion du système observée.
 - Pas de zoom de la page, de sélection de texte ni de menu contextuel sur appui long : le pincement agit sur le système solaire.
 - L'application fonctionne dans un `iframe`, y compris réduit par `transform: scale(...)` : les coordonnées des doigts et de la souris sont calculées avec `getBoundingClientRect`. Le bouton « Plein écran » n'apparaît que si le plein écran est possible (iframe avec `allow="fullscreen"`, pas sur iPhone).
-- Hors ligne : le service worker (`sw.js`, cache `orbitarium-v3`) garde une copie de l'application ; aucune ressource externe, aucune donnée collectée.
+- Hors ligne : le service worker (`sw.js`, cache `orbitarium-v4`) garde une copie de l'application ; aucune ressource externe, aucune donnée collectée.
 
 ## Structure du Code 📁
 Le projet est divisé en plusieurs fichiers JavaScript, chacun correspondant à une partie spécifique de la simulation :
@@ -49,13 +72,13 @@ Le projet est divisé en plusieurs fichiers JavaScript, chacun correspondant à 
 - **canvas.js** 🎨  
   Gère l'initialisation et le redimensionnement du canvas (densité de l'écran, rotation), les bornes du zoom et le déplacement de la vue.
 - **controls.js** 🎮  
-  Responsable des interactions utilisateur (Pointer Events : clic ou toucher d'un astre, glisser pour déplacer, pincement et molette pour zoomer, double toucher, boutons et menu).
+  Responsable des interactions utilisateur (Pointer Events : clic ou toucher d'un astre ou d'un satellite, glisser pour déplacer, pincement et molette pour zoomer, double toucher, boutons, menu, pause, chrono, fiche).
 - **drawing.js** ✏️  
   Contient les fonctions de dessin pour les orbites, les trajectoires, ainsi que les traitements de rendu spécifiques.
 - **animation.js** 🎬  
-  Implémente la boucle d'animation en temps réel pour mettre à jour l'état de la simulation.
+  Implémente la boucle d'animation (pause, horloge de la simulation, repères de départ, placement des noms sans chevauchement).
 - **planets.js** 🌍  
-  Définit les caractéristiques de chaque planète, satellite et astéroïde, et intègre la comète Halley.
+  Définit les caractéristiques de chaque planète, satellite et astéroïde, la comète de Halley (loi de Kepler), l'échelle des distances (`distanceAffichee`) et les fiches des astres (`INFOS_ASTRES`, avec leurs sources).
 - **traces.js** ✨  
   Gère l'enregistrement et l'affichage des trajectoires (traces) des corps célestes.
 - **simulation.js** 🎯  
@@ -68,7 +91,6 @@ Le projet est divisé en plusieurs fichiers JavaScript, chacun correspondant à 
 
 ## Contributions et Améliorations Futures 🚀
 - Ajouter de nouveaux corps célestes et satellites pour enrichir la simulation 🌠
-- Intégrer des données astronomiques réelles pour un réalisme accru 📊
 - Optimiser les performances et l'interface utilisateur pour une expérience mobile toujours plus intuitive 📱
 - Améliorer la modularité du code et ajouter la possibilité d'extensions via une interface de configuration ⚙️
 

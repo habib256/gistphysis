@@ -44,8 +44,45 @@ function valeurMenuPour(planet) {
     return planet.isComet ? "Comète HALLEY" : planet.name;
 }
 
+// Fiche d'un astre (nom, type, distance, durée de révolution…), données dans planets.js.
+function afficherFiche(astre) {
+    const fiche = document.getElementById("fiche");
+    if (!fiche) return;
+    const infos = ficheAstre(astre);
+    document.getElementById("ficheNom").textContent = infos.nom;
+    document.getElementById("ficheType").textContent = infos.type || "";
+    const liste = document.getElementById("ficheDonnees");
+    liste.textContent = "";
+    for (const [titre, valeur] of infos.lignes || []) {
+        const dt = document.createElement("dt");
+        dt.textContent = titre;
+        const dd = document.createElement("dd");
+        dd.textContent = valeur;
+        liste.append(dt, dd);
+    }
+    const note = document.getElementById("ficheNote");
+    note.textContent = infos.note || "";
+    note.hidden = !infos.note;
+    fiche.hidden = false;
+    fiche.dataset.astre = infos.nom;
+    // Écran étroit (portrait) : le panneau Options ouvert recouvrirait la fiche, on le referme.
+    const options = document.getElementById("optionsControls");
+    if (options && options.open && seChevauchent(fiche, options)) options.open = false;
+}
+
+function seChevauchent(e1, e2) {
+    const a = e1.getBoundingClientRect(), b = e2.getBoundingClientRect();
+    return a.width > 0 && b.width > 0 && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}
+
+function masquerFiche() {
+    const fiche = document.getElementById("fiche");
+    if (fiche) fiche.hidden = true;
+}
+
 // Retour à la vue d'ensemble centrée sur le Soleil.
 function vueEnsemble() {
+    masquerFiche();
     clearAllTraces();
     resizeCanvas(); // recalculer le zoom
     selectedPlanet = null;
@@ -99,6 +136,19 @@ function astreSous(x, y, tolerance) {
             meilleur = planet;
             meilleurEcart = d - r;
         }
+        // Satellites : seulement quand ils sont assez écartés de leur planète pour être visés.
+        if (planet.satellites && zoom >= 1.5) {
+            for (const sat of planet.satellites) {
+                const sx = pos.x + sat.orbit * zoom * Math.cos(sat.angle);
+                const sy = pos.y + sat.orbit * zoom * Math.sin(sat.angle);
+                const rs = sat.radius * zoom;
+                const ds = Math.hypot(x - sx, y - sy);
+                if (ds < Math.max(rs + 5, tolerance) && ds - rs < meilleurEcart) {
+                    meilleur = sat;
+                    meilleurEcart = ds - rs;
+                }
+            }
+        }
     }
     return meilleur;
 }
@@ -112,12 +162,15 @@ function selectionnerAstre(x, y) {
         setViewOffsets(0, 0);
         synchroniserMenu("soleil");
         dernierToucherVide.t = 0;
+        afficherFiche("soleil");
         return;
     }
 
     if (astre) {
-        selectedPlanet = astre;
-        synchroniserMenu(valeurMenuPour(astre));
+        // Un satellite touché : sa fiche s'affiche et sa planète reste suivie au centre.
+        afficherFiche(astre);
+        selectedPlanet = astre.parent || astre;
+        synchroniserMenu(valeurMenuPour(selectedPlanet));
         dernierToucherVide.t = 0;
         // Si la planète possède des satellites, forcer un zoom minimal
         if (selectedPlanet.satellites && selectedPlanet.satellites.length > 0 && zoom < 1.5) {
@@ -262,6 +315,24 @@ function initControls() {
         });
     }
 
+    // Pause et chrono (mesurer une durée de révolution).
+    const pauseBtn = document.getElementById("pauseTime");
+    if (pauseBtn) {
+        pauseBtn.addEventListener("click", () => {
+            enPause = !enPause;
+            pauseBtn.textContent = enPause ? "▶️" : "⏸️";
+            pauseBtn.setAttribute("aria-label", enPause ? "Reprendre" : "Mettre en pause");
+            pauseBtn.title = enPause ? "Reprendre" : "Pause";
+            pauseBtn.setAttribute("aria-pressed", String(enPause));
+            mettreAJourHorloge(true);
+        });
+    }
+    const chronoBtn = document.getElementById("resetChrono");
+    if (chronoBtn) chronoBtn.addEventListener("click", chronoAZero);
+
+    const ficheFermer = document.getElementById("ficheFermer");
+    if (ficheFermer) ficheFermer.addEventListener("click", masquerFiche);
+
     // Gestion du zoom avec la molette sur le canvas (et pincement du pavé tactile, Ctrl + molette)
     canvas.addEventListener("wheel", function(event) {
         event.preventDefault();
@@ -294,6 +365,7 @@ function initControls() {
                 vueEnsemble();
             } else if (selectedName.includes("halley")) {
                 selectedPlanet = planets.find(p => p.isComet);
+                afficherFiche(selectedPlanet);
             } else {
                 selectedPlanet = planets.find(p => p.name.toLowerCase() === selectedName);
                 if (
@@ -304,6 +376,7 @@ function initControls() {
                 ) {
                     setZoom(1.5);
                 }
+                if (selectedPlanet) afficherFiche(selectedPlanet);
             }
         });
     }

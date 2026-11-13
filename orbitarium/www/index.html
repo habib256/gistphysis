@@ -131,7 +131,8 @@
 
         .options-contenu {
             margin-top: 10px;
-            max-height: calc(100vh - 290px);
+            /* --bas-menu : bas du menu du haut, mesuré en JavaScript (le panneau ne passe pas dessous). */
+            max-height: calc(100vh - var(--bas-menu, 330px) - 125px);
             min-height: 120px;
             overflow-y: auto;
             touch-action: pan-y;
@@ -150,6 +151,10 @@
             margin: 6px 0 0;
         }
 
+        details.guide {
+            margin: 0 0 10px;
+        }
+
         details.aide summary {
             padding: 0 4px;
             min-height: 44px;
@@ -164,6 +169,140 @@
             font-size: 14px;
             line-height: 1.5;
             color: #ddd;
+        }
+
+        /* Horloge de la simulation */
+        .chrono {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .chrono-texte {
+            flex: 1;
+            min-width: 0;
+            line-height: 1.25;
+        }
+        .chrono-titre, .chrono-equivalent, .chrono-vitesse {
+            font-size: 13px;
+            color: #ccc;
+        }
+        .chrono-valeur {
+            font-size: 18px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+        .chrono-vitesse {
+            margin-top: 4px;
+        }
+        .bouton-icone {
+            width: 48px;
+            min-width: 48px;
+            padding: 0;
+            font-size: 20px;
+            flex: none;
+        }
+
+        /* Fiche d'un astre */
+        .fiche {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            margin: 0;
+            width: 270px;
+            max-width: calc(100vw - 40px);
+            max-height: calc(100vh - 90px);
+            overflow-y: auto;
+            box-sizing: border-box;
+            touch-action: pan-y;
+            font-size: 14px;
+            line-height: 1.35;
+        }
+        .fiche[hidden] {
+            display: none;
+        }
+        .fiche h2 {
+            margin: 0 52px 2px 0;
+            font-size: 20px;
+            line-height: 1.2;
+        }
+        .fiche-fermer {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 18px;
+        }
+        .fiche-type {
+            margin: 0 52px 8px 0;
+            color: #ffd54a;
+            font-weight: bold;
+        }
+        .fiche dl {
+            margin: 0;
+        }
+        .fiche dt {
+            color: #bbb;
+            font-size: 13px;
+        }
+        .fiche dd {
+            margin: 0 0 6px 0;
+        }
+        .fiche-note {
+            margin: 6px 0 0;
+        }
+        .fiche-source {
+            margin: 8px 0 0;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* Avertissement d'échelle (en bas à droite) */
+        .echelle {
+            position: fixed;
+            right: 10px;
+            bottom: 10px;
+            z-index: 1000;
+            margin: 0;
+            max-width: min(300px, calc(100vw - 40px));
+            background: rgba(0, 0, 0, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            color: white;
+        }
+        .echelle summary {
+            min-height: 44px;
+            line-height: 44px;
+            padding: 0 12px;
+            font-size: 15px;
+            touch-action: manipulation;
+        }
+        /* Fermé : le texte ne compte pas dans la largeur (le bouton reste étroit). */
+        .echelle:not([open]) .echelle-texte {
+            display: none;
+        }
+        .echelle-texte {
+            padding: 0 12px 10px;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: max(150px, calc(100vh - 400px));
+            overflow-y: auto;
+            touch-action: pan-y;
+        }
+        .echelle-texte p {
+            margin: 0 0 8px;
+        }
+
+        /* Petits écrans : la fiche passe en bas, au-dessus des boutons du bas. */
+        @media (max-width: 620px) {
+            .fiche {
+                top: auto;
+                bottom: 70px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                max-height: 45vh;
+            }
         }
 
         /* Media queries pour le responsive */
@@ -287,21 +426,30 @@
 <body>
     <!-- Menu principal -->
     <div id="menu" class="control-panel" style="position: absolute; top: 10px; left: 10px; z-index: 100; width: 250px; max-width: calc(100vw - 50px);">
-        <label for="planetSelect">🎯 Centrer sur :</label>
+        <label for="planetSelect">🎯 Centrer sur :</label>
         <select id="planetSelect">
             <!-- Affiché quand la vue a été déplacée au doigt ou à la souris -->
             <option value="libre" disabled hidden>🖐️ Vue libre</option>
             <option value="soleil">☀️ Soleil</option>
-            <option value="Mercure">💫 Mercure</option>
-            <option value="Vénus">🌟 Vénus</option>
-            <option value="Terre">🌍 Terre</option>
-            <option value="Mars">🔴 Mars</option>
-            <option value="Jupiter">🌐 Jupiter</option>
-            <option value="Saturne">🪐 Saturne</option>
-            <option value="Uranus">⭐ Uranus</option>
-            <option value="Neptune">💫 Neptune</option>
-            <option value="Pluton">✨ Pluton</option>
-            <option value="Comète HALLEY">☄️ Comète HALLEY</option>
+            <optgroup label="Planètes telluriques (rocheuses)">
+                <option value="Mercure">⚪ Mercure</option>
+                <option value="Vénus">🟡 Vénus</option>
+                <option value="Terre">🌍 Terre</option>
+                <option value="Mars">🔴 Mars</option>
+            </optgroup>
+            <optgroup label="Planètes gazeuses (géantes)">
+                <option value="Jupiter">🟠 Jupiter</option>
+                <option value="Saturne">🪐 Saturne</option>
+                <option value="Uranus">🔵 Uranus</option>
+                <option value="Neptune">🔵 Neptune</option>
+            </optgroup>
+            <optgroup label="Planètes naines">
+                <option value="Cérès">🟤 Cérès</option>
+                <option value="Pluton">🟤 Pluton</option>
+            </optgroup>
+            <optgroup label="Comète">
+                <option value="Comète HALLEY">☄️ Comète de Halley</option>
+            </optgroup>
         </select>
         
         <!-- Contrôles du temps -->
@@ -309,7 +457,40 @@
             <button id="slowTime">⏪ Ralentir</button>
             <button id="fastTime">⏩ Accélérer</button>
         </div>
+
+        <!-- Horloge de la simulation : mesurer la durée d'une révolution -->
+        <div id="chrono" class="chrono">
+            <div class="chrono-texte" aria-live="off">
+                <div class="chrono-titre">⏱️ Temps écoulé</div>
+                <div id="chronoValeur" class="chrono-valeur">0,0 jour</div>
+                <div id="chronoEquivalent" class="chrono-equivalent">soit 0,00 an</div>
+            </div>
+            <button id="pauseTime" class="bouton-icone" aria-label="Mettre en pause" aria-pressed="false" title="Pause">⏸️</button>
+            <button id="resetChrono" class="bouton-icone" aria-label="Remettre le chrono à zéro et marquer la place de chaque astre" title="Chrono à zéro : un trait marque la place de chaque astre">↺</button>
+        </div>
+        <div id="chronoVitesse" class="chrono-vitesse">Vitesse : 1 s ≈ 2,4 h</div>
     </div>
+
+    <!-- Fiche de l'astre touché ou choisi -->
+    <aside id="fiche" class="control-panel fiche" hidden aria-live="polite" aria-labelledby="ficheNom">
+        <button id="ficheFermer" class="bouton-icone fiche-fermer" aria-label="Fermer la fiche" title="Fermer">✕</button>
+        <h2 id="ficheNom"></h2>
+        <p id="ficheType" class="fiche-type"></p>
+        <dl id="ficheDonnees"></dl>
+        <p id="ficheNote" class="fiche-note"></p>
+        <p class="fiche-source">Données : NASA (valeurs arrondies)</p>
+    </aside>
+
+    <!-- Avertissement d'échelle -->
+    <details id="echelle" class="echelle">
+        <summary>⚠️ Pas à l’échelle</summary>
+        <div class="echelle-texte">
+            <p>Les <strong>tailles</strong> et les <strong>distances</strong> ne sont pas à l’échelle : sinon, on ne verrait presque rien.</p>
+            <p>Si le Soleil était un ballon de 10 cm, la Terre serait une bille de 1 mm placée à 11 m du ballon, et Neptune serait à 320 m.</p>
+            <p>Ici, les distances sont resserrées : Neptune est 78 fois plus loin du Soleil que Mercure, mais seulement 6 fois plus loin à l’écran.</p>
+            <p>Les <strong>durées</strong>, elles, sont respectées les unes par rapport aux autres (le temps est accéléré) : la durée lue sur le chrono est la vraie durée du tour.</p>
+        </div>
+    </details>
 
     <canvas id="canvas"></canvas>
 
@@ -327,6 +508,17 @@
         <details id="optionsControls" class="control-panel">
             <summary>⚙️ Options</summary>
             <div class="options-contenu">
+                <!-- Guide d'observation (replié), aligné sur les consignes des cours de 6e, 5e et 3e -->
+                <details class="aide guide" id="guide">
+                    <summary>🔭 À observer</summary>
+                    <ul class="aide-gestes">
+                        <li><strong>Les 8 planètes</strong> : touche chacune dans l’ordre à partir du Soleil (Mercure, Vénus, Terre, Mars, Jupiter, Saturne, Uranus, Neptune). Sa fiche dit si elle est tellurique ou gazeuse.</li>
+                        <li><strong>Mesurer une révolution</strong> : touche ↺ (chrono à zéro) ; un trait marque la place de chaque astre. Accélère le temps. Quand une planète repasse sur son trait, elle a fait un tour : mets en pause ⏸️ et lis le temps écoulé.</li>
+                        <li><strong>Plus près, plus vite</strong> : compare les durées. Les planètes proches du Soleil ont une orbite plus courte et vont plus vite sur cette orbite : elles font le tour du Soleil bien plus vite que les planètes lointaines.</li>
+                        <li><strong>La Lune</strong> : centre la vue sur la Terre et mesure la durée d’un tour de la Lune autour de la Terre.</li>
+                        <li><strong>La comète de Halley</strong> : suis-la sur son orbite très allongée. Où va-t-elle le plus vite ?</li>
+                    </ul>
+                </details>
                 <!-- Section Masquage -->
                 <div>
                     <h3 style="margin: 0 0 5px 0; font-size: 16px;">🎭 Masquage</h3>
@@ -343,30 +535,54 @@
                         <label class="trace-item"><input type="checkbox" id="traceSoleil">☀️ Soleil</label>
                         <label class="trace-item"><input type="checkbox" id="traceLune">🌙 Lune</label>
                         <label class="trace-item"><input type="checkbox" id="traceHalley">☄️ Halley</label>
-                        <label class="trace-item"><input type="checkbox" id="traceMercure">💫 Mercure</label>
-                        <label class="trace-item"><input type="checkbox" id="traceVenus">🌟 Vénus</label>
+                        <label class="trace-item"><input type="checkbox" id="traceMercure">⚪ Mercure</label>
+                        <label class="trace-item"><input type="checkbox" id="traceVenus">🟡 Vénus</label>
                         <label class="trace-item"><input type="checkbox" id="traceTerre">🌍 Terre</label>
                         <label class="trace-item"><input type="checkbox" id="traceMars">🔴 Mars</label>
-                        <label class="trace-item"><input type="checkbox" id="traceJupiter">🌐 Jupiter</label>
+                        <label class="trace-item"><input type="checkbox" id="traceJupiter">🟠 Jupiter</label>
                         <label class="trace-item"><input type="checkbox" id="traceSaturne">🪐 Saturne</label>
-                        <label class="trace-item"><input type="checkbox" id="traceUranus">⭐ Uranus</label>
-                        <label class="trace-item"><input type="checkbox" id="traceNeptune">💫 Neptune</label>
-                        <label class="trace-item"><input type="checkbox" id="tracePluton">✨ Pluton</label>
+                        <label class="trace-item"><input type="checkbox" id="traceUranus">🔵 Uranus</label>
+                        <label class="trace-item"><input type="checkbox" id="traceNeptune">🔵 Neptune</label>
+                        <label class="trace-item"><input type="checkbox" id="tracePluton">🟤 Pluton</label>
                     </div>
                 </div>
                 <!-- Section Commandes (repliée pour ne pas masquer le système) -->
                 <details class="aide">
                     <summary>👆 Commandes</summary>
                     <ul class="aide-gestes">
-                        <li>Glisser (doigt ou souris) : déplacer la vue.</li>
-                        <li>Pincer à deux doigts ou molette : zoomer.</li>
-                        <li>Toucher ou cliquer un astre : le suivre au centre.</li>
-                        <li>Toucher deux fois le fond ou choisir « Soleil » : revoir tout le système.</li>
+                        <li>Glisser (doigt ou souris) : déplacer la vue.</li>
+                        <li>Pincer à deux doigts ou molette : zoomer.</li>
+                        <li>Toucher ou cliquer un astre : le suivre au centre et afficher sa fiche.</li>
+                        <li>Toucher deux fois le fond ou choisir « Soleil » : revoir tout le système.</li>
                     </ul>
                 </details>
             </div>
         </details>
     </div>
+
+    <!-- Le panneau Options ne doit pas passer sous le menu du haut (plus haut avec l'horloge). -->
+    <script>
+      (function () {
+        function mesurerMenu() {
+          const menu = document.getElementById('menu');
+          if (menu) document.documentElement.style.setProperty('--bas-menu', Math.round(menu.getBoundingClientRect().bottom) + 'px');
+        }
+        window.addEventListener('load', mesurerMenu);
+        window.addEventListener('resize', mesurerMenu);
+        // « Options » et « Pas à l'échelle » ne restent pas ouverts ensemble (ils se chevauchent en portrait).
+        const options = document.getElementById('optionsControls');
+        const echelle = document.getElementById('echelle');
+        // Options ouvert (ou agrandi par « À observer », « Commandes ») par-dessus la fiche, en portrait :
+        // la fiche se ferme. Capture : les sections repliables internes déclenchent aussi ce contrôle.
+        options.addEventListener('toggle', (event) => {
+          if (!options.open) return;
+          if (event.target === options) echelle.open = false;
+          const fiche = document.getElementById('fiche');
+          if (!fiche.hidden && seChevauchent(fiche, options)) masquerFiche();
+        }, true);
+        echelle.addEventListener('toggle', () => { if (echelle.open) options.open = false; });
+      })();
+    </script>
 
     <!-- Plein écran -->
     <script>
