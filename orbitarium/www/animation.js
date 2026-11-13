@@ -2,8 +2,9 @@ function drawFrame() {
   
     updateAngles(timeMultiplier);
     
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    // Centre de la vue en pixels CSS (le contexte est déjà mis à l'échelle de l'écran).
+    const centerX = viewWidth / 2;
+    const centerY = viewHeight / 2;
     
     if (selectedPlanet) {
         // Calculer la position de la planète à partir du centre du canvas
@@ -21,7 +22,7 @@ function drawFrame() {
     const originY = centerY + viewOffsetY;
     
     ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, viewWidth, viewHeight);
     
     // Dessiner les traces, orbites, astéroïdes, Soleil, planètes, etc.
     drawTraces(ctx);

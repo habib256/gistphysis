@@ -1,7 +1,7 @@
 // Service worker d'Orbitarium : fonctionne hors ligne, sans bibliothèque externe.
 // Stratégie « réseau d'abord » : en ligne, on sert toujours la dernière version publiée ;
 // hors ligne, on sert la copie mise en cache lors de la dernière visite.
-const CACHE = 'orbitarium-v2';
+const CACHE = 'orbitarium-v3';
 const APP_SHELL = [
   './',
   './index.html',

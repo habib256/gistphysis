@@ -4,6 +4,20 @@ let ctx;
 let zoom = 1.0;
 let viewOffsetX = 0;
 let viewOffsetY = 0;
+// Dimensions de la vue en pixels CSS : tous les dessins et toutes les coordonnées
+// (souris, doigts) utilisent ces unités, quelle que soit la densité de l'écran.
+let viewWidth = 0;
+let viewHeight = 0;
+// Densité de pixels du canvas, plafonnée à 2 pour ménager les tablettes modestes.
+let pixelRatio = 1;
+
+// Bornes du zoom (le minimum s'adapte aux très petites fenêtres).
+const ZOOM_MAX = 5;
+let zoomMin = 0.05;
+
+// Rayon de l'orbite la plus lointaine (Pluton) et marge, pour le cadrage d'ensemble.
+const MAX_ORBIT = 3600;
+const VIEW_MARGIN = 50; // marge en pixels
 
 function initCanvas() {
     canvas = document.getElementById("canvas");
@@ -13,17 +27,50 @@ function initCanvas() {
     }
     ctx = canvas.getContext("2d");
     resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
+    // Redimensionnement ou rotation de la tablette : on garde la portion du système observée.
+    window.addEventListener("resize", () => resizeCanvas(false));
 }
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    
-    const maxOrbit = 3600;
-    const margin = 50; // marge en pixels
-    const halfMinDimension = Math.min(canvas.width, canvas.height) / 2 - margin;
-    zoom = halfMinDimension / maxOrbit;
+// Zoom qui fait tenir tout le système solaire dans la vue.
+function fitZoom(width, height) {
+    return Math.max(0.005, (Math.min(width, height) / 2 - VIEW_MARGIN) / MAX_ORBIT);
+}
+
+function clampZoom(value) {
+    return Math.max(zoomMin, Math.min(value, ZOOM_MAX));
+}
+
+// resetView = true (par défaut) : vue d'ensemble recalculée.
+// resetView = false : la vue est mise à l'échelle de la nouvelle taille (rotation, fenêtre).
+function resizeCanvas(resetView = true) {
+    const oldFit = viewWidth > 0 ? fitZoom(viewWidth, viewHeight) : null;
+
+    viewWidth = window.innerWidth;
+    viewHeight = window.innerHeight;
+    pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+    // Canvas net sur écran haute densité : tampon agrandi, dessin en pixels CSS.
+    canvas.width = Math.round(viewWidth * pixelRatio);
+    canvas.height = Math.round(viewHeight * pixelRatio);
+    canvas.style.width = viewWidth + "px";
+    canvas.style.height = viewHeight + "px";
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    const fit = fitZoom(viewWidth, viewHeight);
+    zoomMin = Math.min(0.05, fit / 2);
+
+    if (resetView || oldFit === null) {
+        zoom = fit;
+    } else {
+        const k = fit / oldFit;
+        if (k !== 1) {
+            zoom = clampZoom(zoom * k);
+            viewOffsetX *= k;
+            viewOffsetY *= k;
+            // Les traces sont mémorisées en pixels d'écran : elles ne correspondent plus.
+            if (typeof clearAllTraces === "function") clearAllTraces();
+        }
+    }
 }
 
 function setZoom(newZoom) {
@@ -34,57 +81,4 @@ function setZoom(newZoom) {
 function setViewOffsets(x, y) {
     viewOffsetX = x;
     viewOffsetY = y;
-    
 }
-
-// Gestion du zoom par pinch pour smartphone (comportement identique à la molette)
-(function() {
-    // Variables pour stocker l'état initial lors du début du geste pinch
-    let initialDistance = 0;
-    let initialZoom = 1;
-    let initialViewOffsetX = 0;
-    let initialViewOffsetY = 0;
-
-    const canvas = document.getElementById('canvas');
-    // Suppression de la récupération du contexte car il n'est plus utilisé ici
-    // const ctx = canvas.getContext('2d');
-
-    // Fonction pour calculer la distance entre deux points tactiles
-    function getDistance(touch1, touch2) {
-        const dx = touch1.clientX - touch2.clientX;
-        const dy = touch1.clientY - touch2.clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    // Démarrage du geste pinch
-    canvas.addEventListener('touchstart', function(event) {
-        if (event.touches.length === 2) {
-            initialDistance = getDistance(event.touches[0], event.touches[1]);
-            // Enregistrer l'état initial du zoom et de la translation
-            initialZoom = zoom;
-            initialViewOffsetX = viewOffsetX;
-            initialViewOffsetY = viewOffsetY;
-        }
-    });
-
-    // Gestion du mouvement lors du toucher avec zoom centré sur le point de pincement
-    canvas.addEventListener('touchmove', function(event) {
-        if (event.touches.length === 2) {
-            event.preventDefault(); // Empêche le zoom natif du navigateur
-            const newDistance = getDistance(event.touches[0], event.touches[1]);
-            const scaleFactor = newDistance / initialDistance;
-            const newZoom = initialZoom * scaleFactor;
-
-            // Calculer le point médian entre les deux touches (centre du pinch)
-            const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
-            const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
-
-            // Ajuster les offsets pour que le point médian reste fixe
-            const newViewOffsetX = midX - (newZoom / initialZoom) * (midX - initialViewOffsetX);
-            const newViewOffsetY = midY - (newZoom / initialZoom) * (midY - initialViewOffsetY);
-
-            setZoom(newZoom);
-            setViewOffsets(newViewOffsetX, newViewOffsetY);
-        }
-    }, { passive: false });
-})(); 

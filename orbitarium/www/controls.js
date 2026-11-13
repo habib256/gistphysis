@@ -3,6 +3,248 @@ let timeMultiplier = 0.0009765625;
 let showOrbits = true;
 let showNames = true;
 
+// Gestes sur le canvas (Pointer Events : souris, doigt et stylet avec le même code)
+// - un doigt (ou la souris, bouton enfoncé) qui glisse déplace la vue ;
+// - deux doigts qui pincent zooment autour du point situé entre les doigts ;
+// - un toucher (ou un clic) sur un astre centre la vue sur lui ;
+// - deux touchers rapides sur le fond reviennent à la vue d'ensemble.
+const SEUIL_GLISSER = { mouse: 4, pen: 8, touch: 10 }; // px avant de considérer un glisser
+const TOLERANCE_TOUCHER = 24; // px : un doigt est large, les astres sont minuscules
+const DOUBLE_TOUCHER_MS = 350;
+const DOUBLE_TOUCHER_PX = 40;
+
+const pointeurs = new Map(); // pointerId -> {x, y}
+let geste = null;            // {mode: "toucher" | "glisser" | "pincer", ...}
+let ignorerClic = false;     // le clic qui suit un glisser ou un pincement ne sélectionne rien
+let dernierTypePointeur = "mouse";
+let dernierToucherVide = { t: 0, x: 0, y: 0 };
+
+// Position d'un événement dans le repère de la vue (pixels CSS). getBoundingClientRect
+// reste juste si la page est décalée, défilée ou si le canvas est mis à l'échelle en CSS.
+function pointDansLaVue(event) {
+    const rect = canvas.getBoundingClientRect();
+    const echelleX = rect.width ? viewWidth / rect.width : 1;
+    const echelleY = rect.height ? viewHeight / rect.height : 1;
+    return {
+        x: (event.clientX - rect.left) * echelleX,
+        y: (event.clientY - rect.top) * echelleY
+    };
+}
+
+// Le menu « Centrer sur » reflète la vue : astre suivi, Soleil ou vue libre.
+function synchroniserMenu(valeur) {
+    const planetSelect = document.getElementById("planetSelect");
+    if (!planetSelect) return;
+    const option = [...planetSelect.options].find(o => o.value === valeur);
+    planetSelect.value = option ? valeur : "libre";
+}
+
+function valeurMenuPour(planet) {
+    if (!planet) return "soleil";
+    return planet.isComet ? "Comète HALLEY" : planet.name;
+}
+
+// Retour à la vue d'ensemble centrée sur le Soleil.
+function vueEnsemble() {
+    clearAllTraces();
+    resizeCanvas(); // recalculer le zoom
+    selectedPlanet = null;
+    setViewOffsets(0, 0);
+    synchroniserMenu("soleil");
+}
+
+// Le Soleil ne doit pas sortir trop loin de l'écran : on garde le système à portée.
+function limiterDecalage(x, y) {
+    const limiteX = 4400 * zoom + viewWidth / 2;
+    const limiteY = 4400 * zoom + viewHeight / 2;
+    return {
+        x: Math.max(-limiteX, Math.min(x, limiteX)),
+        y: Math.max(-limiteY, Math.min(y, limiteY))
+    };
+}
+
+// Quitte le suivi d'un astre en gardant la vue telle qu'elle est à l'écran.
+function passerEnVueLibre() {
+    if (selectedPlanet) selectedPlanet = null;
+    synchroniserMenu("libre");
+}
+
+function deplacerVue(dx, dy) {
+    const avantX = viewOffsetX, avantY = viewOffsetY;
+    const d = limiterDecalage(viewOffsetX + dx, viewOffsetY + dy);
+    setViewOffsets(d.x, d.y);
+    shiftAllTraces(viewOffsetX - avantX, viewOffsetY - avantY);
+}
+
+// Astre le plus proche du point (x, y), ou null. Le Soleil est renvoyé sous la forme "soleil".
+function astreSous(x, y, tolerance) {
+    const originX = viewWidth / 2 + viewOffsetX;
+    const originY = viewHeight / 2 + viewOffsetY;
+    let meilleur = null;
+    let meilleurEcart = Infinity;
+
+    // Soleil : disque dessiné de rayon 50 × zoom.
+    const rSoleil = 50 * zoom;
+    const dSoleil = Math.hypot(x - originX, y - originY);
+    if (dSoleil < Math.max(rSoleil + 5, tolerance)) {
+        meilleur = "soleil";
+        meilleurEcart = dSoleil - rSoleil;
+    }
+
+    for (const planet of planets) {
+        const pos = getPlanetPosition(planet, originX, originY, zoom);
+        const r = planet.radius * zoom;
+        const d = Math.hypot(x - pos.x, y - pos.y);
+        if (d < Math.max(r + 5, tolerance) && d - r < meilleurEcart) {
+            meilleur = planet;
+            meilleurEcart = d - r;
+        }
+    }
+    return meilleur;
+}
+
+function selectionnerAstre(x, y) {
+    const tolerance = dernierTypePointeur === "mouse" ? 0 : TOLERANCE_TOUCHER;
+    const astre = astreSous(x, y, tolerance);
+
+    if (astre === "soleil") {
+        selectedPlanet = null;
+        setViewOffsets(0, 0);
+        synchroniserMenu("soleil");
+        dernierToucherVide.t = 0;
+        return;
+    }
+
+    if (astre) {
+        selectedPlanet = astre;
+        synchroniserMenu(valeurMenuPour(astre));
+        dernierToucherVide.t = 0;
+        // Si la planète possède des satellites, forcer un zoom minimal
+        if (selectedPlanet.satellites && selectedPlanet.satellites.length > 0 && zoom < 1.5) {
+            setZoom(1.5);
+        }
+        return;
+    }
+
+    // Toucher sur le fond : un double toucher ramène à la vue d'ensemble (doigt ou stylet).
+    if (dernierTypePointeur !== "mouse") {
+        const maintenant = performance.now();
+        if (maintenant - dernierToucherVide.t < DOUBLE_TOUCHER_MS &&
+            Math.hypot(x - dernierToucherVide.x, y - dernierToucherVide.y) < DOUBLE_TOUCHER_PX) {
+            dernierToucherVide.t = 0;
+            vueEnsemble();
+        } else {
+            dernierToucherVide = { t: maintenant, x, y };
+        }
+    }
+}
+
+function debutPincement() {
+    const [a, b] = [...pointeurs.values()];
+    geste = {
+        mode: "pincer",
+        distance0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+        milieu0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        zoom0: zoom,
+        decalage0: { x: viewOffsetX, y: viewOffsetY }
+    };
+}
+
+function suitePincement() {
+    const [a, b] = [...pointeurs.values()];
+    const distance = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    const milieu = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const nouveauZoom = clampZoom(geste.zoom0 * distance / geste.distance0);
+    if (nouveauZoom !== zoom) setZoom(nouveauZoom); // setZoom efface les traces
+
+    if (selectedPlanet) return; // l'astre suivi reste au centre (voir drawFrame)
+
+    // Le point du système qui était sous les doigts au début du geste reste sous les doigts
+    // (le déplacement des deux doigts fait aussi glisser la vue).
+    const k = nouveauZoom / geste.zoom0;
+    const cx = viewWidth / 2, cy = viewHeight / 2;
+    const d = limiterDecalage(
+        milieu.x - cx - (geste.milieu0.x - cx - geste.decalage0.x) * k,
+        milieu.y - cy - (geste.milieu0.y - cy - geste.decalage0.y) * k
+    );
+    if (d.x !== viewOffsetX || d.y !== viewOffsetY) {
+        setViewOffsets(d.x, d.y);
+        synchroniserMenu("libre");
+    }
+}
+
+function initGestes() {
+    canvas.addEventListener("pointerdown", function(event) {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        dernierTypePointeur = event.pointerType || "mouse";
+        try { canvas.setPointerCapture(event.pointerId); } catch (e) { /* pointeur déjà relâché */ }
+        pointeurs.set(event.pointerId, pointDansLaVue(event));
+
+        if (pointeurs.size === 1) {
+            ignorerClic = false;
+            const p = pointDansLaVue(event);
+            geste = { mode: "toucher", depart: p, dernier: p };
+        } else if (pointeurs.size === 2) {
+            ignorerClic = true;
+            debutPincement();
+        }
+        // Au-delà de deux doigts : les doigts supplémentaires sont ignorés.
+    });
+
+    canvas.addEventListener("pointermove", function(event) {
+        if (!pointeurs.has(event.pointerId) || !geste) return;
+        const p = pointDansLaVue(event);
+        pointeurs.set(event.pointerId, p);
+
+        if (geste.mode === "pincer") {
+            if (pointeurs.size >= 2) suitePincement();
+            return;
+        }
+        if (geste.mode === "toucher") {
+            const seuil = SEUIL_GLISSER[event.pointerType] || SEUIL_GLISSER.touch;
+            if (Math.hypot(p.x - geste.depart.x, p.y - geste.depart.y) < seuil) return;
+            geste.mode = "glisser";
+            ignorerClic = true;
+            passerEnVueLibre();
+            canvas.classList.add("glisse");
+        }
+        if (geste.mode === "glisser") {
+            deplacerVue(p.x - geste.dernier.x, p.y - geste.dernier.y);
+            geste.dernier = p;
+        }
+    });
+
+    function finPointeur(event) {
+        if (!pointeurs.has(event.pointerId)) return;
+        pointeurs.delete(event.pointerId);
+        if (event.type === "pointercancel") ignorerClic = true;
+
+        if (pointeurs.size === 0) {
+            geste = null;
+            canvas.classList.remove("glisse");
+        } else if (geste && geste.mode === "pincer" && pointeurs.size === 1) {
+            // Fin du pincement avec un doigt encore posé : il peut continuer à glisser,
+            // sans saut, mais son relâchement ne sélectionnera rien.
+            const p = [...pointeurs.values()][0];
+            geste = { mode: "toucher", depart: p, dernier: p };
+        } else if (geste && geste.mode === "pincer" && pointeurs.size >= 2) {
+            debutPincement();
+        }
+    }
+    canvas.addEventListener("pointerup", finPointeur);
+    canvas.addEventListener("pointercancel", finPointeur);
+    canvas.addEventListener("lostpointercapture", finPointeur);
+
+    // Safari iOS ignore « user-scalable=no » : on bloque ses événements de geste propres
+    // pour que le pincement zoome le système solaire et non la page entière.
+    document.addEventListener("gesturestart", event => event.preventDefault());
+
+    // Pas de menu contextuel sur un appui long au doigt (la souris garde son clic droit).
+    canvas.addEventListener("contextmenu", function(event) {
+        if (dernierTypePointeur !== "mouse") event.preventDefault();
+    });
+}
+
 function initControls() {
     // Boutons de contrôle du temps
     const slowTimeBtn = document.getElementById("slowTime");
@@ -19,93 +261,27 @@ function initControls() {
             console.log("Temps accéléré, multiplicateur =", timeMultiplier);
         });
     }
-    
-    // Gestion du zoom avec la molette sur le canvas
+
+    // Gestion du zoom avec la molette sur le canvas (et pincement du pavé tactile, Ctrl + molette)
     canvas.addEventListener("wheel", function(event) {
         event.preventDefault();
         const newZoom = zoom * (1 - event.deltaY * 0.001);
-        setZoom(Math.max(0.05, Math.min(newZoom, 5)));
-        // Vous pourrez par la suite effacer les traces lors du zoom si besoin
-    });
-    
-    // Gestion du zoom par pinch pour smartphone (comportement identique à la molette)
-    let initialDistance = 0;
-    let initialZoom = zoom;
-    let initialViewOffsetX = viewOffsetX;
-    let initialViewOffsetY = viewOffsetY;
-
-    canvas.addEventListener('touchstart', function(event) {
-        if (event.touches.length === 2) {
-            initialDistance = Math.hypot(
-                event.touches[0].clientX - event.touches[1].clientX,
-                event.touches[0].clientY - event.touches[1].clientY
-            );
-            // Enregistrer l'état initial du zoom et des offsets
-            initialZoom = zoom;
-            initialViewOffsetX = viewOffsetX;
-            initialViewOffsetY = viewOffsetY;
-        }
-    });
-
-    canvas.addEventListener('touchmove', function(event) {
-        if (event.touches.length === 2) {
-            event.preventDefault(); // Empêche le comportement par défaut
-            const newDistance = Math.hypot(
-                event.touches[0].clientX - event.touches[1].clientX,
-                event.touches[0].clientY - event.touches[1].clientY
-            );
-            // Calculer la variation à partir de la distance initiale
-            const deltaDistance = newDistance - initialDistance;
-            // Tripler la réactivité en utilisant 0.003 au lieu de 0.001
-            const newZoomUnclamped = initialZoom * (1 + deltaDistance * 0.003);
-            const newZoom = Math.max(0.05, Math.min(newZoomUnclamped, 5));
-
-            // Pour garder la cible centrée, on conserve les offsets initiaux
-            setZoom(newZoom);
-            setViewOffsets(initialViewOffsetX, initialViewOffsetY);
-        }
+        setZoom(clampZoom(newZoom));
     }, { passive: false });
-    
-    // Gestion du clic sur le canvas pour recentrer la vue
+
+    // Glisser, pincer, toucher (souris, doigt, stylet)
+    initGestes();
+
+    // Clic ou toucher sur le canvas : centrer la vue sur l'astre visé
     canvas.addEventListener("click", function(event) {
-        const rect = canvas.getBoundingClientRect();
-        const clickX = event.clientX - rect.left;
-        const clickY = event.clientY - rect.top;
-
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const originX = centerX + viewOffsetX;
-        const originY = centerY + viewOffsetY;
-
-        // Vérifier si le Soleil est cliqué (rayon de 20*zoom)
-        const dxSun = clickX - originX;
-        const dySun = clickY - originY;
-        if (Math.hypot(dxSun, dySun) < 20 * zoom) {
-            selectedPlanet = null;
-            setViewOffsets(0, 0);
+        if (ignorerClic) {
+            ignorerClic = false;
             return;
         }
-
-        // Vérifier le clic sur une planète
-        for (let planet of planets) {
-            const pos = getPlanetPosition(planet, originX, originY, zoom);
-            if (Math.hypot(clickX - pos.x, clickY - pos.y) < planet.radius * zoom + 5) {
-                selectedPlanet = planet;
-                break;
-            }
-        }
-
-        // Si la planète possède des satellites, forcer un zoom minimal
-        if (
-            selectedPlanet &&
-            selectedPlanet.satellites &&
-            selectedPlanet.satellites.length > 0 &&
-            zoom < 1.5
-        ) {
-            setZoom(1.5);
-        }
+        const p = pointDansLaVue(event);
+        selectionnerAstre(p.x, p.y);
     });
-    
+
     // Gestion du menu déroulant pour choisir la planète centrée
     const planetSelect = document.getElementById("planetSelect");
     if (planetSelect) {
@@ -115,9 +291,7 @@ function initControls() {
             // Vous pouvez vider les traces ici via traces.js si nécessaire
             clearAllTraces();
             if (selectedName === "soleil") {
-                resizeCanvas(); // recalculer le zoom
-                selectedPlanet = null;
-                setViewOffsets(0, 0);
+                vueEnsemble();
             } else if (selectedName.includes("halley")) {
                 selectedPlanet = planets.find(p => p.isComet);
             } else {
@@ -133,7 +307,7 @@ function initControls() {
             }
         });
     }
-    
+
     // Bouton pour afficher/masquer les orbites
     const toggleOrbitsBtn = document.getElementById("toggleOrbits");
     if (toggleOrbitsBtn) {
@@ -142,7 +316,7 @@ function initControls() {
             toggleOrbitsBtn.textContent = showOrbits ? "Masquer les orbites" : "Afficher les orbites";
         });
     }
-    
+
     // Bouton pour afficher/masquer les noms
     const toggleNamesBtn = document.getElementById("toggleNames");
     if (toggleNamesBtn) {
@@ -151,4 +325,4 @@ function initControls() {
             toggleNamesBtn.textContent = showNames ? "Masquer les noms" : "Afficher les noms";
         });
     }
-} 
+}

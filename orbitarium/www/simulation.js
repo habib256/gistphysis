@@ -25,24 +25,9 @@ window.addEventListener('load', () => {
     drawFrame();
 }); 
 
-function updateZoom(newZoom) {
-    if (simulation.zoom !== newZoom) {
-        simulation.zoom = newZoom;
-        simulation.zoomChanged = true; // On indique qu'un changement de zoom a eu lieu
-    }
-} 
-
-// Insertion d'un écouteur d'événement pour la molette (exemple)
-window.addEventListener('wheel', function(e) {
-    if (e.ctrlKey) { // Le zoom s'utilise avec Ctrl + molette
-        e.preventDefault(); // Empêche le défilement de la page
-        let newZoom = simulation.zoom + e.deltaY * -0.001;
-        if (newZoom < 0.1) {
-            newZoom = 0.1;
-        }
-        updateZoom(newZoom); // Utilise la fonction updateZoom pour mettre à jour le zoom et effacer les traces
-    }
-}); 
+// Le zoom (molette, Ctrl + molette, pincement) est géré uniquement dans controls.js.
+// L'ancien écouteur Ctrl + molette modifiait la transformation du contexte et
+// faussait l'affichage (pincement du pavé tactile d'un Mac, notamment).
 
 // Enregistrement du Service Worker pour la PWA
 if ('serviceWorker' in navigator) {

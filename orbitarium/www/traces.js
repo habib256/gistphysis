@@ -34,8 +34,20 @@ function clearAllTraces() {
     traceData = {};
 }
 
+// Déplacement de la vue (glisser) : les traces, mémorisées en pixels d'écran,
+// suivent le décor au lieu d'être effacées.
+function shiftAllTraces(dx, dy) {
+    if (!dx && !dy) return;
+    for (const body in traceData) {
+        for (const point of traceData[body]) {
+            point.x += dx;
+            point.y += dy;
+        }
+    }
+}
+
 function resetTraceCheckboxes() {
-    const checkboxes = document.querySelectorAll("#traceControls input[type=checkbox]");
+    const checkboxes = document.querySelectorAll(".trace-grid input[type=checkbox]");
     checkboxes.forEach(checkbox => {
         checkbox.checked = false;
     });
@@ -57,7 +69,7 @@ function initTraceCheckboxes() {
         traceHalley: "Halley"
     };
 
-    const traceCheckboxes = document.querySelectorAll("#traceControls input[type=checkbox]");
+    const traceCheckboxes = document.querySelectorAll(".trace-grid input[type=checkbox]");
     traceCheckboxes.forEach(checkbox => {
         checkbox.addEventListener("change", () => {
             if (!checkbox.checked) {

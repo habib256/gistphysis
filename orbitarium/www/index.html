@@ -10,15 +10,31 @@
     <link rel="manifest" href="manifest.json">
     <style>
         /* Styles de base */
+        html, body {
+            height: 100%;
+        }
         body {
             margin: 0;
             overflow: hidden;
             background: black;
             font-family: 'Arial', sans-serif;
+            /* Application plein écran au doigt : pas de zoom ni de défilement de la page
+               (le pincement est géré par l'application), pas de sélection de texte,
+               pas de menu ni de loupe sur appui long, pas de surbrillance au toucher. */
+            touch-action: none;
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
         canvas {
             display: block;
             touch-action: none;
+            cursor: grab;
+        }
+        canvas.glisse {
+            cursor: grabbing;
         }
 
         /* Styles communs pour les contrôles */
@@ -42,6 +58,14 @@
             font-size: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
+            /* Cible confortable pour un doigt (au moins 44 px). */
+            min-height: 48px;
+            touch-action: manipulation;
+        }
+
+        button:focus-visible, select:focus-visible, summary:focus-visible {
+            outline: 3px solid #ffd54a;
+            outline-offset: 2px;
         }
 
         button:hover {
@@ -69,22 +93,87 @@
         /* Grille responsive pour les checkboxes */
         .trace-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 10px;
-            padding: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 4px 10px;
+            padding: 4px 10px;
         }
 
+        /* Chaque case à cocher se coche en touchant toute la ligne (44 px de haut). */
         .trace-item {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
+            min-height: 44px;
+            cursor: pointer;
+        }
+
+        .trace-item input {
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            flex: none;
+            accent-color: #ffd54a;
+        }
+
+        /* Boutons du temps sur une seule ligne, chacun à moitié de la largeur. */
+        #timeControls button {
+            flex: 1;
+            white-space: nowrap;
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        /* Panneau Options : largeur limitée, défilement interne s'il ne tient pas en hauteur. */
+        #optionsControls[open] {
+            width: min(560px, calc(100vw - 50px));
+            box-sizing: border-box;
+        }
+
+        .options-contenu {
+            margin-top: 10px;
+            max-height: calc(100vh - 290px);
+            min-height: 120px;
+            overflow-y: auto;
+            touch-action: pan-y;
+            overscroll-behavior: contain;
+        }
+
+        .options-boutons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        details.aide {
+            background: transparent;
+            margin: 6px 0 0;
+        }
+
+        details.aide summary {
+            padding: 0 4px;
+            min-height: 44px;
+            line-height: 44px;
+            font-size: 16px;
+            touch-action: manipulation;
+        }
+
+        .aide-gestes {
+            margin: 8px 0 0;
+            padding-left: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #ddd;
         }
 
         /* Media queries pour le responsive */
         @media (max-width: 768px) {
-            button, select, label {
+            button, select {
                 font-size: 14px;
                 padding: 8px 16px;
+            }
+            label {
+                font-size: 14px;
             }
             
             .control-panel {
@@ -101,9 +190,13 @@
         }
 
         /* Réduction du bouton Options */
-        #optionsControls summary {
+        #optionsControls > summary {
             padding: 6px 12px !important;
             font-size: 21px !important;
+            min-height: 48px;
+            box-sizing: border-box;
+            line-height: 34px;
+            touch-action: manipulation;
             cursor: pointer;
             display: inline-block;
             width: auto;
@@ -113,7 +206,7 @@
         }
 
         /* Masquer le marqueur par défaut du summary */
-        #optionsControls summary::-webkit-details-marker {
+        #optionsControls > summary::-webkit-details-marker {
             display: none;
         }
 
@@ -193,9 +286,11 @@
 </head>
 <body>
     <!-- Menu principal -->
-    <div id="menu" class="control-panel" style="position: absolute; top: 10px; left: 10px; z-index: 100; max-width: 250px;">
+    <div id="menu" class="control-panel" style="position: absolute; top: 10px; left: 10px; z-index: 100; width: 250px; max-width: calc(100vw - 50px);">
         <label for="planetSelect">🎯 Centrer sur :</label>
         <select id="planetSelect">
+            <!-- Affiché quand la vue a été déplacée au doigt ou à la souris -->
+            <option value="libre" disabled hidden>🖐️ Vue libre</option>
             <option value="soleil">☀️ Soleil</option>
             <option value="Mercure">💫 Mercure</option>
             <option value="Vénus">🌟 Vénus</option>
@@ -231,11 +326,11 @@
     <div id="bottomControls" style="position: fixed; bottom: 10px; left: 10px; z-index: 1000;">
         <details id="optionsControls" class="control-panel">
             <summary>⚙️ Options</summary>
-            <div style="margin-top: 10px;">
+            <div class="options-contenu">
                 <!-- Section Masquage -->
                 <div>
                     <h3 style="margin: 0 0 5px 0; font-size: 16px;">🎭 Masquage</h3>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div class="options-boutons">
                         <button id="toggleFullscreen">⛶ Plein écran</button>
                         <button id="toggleOrbits">🌠 Orbites</button>
                         <button id="toggleNames">📝 Noms</button>
@@ -259,33 +354,30 @@
                         <label class="trace-item"><input type="checkbox" id="tracePluton">✨ Pluton</label>
                     </div>
                 </div>
+                <!-- Section Commandes (repliée pour ne pas masquer le système) -->
+                <details class="aide">
+                    <summary>👆 Commandes</summary>
+                    <ul class="aide-gestes">
+                        <li>Glisser (doigt ou souris) : déplacer la vue.</li>
+                        <li>Pincer à deux doigts ou molette : zoomer.</li>
+                        <li>Toucher ou cliquer un astre : le suivre au centre.</li>
+                        <li>Toucher deux fois le fond ou choisir « Soleil » : revoir tout le système.</li>
+                    </ul>
+                </details>
             </div>
         </details>
     </div>
 
-    <!-- Script de zoom -->
+    <!-- Plein écran -->
     <script>
-        let initialDistance = 0;
-        let currentScale = 1;
-        const zoomCanvas = document.getElementById('canvas');
-
-        function getDistance(touch1, touch2) {
-            const dx = touch1.clientX - touch2.clientX;
-            const dy = touch1.clientY - touch2.clientY;
-            return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        function updateZoom(scale) {
-            const ctx = zoomCanvas.getContext('2d');
-            ctx.setTransform(scale, 0, 0, scale, 0, 0);
-        }
-
         // Bouton pour le plein écran, spécialement utile sur mobile/tablette
         document.getElementById('toggleFullscreen').addEventListener('click', function() {
             const docElm = document.documentElement;
-            if (!document.fullscreenElement) {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                 if (docElm.requestFullscreen) {
-                    docElm.requestFullscreen();
+                    // Refus possible (iframe sans autorisation) : on l'ignore sans erreur.
+                    const demande = docElm.requestFullscreen();
+                    if (demande && demande.catch) demande.catch(() => {});
                 } else if (docElm.mozRequestFullScreen) { /* Firefox */
                     docElm.mozRequestFullScreen();
                 } else if (docElm.webkitRequestFullscreen) { /* Chrome, Safari, Opera */
@@ -310,8 +402,11 @@
     <!-- Masquer le bouton plein écran si en mode natif Capacitor -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
+        // Masquer aussi le bouton quand le plein écran est impossible
+        // (iPhone, iframe sans autorisation « fullscreen »).
+        const pleinEcranPossible = document.fullscreenEnabled || document.webkitFullscreenEnabled;
         // Vérifier si l'objet Capacitor existe et si la plateforme est native
-        if (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+        if (!pleinEcranPossible || (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform())) {
           const fullscreenButton = document.getElementById('toggleFullscreen');
           if (fullscreenButton) {
             fullscreenButton.style.display = 'none'; 
