@@ -20,39 +20,42 @@ L'application vous permet désormais de :
 
 ## 🎓 Pour la classe (collège, 6e–5e)
 
-L'application accompagne la démarche des chapitres « Vitesse et mouvement » (6e) et « Mouvement et vitesse » (5e) : décrire une trajectoire (rectiligne, circulaire, curviligne), reconnaître un mouvement uniforme, accéléré ou ralenti, utiliser v = d / t.
+L'application accompagne la démarche des chapitres « Vitesse et mouvement » (6e) et « Mouvement et vitesse » (5e) : décrire une trajectoire (rectiligne, circulaire, curviligne), reconnaître un mouvement uniforme, accéléré ou ralenti, utiliser v = d / Δt. Elle montre des mesures ; elle ne conclut jamais à la place de l'élève.
 
-- **Guide de l'activité** (bouton **« 📋 Guide »**, ouvert au départ, repliable) : cinq étapes touchables — 1 Vidéo (et référentiel), 2 Étalonner (et pourquoi), 3 Pointer, 4 Observer la chronophotographie, 5 Conclure. L'étape affichée suit ce que fait l'élève (mode choisi, nombre de points, graphique affiché). Le texte a une hauteur fixe : l'image ne bouge pas sous le doigt.
-- **« 1 image sur … »** (menu *Chaque image / 1 image sur 2 / 1 image sur 5*) : après chaque point, la vidéo avance de 1, 2 ou 5 images. Pour un mouvement lent (« TableHorizRectiligneUniforme »), « 1 image sur 5 » donne des écarts d'environ 6,6 cm au lieu de 1,3 cm : l'imprécision du pointage (1 à 2 px) pèse beaucoup moins, la chronophotographie est plus lisible et il y a moins de points à placer.
-- **Points numérotés** (1, 2, 3…) sur l'image, comme sur une chronophotographie (un numéro est omis s'il chevauche le précédent).
-- **Graphiques** (menu « 📈 Graphiques ») : titres, axes et unités en français, virgule décimale.
-  - *Trajectoire (positions successives)* : même échelle sur les deux axes (un cercle reste un cercle, utile pour « disque33t »).
-  - *Écart entre deux positions (d)* : une barre par intervalle (« 1→2 », « 2→3 »…), axe partant de 0, ligne de la moyenne. Barres de même hauteur → vitesse constante → uniforme ; de plus en plus hautes → accéléré ; de plus en plus basses → ralenti.
-  - *Vitesse sur chaque intervalle (v = d / t)* : en m/s, avec la moyenne convertie en km/h (× 3,6).
-  - *Position x / y au cours du temps* ; les graphiques de lycée (v(t) centrée, vx, vy, a(t)) restent dans un groupe « Pour aller plus loin (lycée) ».
-  - Sous le graphique, un **résumé** : nombre d'écarts, plus petit, plus grand, moyenne, durée entre deux points. L'application ne conclut pas à la place de l'élève : elle affiche les mesures et rappelle que de petites différences viennent du pointage. Si les durées entre points ne sont pas toutes égales, elle conseille de comparer les vitesses.
-- **Sans étalonnage**, tout est en **pixels** (px, px/s) et c'est écrit : barre d'information « Pas d'étalonnage : mesures en pixels », axes en px, avertissement sous le graphique. Comparer les écarts reste possible ; une vitesse en m/s demande l'étalonnage. Changer de vidéo efface l'étalonnage (l'échelle dépend de la vidéo) et l'application le signale.
-- **Enregistrer les mesures (tableur)** (mode Graphiques) : fichier CSV pour LibreOffice Calc ou un autre tableur — séparateur `;`, virgule décimale, UTF-8, une ligne par point : mobile, n° du point, t (s), x, y, d depuis le point précédent, durée, v = d / t. Une première ligne rappelle la vidéo et l'échelle. Le fichier est fabriqué dans le navigateur et enregistré sur l'appareil : **rien n'est envoyé**.
-- Messages au **tutoiement**, comme les consignes du site ; vocabulaire du cours (référentiel, trajectoire, chronophotographie, uniforme, accéléré, ralenti, v = d / t).
+- **Trois étapes** dans le menu « Étape » : 🎯 Pointer, 📏 Étalonner, 📈 Graphiques. Passer d'une étape à l'autre ne perd rien : les points et l'étalonnage restent, et le pointage reprend à l'image qui suit le dernier point. Seuls un changement de vidéo ou du nombre de mobiles effacent les points, après une confirmation dans l'app (« Garder mon travail » rétablit le menu).
+- **Vidéos** : titres en français (ce qu'on voit, sans la conclusion), rangés par rubriques, « Pour commencer » en tête (mobile sur une table, balle lâchée, platine de disque). Le catalogue est dans `videos.js` (titre, rubrique, fréquence, étalon).
+- **Guide de l'activité** (bouton « 📋 Guide ») : cinq étapes touchables — 1 Vidéo, 2 Étalonner, 3 Pointer, 4 Observer, 5 Conclure. Toucher une étape y conduit (2 → Étalonner, 3 → Pointer, 4 → trajectoire, 5 → écarts). L'étape affichée suit ce que fait l'élève. Sur un écran étroit, le guide se replie au premier point et pendant l'étalonnage ; le bouton le rouvre.
+- **Une consigne d'action** bien visible (adaptée au doigt, à la souris ou au clavier) et, dessous, une **ligne d'état** : image, instant t (compté depuis la première image : 0,000 s), nombre de points, échelle.
+- **« Images pointées »** (toutes / 1 sur 2 / 1 sur 5) : après chaque point, la vidéo avance de 1, 2 ou 5 images. Pour un mouvement lent (le mobile sur la table), « 1 sur 5 » donne des écarts d'environ 6,7 cm au lieu de 1,3 cm : l'imprécision du pointage pèse beaucoup moins. À la fin de la vidéo, l'app le dit et propose « Voir les graphiques » : elle ne crée jamais de dernier intervalle plus court que les autres.
+- **Points numérotés** (1, 2, 3…) comme sur une chronophotographie. Chaque mobile a sa couleur (palette Okabe-Ito, lisible par les daltoniens) **et sa forme** : × orange foncé, + bleu, ○ vert, □ jaune orangé, sur l'image comme dans les graphiques. Croix de 12 px et numéros de 14 px quelle que soit la taille de l'image, cernés de noir pour rester lisibles sur une vidéo claire ou sombre.
+- **Corriger** : « ↶ Annuler » (ou Ctrl+Z, Retour arrière, Ctrl+clic) annule la dernière action et revient à son image. Pointer une image déjà pointée **remplace** son point (on corrige le point 3 sans annuler les suivants) ; pointer une image plus ancienne non pointée **insère** le point à sa place. Un double-clic ne crée qu'un point. Un clic pendant la lecture met d'abord la vidéo en pause sur une image entière.
+- **Étalonnage** : pointer les deux bouts d'un objet de longueur connue (loupe au doigt et à la souris ; les deux bouts se déplacent ensuite en les faisant glisser), puis écrire la longueur : « 80 cm », « 0,8 », « 0.8 m », « 800 mm » sont acceptés et la conversion s'affiche (« = 0,80 m »). Une saisie incomprise est signalée et le reste. « Recommencer » efface les deux bouts ; « Passer au pointage → » apparaît une fois l'échelle validée. Rouvrir l'étalonnage montre l'échelle actuelle. Quand la vidéo montre une longueur connue (écrite dans l'image), la consigne d'étalonnage la rappelle (champ `etalon` de `videos.js`).
+- **Un seul repère** : les pixels natifs de la vidéo (ou de la webcam), origine au coin bas-gauche de l'image, axe y vers le haut. Points et étalonnage y sont enregistrés ; les mètres sont calculés à la lecture avec l'échelle courante. Conséquence : étalonner après avoir pointé fonctionne, et un nouvel étalonnage s'applique à tous les points. Rien ne dépend de la taille d'affichage.
+- **Graphiques** (étape « 📈 Graphiques ») : titres, aides de lecture (en texte qui se replie sur un écran étroit), axes et unités en français, virgule décimale, graduations rondes.
+  - *Trajectoire (positions successives)* : même échelle sur les deux axes (un cercle reste un cercle, utile pour la platine de disque).
+  - *Écart entre deux positions (d)* : une barre par intervalle (« 1→2 », « 2→3 »…), axe partant de 0, ligne de la moyenne.
+  - *Vitesse sur chaque intervalle (v = d / Δt)* : en m/s, avec la moyenne convertie en km/h (× 3,6).
+  - *Position x / y au cours du temps* (l'instant t est compté depuis le premier point) ; les graphiques de lycée (v(t) centrée, vx, vy, a(t)) restent dans un groupe « Pour aller plus loin (lycée) ».
+  - Sous le graphique, un **résumé** : nombre d'écarts, plus petit, plus grand, moyenne, durée Δt entre deux points. Si les durées ne sont pas toutes égales, l'app conseille de comparer les vitesses.
+- **Sans étalonnage**, tout est en **pixels vidéo** (px, px/s) et c'est écrit (ligne d'état, axes, message sous le graphique), sans alarme.
+- **Enregistrer les mesures (tableur)** (étape Graphiques) : fichier CSV pour LibreOffice Calc — séparateur `;`, virgule décimale, UTF-8 avec BOM, fins de ligne CRLF, une ligne par point. Le fichier est fabriqué dans le navigateur et enregistré sur l'appareil : **rien n'est envoyé**.
+- Messages au **tutoiement** ; vocabulaire du cours (référentiel, trajectoire, chronophotographie, uniforme, accéléré, ralenti, instant t, durée Δt, v = d / Δt).
 
-Cas vérifié (Chrome sans écran, tactile émulé) : « TableHorizRectiligneUniforme » étalonnée sur 8 intervalles numérotés de la règle (0,80 m ; numéros tous les 10 cm, déduits du comptage des graduations car les chiffres sont illisibles à 352 × 288), 11 points « 1 image sur 5 » sur le centre du mobile : écarts de 0,062 à 0,069 m (moyenne 6,6 cm), v de 0,31 à 0,35 m/s, moyenne 0,33 m/s (1,2 km/h) ; la pente des positions mesurées image par image hors de l'application donne 0,335 m/s.
-
-**Corrections faites en même temps** : avec plusieurs mobiles, tous les mobiles sont pointés sur la **même image** avant que la vidéo avance (avant, elle avançait après chaque mobile) ; « Annuler » revient exactement à l'image du point retiré ; les images sont atteintes sur une grille fixe (début + k / fréquence) : pour les vidéos dont la première image n'est pas à 0 s (TableHorizRectiligneUniforme, Eclatement2MA, BilleFer : 0,08 à 0,12 s), le navigateur affichait parfois l'image précédente de celle enregistrée ; le numéro « Image » compte à partir de la première image réelle.
-
----
-
-## 📱 Utilisation sur tablette (et au doigt)
-
-L'application s'adapte à l'écran : l'image garde sa résolution interne de 800 × 600 px (les mesures ne changent pas), mais elle est affichée à la taille qui tient dans la fenêtre, sans défilement horizontal (tablette en paysage ou en portrait, ou cadre intégré dans une page). Elle fonctionne sans Internet et n'envoie aucune donnée.
-
-- **Pointer au doigt** : posez le doigt sur l'objet. Une **loupe** (× 3) apparaît au-dessus du doigt avec un réticule : faites glisser le doigt pour placer le réticule exactement sur l'objet, puis **relâchez** : le point est enregistré à cet endroit et la vidéo avance d'une image. Un simple toucher marche aussi (le point est pris là où le doigt s'est posé). Pour abandonner un pointage commencé, glissez le doigt hors de l'image avant de le relâcher.
-- **Annuler** : le bouton **« ↶ Annuler le dernier point »** retire le dernier point et recule d'une image (à la souris, Ctrl+clic fait toujours la même chose).
-- **Étalonnage** (mode « 📏 Étalonnage », appelé « Calibration » dans les anciennes versions) : choisissez-le, pointez les deux extrémités d'un objet de longueur connue (même loupe qu'au pointage), puis saisissez la distance réelle en mètres. Le clavier numérique s'ouvre ; la virgule est acceptée (`0,5`), l'unité « m » aussi. « Valider » ou la touche Entrée enregistre l'échelle, « Recommencer » efface les deux points.
-- **Boutons et menus** : au moins 48 px de haut, espacés. Le curseur de temps se manipule au doigt. Sur l'image, le doigt ne fait ni défiler ni zoomer la page ; un appui long n'ouvre pas de menu.
-- **Webcam** : sur tablette, la caméra arrière est choisie si elle existe (640 × 480, enregistrement limité à 20 s pour ne pas saturer la mémoire). Les navigateurs n'autorisent la caméra que sur une adresse **https://** (ou `localhost`) : sinon, un message l'explique et les vidéos de la liste restent utilisables. Si l'app est intégrée dans une page d'un autre site (iframe d'une autre origine), ce cadre doit autoriser la caméra (`allow="camera"`).
-- À la souris, rien ne change : le viseur suit la souris, le clic pointe, Ctrl+clic annule.
+Cas vérifié (Chrome sans écran, `tests/verifier-ergonomie.mjs`) : « Mobile lancé sur une table horizontale », étalonnage 0,80 m sur 266 px vidéo, 10 points « 1 sur 5 » : d = 0,0671 m, Δt = 0,200 s, v = 0,336 m/s sur chaque intervalle, exactement comme l'ancienne version (avant la refonte, commit `fc875fe`) pour le même pointage. Les positions x en mètres diffèrent de l'ancienne version d'une constante (l'origine est désormais le bord gauche de l'image vidéo, et non celui du cadre 800 × 600 qui avait des bandes noires) ; y, d, Δt et v sont identiques. Les valeurs en pixels sont désormais des pixels vidéo (1 px = 3,01 mm sur cette vidéo, au lieu de 1,44 mm pour un pixel du cadre 800 × 600).
 
 ---
+
+## 📱 Écran, tablette, doigt, clavier
+
+L'image **remplit la place disponible** : plus grand rectangle aux proportions de la vidéo (pas de bandes noires, pas de plafond de taille), mise en page sur toute la fenêtre ou le cadre qui contient l'app, sans défilement. En paysage assez large (au moins 900 px et plus large que haut), commandes, consignes et guide sont dans un **panneau latéral** et la vidéo prend toute la hauteur ; en portrait ou sur écran étroit, les barres sont compactes. Mesuré dans Chrome sans écran : l'image occupe 45 % d'un écran 360 × 640, 60 % d'un 768 × 1024, 58 % d'un 1024 × 768, 61 % d'un 1366 × 768, 63 % d'un 1920 × 1080 (vidéo de départ). Le canevas est net sur les écrans haute densité (mémoire = taille affichée × densité, plafonnée à 2 et à 6 millions de pixels).
+
+- **Pointer au doigt** : pose le doigt sur l'objet. Une **loupe** (× 3 par rapport à l'affichage, toujours entièrement visible) apparaît au-dessus du doigt avec un réticule : fais glisser pour placer le réticule, puis **relâche**. Pour abandonner, glisse hors de l'image avant de relâcher. Si l'écran tourne ou change de taille pendant que le doigt est posé, le geste est annulé (court message) et rien n'est enregistré.
+- **Souris** : le viseur suit la souris ; clic = pointer ; Ctrl+clic = annuler ; loupe pendant l'étalonnage.
+- **Clavier** : quand l'image a le focus (Tab, cadre jaune), les flèches déplacent le réticule d'un pixel vidéo (Maj : 10), Entrée pointe, Retour arrière annule. Ailleurs (hors champs de saisie) : ← → image précédente / suivante, Espace lecture / pause, Début revenir au début, Ctrl+Z ou Retour arrière annuler. Les boutons rappellent ces touches dans leur info-bulle.
+- **Curseur de temps** : une position par image, poignée de 44 px.
+- **Accessibilité** : image avec `role="img"` et une description tenue à jour, annonce discrète de chaque point pour les lecteurs d'écran, focus visible, contrastes d'au moins 4,5:1 sur les barres.
+- **Webcam** : proposée dans le menu des vidéos seulement si le navigateur peut ouvrir la caméra (adresse https:// ou localhost). Sur tablette, la caméra arrière est choisie si elle existe (640 × 480, enregistrement limité à 20 s). Si l'app est intégrée dans une page d'un autre site, ce cadre doit autoriser la caméra (`allow="camera"`).
+- Fonctionne sans Internet et n'envoie aucune donnée.
 
 ## 🎥 Support de la Webcam
 
@@ -66,21 +69,29 @@ Les vidéos enregistrées peuvent ensuite être lues, mises en pause, avancées 
 
 *MANY THANKS TO* : [Webetab](https://webetab.ac-bordeaux.fr/Pedagogie/Physique/site/labo/tice/c_video_tice.htm)
 
-- **'videos/MasseRoule.mp4'** ⚽ : Une vidéo montrant une masse qui roule.
-- **'videos/PenduleSimpleAmorti_38cm1.mp4'** ⏱️ : Une vidéo d'un pendule simple amorti.
-- **'videos/RessortVertical_Masse24g30.mp4'** 🌀 : Une vidéo d'un ressort vertical avec une masse de 24g.
-- **'videos/bille1-iv5.mp4'** ⚫ : Une vidéo d'une bille en mouvement.
-- **'videos/bille2-iv5.mp4'** ⚫ : Une autre vidéo d'une bille en mouvement.
-- **'videos/bille3-iv5.mp4'** ⚫ : Une troisième vidéo d'une bille en mouvement.
-- **'videos/billegrosse.mp4'** 🎞️ : Une vidéo d'une grosse bille.
-- **'videos/billepetite.mp4'** 🎞️ : Une vidéo d'une petite bille.
-- **'videos/BilleFer_Eau25C_2g055_7mm93.mp4'** 🎞️ : Une vidéo d'une bille en fer dans l'eau (25°C).
-- **'videos/moto-relatif.mp4'** 🏍️ : Une vidéo d'une moto pour étudier le mouvement relatif.
-- **'videos/vague2cm5.mp4'** 🌊 : Une vidéo d'une vague de 2,5 cm.
-- **'videos/vague3.mp4'** 🌊 : Une vidéo d'une vague de 3 cm.
-- **'videos/vague3cm0.mp4'** 🌊 : Une autre vidéo d'une vague de 3 cm.
-- **'videos/Eclatement2MA.mp4'** 💥 : Une vidéo d'un éclatement.
-- *etc...* 
+Le catalogue (titre affiché, rubrique, fréquence, étalon) est dans **`videos.js`**. Étalon = longueur connue écrite dans la vidéo elle-même (ou donnée dans ce README) ; il n'est jamais inventé.
+
+| Fichier | Titre affiché | Étalon |
+|---|---|---|
+| TableHorizRectiligneUniforme_631g7.mp4 | Mobile lancé sur une table horizontale (coussin d'air) | règle jaune : numéros tous les 10 cm (déduit du comptage des graduations, chiffres illisibles — à confirmer) |
+| chute.mp4 | Balle lâchée devant un mur | tige verticale 1,85 m (écrit) |
+| disque33t.mp4 | Platine de disque à 33 tours par minute | rayons 7,5 cm et 12 cm (écrits) |
+| parabolique.mp4 | Balle lancée devant un mur | tige 1,85 m (écrit) |
+| moto-relatif.mp4 | Balle lâchée par un motard qui roule | trait de 0,6 m (écrit) |
+| billegrosse.mp4 / billepetite.mp4 | Grosse (2 cm) / petite (1 cm) bille qui tombe dans l'eau | trait de 20 cm (écrit) |
+| bille1-iv5.mp4, bille2-iv5.mp4, bille3-iv5.mp4 | Bille de 16,7 g / 28,0 g / 43,4 g qui tombe dans un liquide | 0,50 m entre les repères (écrit) |
+| BilleFer_Eau25C_2g055_7mm93.mp4 | Bille de fer qui tombe dans une éprouvette d'eau | — (règle visible, chiffres illisibles) |
+| disque45t.mp4 | Platine de disque à 45 tours par minute | rayons 7,5 cm et 12 cm (écrits) |
+| PenduleSimpleAmorti_38cm1.mp4 | Pendule qui oscille | — (règle visible, chiffres illisibles) |
+| RessortVertical_Masse24g30.mp4 | Masse accrochée à un ressort vertical | — (règle visible, chiffres illisibles) |
+| TableHorizChocPresqueElastique_R631g7_B749g2.mp4 | Deux mobiles qui se heurtent | — (règle visible, chiffres illisibles) |
+| Eclatement2MA.mp4 | Deux mobiles attachés qui se séparent | — |
+| MasseRoule.mp4 | Cylindre qui roule sur un rail | — |
+| vague2cm5.mp4 / vague3cm0.mp4 | Vague dans un canal (2,5 / 3,0 cm d'eau) | 1 m entre les flèches (écrit) |
+| vague3.mp4 | Vague dans un aquarium | trait rouge de 1 m (écrit) |
+| VenusTerreMars.mp4 | Vénus, la Terre et Mars autour du Soleil (animation) | — |
+
+`parabole.mp4` (balle devant un mur gris, trait de 1 m) est dans le dossier mais n'est pas proposée dans le menu.
 
 ---
 
@@ -116,7 +127,10 @@ Cette licence vous offre la liberté de partager et de modifier le logiciel.
   Le bouton d'enregistrement clignote pendant l'enregistrement pour indiquer l'activité, et vous pouvez arrêter l'enregistrement en cliquant à nouveau.
 
 - **interface.js** :  
-  Adaptation aux tablettes : mise à l'échelle du canevas selon la taille de la fenêtre, pointage tactile avec loupe (le point est validé au relâchement du doigt), boutons et curseur de temps adaptés au doigt.
+  Taille d'affichage (plus grand rectangle aux proportions de la vidéo dans la zone libre, mesurée par ResizeObserver), conversions écran ↔ pixels vidéo, pointage au doigt avec loupe, à la souris et au clavier, raccourcis, boutons et curseur de temps.
+
+- **videos.js** :  
+  Catalogue des vidéos : titre, rubrique, fréquence, étalon.
 
 - **Visor (visor.js)** :  
   Gère l'affichage d'un viseur (curseur) sur le canvas, permettant de suivre la position de la souris et d'indiquer les points tapés.
@@ -125,7 +139,10 @@ Cette licence vous offre la liberté de partager et de modifier le logiciel.
   Regroupe l'initialisation de l'application, la création des menus déroulants (avec émoticônes pour une meilleure lisibilité 😍), et la gestion des différents modes (Vidéo, Webcam, Graphique).
 
 - **Graph & Data (graph.js, data.js)** :  
-  Ces fichiers gèrent respectivement l'affichage graphique et la gestion des données associées aux points que vous pouvez ajouter sur la vidéo ou la webcam. Chaque point garde sa position en pixels et sait s'il a été pointé après un étalonnage (mètres) ou non (pixels) ; `getIntervalles()` donne d, t et v = d / t pour chaque intervalle.
+  Ces fichiers gèrent respectivement l'affichage graphique et les points. Chaque point est rattaché à son numéro d'image et garde sa position en pixels vidéo ; les mètres sont calculés avec l'échelle courante ; `getIntervalles()` donne d, Δt et v = d / Δt pour chaque intervalle.
+
+- **tests/** :  
+  `verifier-ergonomie.mjs` (Chrome sans écran, sans dépendance npm) vérifie tailles d'écran, parcours complet, exactitude du pointage, rotation, saisie des longueurs, clavier, webcam simulée, console et requêtes. Pas nécessaire au fonctionnement de l'app.
 
 - **guide.js** :  
   Guide de l'activité en 5 étapes (repliable), qui suit l'état de l'application.

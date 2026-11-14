@@ -1,122 +1,166 @@
 // graph.js — graphiques et lecture des mesures (Chart.js)
 //
 // Pensé pour le collège : titres et axes en français avec unités, virgule décimale,
-// graphiques en barres pour lire la chronophotographie (écart entre deux positions,
-// vitesse v = d / t sur chaque intervalle), trajectoire à la même échelle sur les deux
-// axes (un cercle reste un cercle). Les graphiques « lycée » restent disponibles.
+// graduations rondes, graphiques en barres pour lire la chronophotographie (écart entre deux
+// positions, vitesse v = d / Δt sur chaque intervalle), trajectoire à la même échelle sur les
+// deux axes (un cercle reste un cercle). Chaque mobile a sa couleur ET sa forme (× + ○ □).
 // Sans étalonnage, les valeurs sont en pixels : les axes l'indiquent et un message le dit.
 
-// Types de graphiques (valeur, libellé du menu, groupe)
+const GROUPE_LYCEE = 'Pour aller plus loin (lycée)';
 const TYPES_GRAPHIQUES = [
     { valeur: 'y(x)', libelle: 'Trajectoire (positions successives)' },
     { valeur: 'ecarts', libelle: 'Écart entre deux positions (d)' },
-    { valeur: 'vitesse', libelle: 'Vitesse sur chaque intervalle (v = d / t)' },
+    { valeur: 'vitesse', libelle: 'Vitesse sur chaque intervalle (v = d / Δt)' },
     { valeur: 'x(t)', libelle: 'Position x au cours du temps' },
     { valeur: 'y(t)', libelle: 'Position y au cours du temps' },
-    { valeur: 'v(t)', libelle: 'Vitesse v(t), méthode centrée', groupe: 'Pour aller plus loin (lycée)' },
-    { valeur: 'vx(t)', libelle: 'Vitesse horizontale vx(t)', groupe: 'Pour aller plus loin (lycée)' },
-    { valeur: 'vy(t)', libelle: 'Vitesse verticale vy(t)', groupe: 'Pour aller plus loin (lycée)' },
-    { valeur: 'a(t)', libelle: 'Accélération a(t)', groupe: 'Pour aller plus loin (lycée)' }
+    { valeur: 'v(t)', libelle: 'Vitesse v(t), méthode centrée', groupe: GROUPE_LYCEE },
+    { valeur: 'vx(t)', libelle: 'Vitesse horizontale vx(t)', groupe: GROUPE_LYCEE },
+    { valeur: 'vy(t)', libelle: 'Vitesse verticale vy(t)', groupe: GROUPE_LYCEE },
+    { valeur: 'a(t)', libelle: 'Accélération a(t)', groupe: GROUPE_LYCEE }
 ];
 
+// Lisible au vidéoprojecteur
+Chart.defaults.font.size = 15;
+Chart.defaults.color = '#1f2933';
+
+// Pas de graduation « rond » (1, 2, 2,5 ou 5 × 10ⁿ) pour environ n intervalles
+function pasRond(etendue, n = 6) {
+    if (!(etendue > 0)) return 1;
+    const brut = etendue / n;
+    const p = Math.pow(10, Math.floor(Math.log10(brut)));
+    const m = brut / p;
+    const k = m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10;
+    return k * p;
+}
+
+// Nombre de décimales nécessaires pour écrire les multiples d'un pas
+function decimalesPas(pas) {
+    for (let d = 0; d < 9; d++) {
+        const x = pas * Math.pow(10, d);
+        if (Math.abs(x - Math.round(x)) < 1e-6 * Math.max(1, x)) return d;
+    }
+    return 9;
+}
+
+// Bornes rondes contenant [min, max] (zéro inclus si demandé)
+function bornesRondes(min, max, inclureZero) {
+    if (inclureZero) { min = Math.min(0, min); max = Math.max(0, max); }
+    if (!isFinite(min) || !isFinite(max)) { min = 0; max = 1; }
+    if (max - min < 1e-12) {
+        const e = Math.abs(max) * 0.1 || 1;
+        min -= e; max += e;
+        if (inclureZero) { min = Math.min(0, min); max = Math.max(0, max); }
+    }
+    const pas = pasRond(max - min);
+    return { min: Math.floor(min / pas + 1e-9) * pas, max: Math.ceil(max / pas - 1e-9) * pas, pas: pas };
+}
+
+// Options d'un axe linéaire à graduations rondes, écrites à la française
+function axeRond(b, titre) {
+    const dec = decimalesPas(b.pas);
+    return {
+        type: 'linear',
+        min: b.min,
+        max: b.max,
+        ticks: { stepSize: b.pas, includeBounds: false, callback: (v) => nombreFr(v, dec) },
+        title: { display: true, text: titre }
+    };
+}
+
 class Graph {
-    constructor(data, canvas) {
+    constructor(data, canvasElt) {
         this.data = data;
-        this.ctx = canvas;
+        this.canvas = canvasElt;
         this.chart = null;
-        this.graphType = 'y(x)'; // Type de graphique par défaut
-        this.selector = null;
-        this.mobileSelector = null;
+        this.graphType = 'y(x)';
         this.averages = [];
-        this.resume = '';     // résumé des mesures affiché sous le graphique
+        this.resume = '';
+        this.creerSelecteurs();
     }
 
-    create() {
-        // Crée le sélecteur de type de graphique
-        this.createSelectors();
-
-        // Crée le graphique initial
-        this.updateChart();
-    }
-
-    createSelectors() {
-        // Sélecteur de type de graphique (avec un groupe « Pour aller plus loin »)
-        this.selector = createSelect();
-        this.selector.parent('menu');
-        this.selector.class('menu-graphique');
-        this.selector.attribute('aria-label', 'Graphique à afficher');
+    // Sélecteurs du graphique et du mobile, créés une fois dans #choix-graphique
+    creerSelecteurs() {
+        const zone = document.getElementById('choix-graphique');
+        const champ = (legende, select) => {
+            const l = document.createElement('label');
+            l.className = 'champ';
+            const s = document.createElement('span');
+            s.className = 'legende';
+            s.textContent = legende;
+            l.appendChild(s);
+            l.appendChild(select);
+            zone.appendChild(l);
+            return l;
+        };
+        this.selector = document.createElement('select');
+        this.selector.id = 'choix-type-graphique';
         let groupes = {};
         TYPES_GRAPHIQUES.forEach(t => {
-            let option = document.createElement('option');
+            const option = document.createElement('option');
             option.value = t.valeur;
             option.textContent = t.libelle;
             if (t.groupe) {
                 if (!groupes[t.groupe]) {
                     groupes[t.groupe] = document.createElement('optgroup');
                     groupes[t.groupe].label = t.groupe;
-                    this.selector.elt.appendChild(groupes[t.groupe]);
+                    this.selector.appendChild(groupes[t.groupe]);
                 }
                 groupes[t.groupe].appendChild(option);
             } else {
-                this.selector.elt.appendChild(option);
+                this.selector.appendChild(option);
             }
         });
-        this.selector.elt.value = this.graphType;
-        this.selector.changed(() => {
-            this.graphType = this.selector.value();
+        this.selector.value = this.graphType;
+        champ('Graphique', this.selector);
+        this.selector.addEventListener('change', () => {
+            this.graphType = this.selector.value;
             this.updateChart();
             if (typeof majGuide === 'function') majGuide();
         });
 
-        // Sélecteur de mobile (affiché seulement s'il y a plusieurs mobiles)
-        this.mobileSelector = createSelect();
-        this.mobileSelector.parent('menu');
-        this.mobileSelector.class('menu-etroit');
-        this.mobileSelector.attribute('aria-label', 'Mobile à afficher');
-        this.updateMobileSelector();
-        this.mobileSelector.changed(() => {
-            this.updateChart();
-        });
+        this.mobileSelector = document.createElement('select');
+        this.mobileSelector.id = 'choix-mobile-graphique';
+        this.champMobile = champ('Mobile', this.mobileSelector);
+        this.mobileSelector.addEventListener('change', () => this.updateChart());
+    }
+
+    choisirType(type) {
+        this.graphType = type;
+        this.selector.value = type;
     }
 
     updateMobileSelector() {
-        let valeur = this.mobileSelector.value();
-        // Vide le sélecteur
-        this.mobileSelector.elt.innerHTML = '';
-
-        if (this.data.numMobiles === 1) {
-            this.mobileSelector.option('Mobile 1', 0);
-            this.mobileSelector.style('display', 'none');
-        } else {
-            this.mobileSelector.option('Tous les mobiles', -1);
-            for (let i = 0; i < this.data.numMobiles; i++) {
-                this.mobileSelector.option('Mobile ' + (i + 1), i);
-            }
-            this.mobileSelector.style('display', '');
-            if (valeur !== '' && valeur !== null && [...this.mobileSelector.elt.options].some(o => o.value === valeur)) {
-                this.mobileSelector.elt.value = valeur;
-            }
+        const valeur = this.mobileSelector.value;
+        const options = this.data.numMobiles === 1 ? [['0', 'Mobile 1']]
+            : [['-1', 'Tous les mobiles']].concat([...Array(this.data.numMobiles).keys()].map(i => [String(i), 'Mobile ' + (i + 1) + ' ' + this.data.getColor(i).symbole]));
+        const signature = options.map(o => o.join(':')).join('|');
+        if (this._signatureMobiles !== signature) {
+            this._signatureMobiles = signature;
+            this.mobileSelector.innerHTML = '';
+            options.forEach(([v, t]) => {
+                const o = document.createElement('option');
+                o.value = v;
+                o.textContent = t;
+                this.mobileSelector.appendChild(o);
+            });
+            if (options.some(o => o[0] === valeur)) this.mobileSelector.value = valeur;
         }
+        this.champMobile.hidden = this.data.numMobiles === 1;
     }
 
-    // Mobiles à afficher (tous, ou celui choisi)
     mobilesAffiches() {
-        let selectedMobile = parseInt(this.mobileSelector.value());
-        if (isNaN(selectedMobile)) selectedMobile = 0;
-        return selectedMobile === -1 ? [...Array(this.data.numMobiles).keys()] : [selectedMobile];
+        let m = parseInt(this.mobileSelector.value, 10);
+        if (isNaN(m) || m >= this.data.numMobiles) m = this.data.numMobiles > 1 ? -1 : 0;
+        return m === -1 ? [...Array(this.data.numMobiles).keys()] : [m];
     }
 
-    // Unité commune des mobiles affichés : 'm' seulement si tous sont étalonnés
-    uniteAffichee(mobiles) {
-        let avecPoints = mobiles.filter(m => this.data.getPointCount(m) > 0);
-        return avecPoints.length > 0 && avecPoints.every(m => this.data.getUnite(m) === 'm') ? 'm' : 'px';
-    }
+    uniteAffichee() { return this.data.getUnite(); }
 
     getGraphTitle() {
         switch (this.graphType) {
             case 'y(x)': return 'Trajectoire : positions successives du mobile';
             case 'ecarts': return 'Écart entre deux positions successives';
-            case 'vitesse': return 'Vitesse sur chaque intervalle : v = d / t';
+            case 'vitesse': return 'Vitesse sur chaque intervalle : v = d / Δt';
             case 'x(t)': return 'Position horizontale x au cours du temps';
             case 'y(t)': return 'Position verticale y au cours du temps';
             case 'v(t)': return 'Vitesse v au cours du temps (méthode centrée)';
@@ -127,20 +171,20 @@ class Graph {
         }
     }
 
-    // Aide à la lecture, affichée sous le titre
+    // Aide à la lecture (sous le titre, en HTML : elle se replie sur un écran étroit)
     getSousTitre() {
         switch (this.graphType) {
-            case 'y(x)': return ['Points alignés → trajectoire rectiligne ; sur un cercle → circulaire ; sur une courbe → curviligne.',
-                'Même échelle sur les deux axes : la forme de la trajectoire n’est pas déformée.'];
-            case 'ecarts': return ['Toutes les barres ont presque la même hauteur → vitesse constante → mouvement uniforme.',
-                'De plus en plus hautes → accéléré ; de plus en plus basses → ralenti. De petites différences viennent du pointage.'];
-            case 'vitesse': return ['d = distance entre deux points, t = durée entre ces deux points.',
-                'Même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.'];
-            default: return [];
+            case 'y(x)': return 'Points alignés → trajectoire rectiligne ; sur un cercle → circulaire ; sur une courbe → curviligne. ' +
+                'Même échelle sur les deux axes : la forme n’est pas déformée.';
+            case 'ecarts': return 'Barres presque de même hauteur → vitesse constante → mouvement uniforme ; de plus en plus hautes → accéléré ; ' +
+                'de plus en plus basses → ralenti. De petites différences viennent du pointage.';
+            case 'vitesse': return 'd = distance entre deux points, Δt = durée entre ces deux points. ' +
+                'Même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.';
+            case 'x(t)': case 'y(t)': return 'L’instant t est compté depuis le premier point (t = 0).';
+            default: return '';
         }
     }
 
-    // Nombre de points nécessaires pour ce graphique
     pointsNecessaires() {
         switch (this.graphType) {
             case 'ecarts': case 'vitesse': return 2;
@@ -150,95 +194,87 @@ class Graph {
         }
     }
 
+    styleDataset(m) {
+        const c = this.data.getColor(m);
+        return {
+            borderColor: c.hex,
+            backgroundColor: c.hex,
+            pointStyle: c.chart,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            pointBorderWidth: 2,
+            pointBorderColor: c.hex,
+            pointBackgroundColor: c.chart === 'circle' || c.chart === 'rect' ? 'rgba(255,255,255,0.6)' : c.hex
+        };
+    }
+
     getChartConfig() {
-        let mobilesToShow = this.mobilesAffiches();
-        let unite = this.uniteAffichee(mobilesToShow);
-        let u = unitesMesure(unite);
+        const mobiles = this.mobilesAffiches();
+        const unite = this.uniteAffichee();
+        const u = unitesMesure(unite);
         if (this.graphType === 'ecarts' || this.graphType === 'vitesse') {
-            return this.configBarres(mobilesToShow, unite, u);
+            return this.configBarres(mobiles, unite, u);
         }
 
         let datasets = [];
-        let xLabel = '';
-        let yLabel = '';
-        let averages = []; // Stocke les moyennes d'accélération par mobile
-        let uniteT = 'temps t (s)';
+        let xLabel = 'instant t (s)', yLabel = '';
+        let averages = [];
+        // Zéro imposé seulement pour le temps et les grandeurs toujours positives
+        let zeroX = true, zeroY = false;
 
-        for (let m of mobilesToShow) {
-            let points = this.data.getPositions(m);
-            let col = this.data.getColor(m);
-            let colorStr = `rgba(${col.r}, ${col.g}, ${col.b}, 1)`;
-            let colorStrLight = `rgba(${col.r}, ${col.g}, ${col.b}, 0.3)`;
-
-            let chartData = [];
-
+        for (let m of mobiles) {
+            const points = this.data.getPositions(m);
+            let pts = [];
             switch (this.graphType) {
                 case 'y(x)':
-                    chartData = points.map(p => ({ x: p.x, y: p.y }));
+                    pts = points.map(p => ({ x: p.x, y: p.y }));
                     xLabel = 'position horizontale x (' + u.distance + ')';
                     yLabel = 'position verticale y (' + u.distance + ')';
+                    zeroX = false;
                     break;
-
                 case 'x(t)':
-                    chartData = points.map(p => ({ x: p.time, y: p.x }));
-                    xLabel = uniteT;
+                    pts = points.map(p => ({ x: p.time, y: p.x }));
                     yLabel = 'position x (' + u.distance + ')';
                     break;
-
                 case 'y(t)':
-                    chartData = points.map(p => ({ x: p.time, y: p.y }));
-                    xLabel = uniteT;
+                    pts = points.map(p => ({ x: p.time, y: p.y }));
                     yLabel = 'position y (' + u.distance + ')';
                     break;
-
                 case 'v(t)':
-                    chartData = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.v }));
-                    xLabel = uniteT;
+                    pts = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.v }));
                     yLabel = 'vitesse v (' + u.vitesse + ')';
+                    zeroY = true;
                     break;
-
                 case 'vx(t)':
-                    chartData = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.vx }));
-                    xLabel = uniteT;
+                    pts = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.vx }));
                     yLabel = 'vitesse horizontale vx (' + u.vitesse + ')';
                     break;
-
                 case 'vy(t)':
-                    chartData = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.vy }));
-                    xLabel = uniteT;
+                    pts = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.vy }));
                     yLabel = 'vitesse verticale vy (' + u.vitesse + ')';
                     break;
-
                 case 'a(t)':
-                    chartData = this.data.getAccelerations(m).map(a => ({ x: a.time, y: a.a }));
-                    xLabel = uniteT;
+                    pts = this.data.getAccelerations(m).map(a => ({ x: a.time, y: a.a }));
                     yLabel = 'accélération a (' + (unite === 'm' ? 'm/s²' : 'px/s²') + ')';
+                    zeroY = true;
                     break;
             }
-
-            datasets.push({
+            datasets.push(Object.assign({
                 label: 'Mobile ' + (m + 1),
-                data: chartData,
-                borderColor: colorStr,
-                backgroundColor: colorStrLight,
+                data: pts,
                 borderWidth: 2,
-                pointRadius: 4,
-                pointBackgroundColor: colorStr,
                 showLine: true,
                 tension: 0
-            });
+            }, this.styleDataset(m)));
 
-            // Ajout de la ligne de moyenne pour le mode accélération
-            if (this.graphType === 'a(t)' && chartData.length > 0) {
-                let avgA = chartData.reduce((sum, p) => sum + p.y, 0) / chartData.length;
-                averages.push({ mobile: m, avg: avgA });
+            // Ligne de la moyenne (accélération)
+            if (this.graphType === 'a(t)' && pts.length > 0) {
+                const moy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+                averages.push({ mobile: m, avg: moy });
                 datasets.push({
-                    label: mobilesToShow.length > 1 ? `Moyenne Mobile ${m + 1}` : 'Moyenne',
-                    data: [
-                        { x: chartData[0].x, y: avgA },
-                        { x: chartData[chartData.length - 1].x, y: avgA }
-                    ],
-                    borderColor: colorStr,
+                    label: mobiles.length > 1 ? 'Moyenne (mobile ' + (m + 1) + ')' : 'Moyenne',
+                    data: [{ x: pts[0].x, y: moy }, { x: pts[pts.length - 1].x, y: moy }],
+                    borderColor: this.data.getColor(m).hex,
                     borderDash: [8, 4],
                     borderWidth: 1.5,
                     pointRadius: 0,
@@ -248,251 +284,201 @@ class Graph {
             }
         }
 
-        // Calcule les limites des axes automatiquement
-        let allX = datasets.flatMap(d => d.data.map(p => p.x));
-        let allY = datasets.flatMap(d => d.data.map(p => p.y));
+        const xs = datasets.flatMap(d => d.data.map(p => p.x));
+        const ys = datasets.flatMap(d => d.data.map(p => p.y));
+        const bx = bornesRondes(Math.min(...xs), Math.max(...xs), zeroX);
+        const by = bornesRondes(Math.min(...ys), Math.max(...ys), zeroY);
 
-        // Inclut toujours le zéro comme référence
-        allX.push(0);
-        allY.push(0);
-
-        let xMin = Math.min(...allX);
-        let xMax = Math.max(...allX);
-        let yMin = Math.min(...allY);
-        let yMax = Math.max(...allY);
-
-        // Ajoute une marge de 10%
-        let xMargin = (xMax - xMin) * 0.1 || 0.1;
-        let yMargin = (yMax - yMin) * 0.1 || 0.1;
-
-        // Stocke les moyennes pour affichage en dehors du graphique
         this.averages = averages;
         this.resume = this.resumeCourbes(unite);
-
         return {
             type: 'scatter',
             data: { datasets: datasets },
-            options: this.optionsCommunes({
-                x: {
-                    type: 'linear',
-                    min: xMin - xMargin,
-                    max: xMax + xMargin,
-                    title: { display: true, text: xLabel, font: { size: 14 } }
-                },
-                y: {
-                    min: yMin - yMargin,
-                    max: yMax + yMargin,
-                    title: { display: true, text: yLabel, font: { size: 14 } }
-                }
-            }, this.data.numMobiles > 1 || averages.length > 0)
+            options: this.optionsCommunes({ x: axeRond(bx, xLabel), y: axeRond(by, yLabel) },
+                this.data.numMobiles > 1 || averages.length > 0)
         };
     }
 
     // Graphiques en barres : un intervalle (du point n au point n + 1) par barre
-    configBarres(mobilesToShow, unite, u) {
-        let grandeur = this.graphType === 'ecarts' ? 'd' : 'v';
-        let labels = [];
-        let datasets = [];
-        let resumes = [];
-        for (let m of mobilesToShow) {
-            let intervalles = this.data.getIntervalles(m);
-            if (intervalles.length > labels.length) {
-                labels = intervalles.map(iv => iv.de + '→' + iv.a);
-            }
-            let col = this.data.getColor(m);
-            let valeurs = intervalles.map(iv => iv[grandeur]);
+    configBarres(mobiles, unite, u) {
+        const grandeur = this.graphType === 'ecarts' ? 'd' : 'v';
+        let labels = [], datasets = [], resumes = [], max = 0;
+        for (let m of mobiles) {
+            const intervalles = this.data.getIntervalles(m);
+            if (intervalles.length > labels.length) labels = intervalles.map(iv => iv.de + '→' + iv.a);
+            const c = this.data.getColor(m);
+            const valeurs = intervalles.map(iv => iv[grandeur]);
+            valeurs.forEach(v => { if (v > max) max = v; });
             datasets.push({
                 type: 'bar',
-                label: 'Mobile ' + (m + 1),
+                label: 'Mobile ' + (m + 1) + ' ' + c.symbole,
                 data: valeurs,
-                backgroundColor: `rgba(${col.r}, ${col.g}, ${col.b}, 0.45)`,
-                borderColor: `rgba(${col.r}, ${col.g}, ${col.b}, 1)`,
-                borderWidth: 1,
+                backgroundColor: c.hex + '73',
+                borderColor: c.hex,
+                borderWidth: 2,
                 order: 2
             });
             if (valeurs.length > 0) {
-                let moyenne = valeurs.reduce((s, v) => s + v, 0) / valeurs.length;
+                const moyenne = valeurs.reduce((s, v) => s + v, 0) / valeurs.length;
                 datasets.push({
                     type: 'line',
-                    label: 'Moyenne' + (mobilesToShow.length > 1 ? ' (mobile ' + (m + 1) + ')' : ''),
+                    label: 'Moyenne' + (mobiles.length > 1 ? ' (mobile ' + (m + 1) + ')' : ''),
                     data: valeurs.map(() => moyenne),
-                    borderColor: `rgba(${col.r}, ${col.g}, ${col.b}, 1)`,
+                    borderColor: c.hex,
                     borderDash: [8, 4],
-                    borderWidth: 1.5,
+                    borderWidth: 2,
                     pointRadius: 0,
                     fill: false,
                     order: 1
                 });
-                resumes.push(this.resumeIntervalles(m, intervalles, grandeur, unite, u, mobilesToShow.length > 1));
+                resumes.push(this.resumeIntervalles(m, intervalles, grandeur, unite, u, mobiles.length > 1));
             }
         }
         this.averages = [];
         this.resume = resumes.join('\n');
-
-        let yLabel = grandeur === 'd'
-            ? 'distance d parcourue (' + u.distance + ')'
-            : 'vitesse v (' + u.vitesse + ')';
+        const yLabel = grandeur === 'd' ? 'distance d parcourue (' + u.distance + ')' : 'vitesse v (' + u.vitesse + ')';
+        const by = bornesRondes(0, max, true); // barres partant de zéro : on compare honnêtement les hauteurs
         return {
             type: 'bar',
             data: { labels: labels, datasets: datasets },
             options: this.optionsCommunes({
-                x: {
-                    type: 'category',
-                    title: { display: true, text: 'intervalle : du point n° … au point n° …', font: { size: 14 } }
-                },
-                y: {
-                    beginAtZero: true, // barres partant de zéro : on compare honnêtement les hauteurs
-                    title: { display: true, text: yLabel, font: { size: 14 } }
-                }
+                x: { type: 'category', title: { display: true, text: 'intervalle : du point n° … au point n° …' } },
+                y: axeRond(by, yLabel)
             }, true)
         };
     }
 
     optionsCommunes(scales, legende) {
-        let sousTitre = this.getSousTitre();
         return {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
-            locale: 'fr-FR', // virgule décimale sur les axes et dans les bulles
+            locale: 'fr-FR',
             plugins: {
-                title: {
-                    display: true,
-                    text: this.getGraphTitle(),
-                    font: { size: 18 }
-                },
-                subtitle: {
-                    display: sousTitre.length > 0,
-                    text: sousTitre,
-                    font: { size: 13 },
-                    color: '#34495e',
-                    padding: { bottom: 8 }
-                },
-                legend: {
-                    display: legende
+                legend: { display: legende, labels: { usePointStyle: true } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const y = ctx.parsed.y;
+                            return ctx.dataset.label + ' : ' + nombreFr(y, Math.abs(y) < 10 ? 3 : 1);
+                        }
+                    }
                 }
             },
             scales: scales
         };
     }
 
-    // Résumé d'un mobile pour les graphiques en barres
     resumeIntervalles(m, intervalles, grandeur, unite, u, plusieurs) {
-        let valeurs = intervalles.map(iv => iv[grandeur]);
-        let min = Math.min(...valeurs), max = Math.max(...valeurs);
-        let moyenne = valeurs.reduce((s, v) => s + v, 0) / valeurs.length;
-        let durees = intervalles.map(iv => iv.duree);
-        let dMin = Math.min(...durees), dMax = Math.max(...durees);
-        let prefixe = plusieurs ? 'Mobile ' + (m + 1) + ' : ' : '';
+        const valeurs = intervalles.map(iv => iv[grandeur]);
+        const min = Math.min(...valeurs), max = Math.max(...valeurs);
+        const moyenne = valeurs.reduce((s, v) => s + v, 0) / valeurs.length;
+        const durees = intervalles.map(iv => iv.duree);
+        const dMin = Math.min(...durees), dMax = Math.max(...durees);
+        const prefixe = plusieurs ? 'Mobile ' + (m + 1) + ' : ' : '';
         let texte;
         if (grandeur === 'd') {
-            let dec = u.decD;
+            const dec = u.decD;
             texte = prefixe + valeurs.length + ' écart' + (valeurs.length > 1 ? 's' : '') +
                 ' · de ' + nombreFr(min, dec) + ' à ' + nombreFr(max, dec) + ' ' + u.distance +
                 ' · moyenne ' + nombreFr(moyenne, dec) + ' ' + u.distance +
                 (unite === 'm' ? ' (' + nombreFr(moyenne * 100, 1) + ' cm)' : '');
             if (dMax - dMin > 0.02 * dMin) {
-                texte += '\n⚠️ Les durées entre les points ne sont pas toutes égales : compare plutôt les vitesses.';
+                texte += '\nLes durées Δt entre les points ne sont pas toutes égales : compare plutôt les vitesses.';
             } else {
-                texte += ' · durée entre deux points : ' + nombreFr(dMin, 2) + ' s';
+                texte += ' · durée Δt entre deux points : ' + nombreFr(dMin, dMin < 0.1 ? 3 : 2) + ' s';
             }
         } else {
-            let dec = u.decV;
+            const dec = u.decV;
             texte = prefixe + 'v de ' + nombreFr(min, dec) + ' à ' + nombreFr(max, dec) + ' ' + u.vitesse +
                 ' · moyenne ' + nombreFr(moyenne, dec) + ' ' + u.vitesse;
             if (unite === 'm') {
-                let kmh = moyenne * 3.6;
+                const kmh = moyenne * 3.6;
                 texte += ', soit ' + nombreFr(kmh, kmh < 10 ? 1 : 0) + ' km/h';
             }
         }
         return texte;
     }
 
-    // Résumé pour les courbes : moyenne de l'accélération seulement
     resumeCourbes(unite) {
         if (this.graphType === 'a(t)' && this.averages.length > 0) {
-            let ua = unite === 'm' ? 'm/s²' : 'px/s²';
-            if (this.averages.length === 1) {
-                return 'Moyenne : ' + nombreFr(this.averages[0].avg, 2) + ' ' + ua;
-            }
-            return this.averages.map(a => 'Moyenne Mobile ' + (a.mobile + 1) + ' : ' + nombreFr(a.avg, 2) + ' ' + ua).join('  |  ');
+            const ua = unite === 'm' ? 'm/s²' : 'px/s²';
+            if (this.averages.length === 1) return 'Moyenne : ' + nombreFr(this.averages[0].avg, 2) + ' ' + ua;
+            return this.averages.map(a => 'Moyenne mobile ' + (a.mobile + 1) + ' : ' + nombreFr(a.avg, 2) + ' ' + ua).join('  |  ');
         }
         return '';
     }
 
+    // Affiche le graphique choisi (la zone #graphique-zone doit être visible)
     updateChart() {
-        // Détruit le graphique précédent s'il existe
         if (this.chart) {
             this.chart.destroy();
+            this.chart = null;
         }
-
-        // Met à jour le sélecteur de mobile si nécessaire
         this.updateMobileSelector();
+        document.getElementById('graph-titre').textContent = this.getGraphTitle();
+        const aide = this.getSousTitre();
+        const p = document.getElementById('graph-aide');
+        p.textContent = aide;
+        p.hidden = !aide;
 
-        // Crée le nouveau graphique
-        let config = this.getChartConfig();
-        this.chart = new Chart(this.ctx.elt, config);
-        if (this.graphType === 'y(x)') {
-            this.egaliserEchelles();
-        }
-
-        // Affiche le résumé des mesures sous le graphique
+        const config = this.getChartConfig();
+        this.chart = new Chart(this.canvas, config);
+        if (this.graphType === 'y(x)') this.egaliserEchelles();
+        this.canvas.setAttribute('aria-label', this.getGraphTitle() + '. ' + (this.resume || ''));
         this.updateAccelerationInfo();
     }
 
-    // Même échelle sur les deux axes (1 m vaut le même nombre de pixels en x et en y) :
-    // indispensable pour reconnaître un cercle ou une droite inclinée.
+    // Même échelle sur les deux axes (1 m vaut le même nombre de pixels en x et en y)
     egaliserEchelles() {
-        let chart = this.chart;
-        let points = chart.data.datasets.flatMap(d => d.data);
-        let xs = points.map(p => p.x).concat([0]);
-        let ys = points.map(p => p.y).concat([0]);
-        let xMin = Math.min(...xs), xMax = Math.max(...xs);
-        let yMin = Math.min(...ys), yMax = Math.max(...ys);
-        let mx = (xMax - xMin) * 0.05, my = (yMax - yMin) * 0.05;
-        xMin -= mx; xMax += mx; yMin -= my; yMax += my;
-        if (!(xMax > xMin)) { xMin -= 0.5; xMax += 0.5; }
-        if (!(yMax > yMin)) { yMin -= 0.5; yMax += 0.5; }
-        // Deux passes : les graduations changent un peu la taille de la zone de tracé
+        const chart = this.chart;
+        const points = chart.data.datasets.flatMap(d => d.data);
+        if (points.length === 0) return;
+        const xs = points.map(p => p.x), ys = points.map(p => p.y);
+        let xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
+        const marge = Math.max(xMax - xMin, yMax - yMin) * 0.06 || 1;
+        xMin -= marge; xMax += marge; yMin -= marge; yMax += marge;
         for (let passe = 0; passe < 2; passe++) {
-            let zone = chart.chartArea;
+            const zone = chart.chartArea;
             if (!zone) return;
-            let w = zone.right - zone.left, h = zone.bottom - zone.top;
+            const w = zone.right - zone.left, h = zone.bottom - zone.top;
             if (w <= 0 || h <= 0) return;
-            let echelle = Math.max((xMax - xMin) / w, (yMax - yMin) / h);
-            let cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
-            chart.options.scales.x.min = cx - echelle * w / 2;
-            chart.options.scales.x.max = cx + echelle * w / 2;
-            chart.options.scales.y.min = cy - echelle * h / 2;
-            chart.options.scales.y.max = cy + echelle * h / 2;
+            const echelle = Math.max((xMax - xMin) / w, (yMax - yMin) / h);
+            const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
+            const pas = pasRond(echelle * Math.max(w, h), Math.max(w, h) > 500 ? 8 : 6);
+            const dec = decimalesPas(pas);
+            const axes = chart.options.scales;
+            axes.x.min = cx - echelle * w / 2;
+            axes.x.max = cx + echelle * w / 2;
+            axes.y.min = cy - echelle * h / 2;
+            axes.y.max = cy + echelle * h / 2;
+            [axes.x, axes.y].forEach(a => {
+                a.ticks.stepSize = pas;
+                a.ticks.includeBounds = false;
+                a.ticks.callback = (v) => nombreFr(v, dec);
+            });
             chart.update('none');
         }
     }
 
     // Texte sous le graphique : résumé des mesures, manque de points, absence d'étalonnage
     updateAccelerationInfo() {
-        let infoDiv = document.getElementById('acceleration-info');
-        if (!infoDiv) return;
-
-        let mobiles = this.mobilesAffiches();
-        let maxPoints = Math.max(0, ...mobiles.map(m => this.data.getPointCount(m)));
+        const info = document.getElementById('acceleration-info');
+        if (!info) return;
+        const mobiles = this.mobilesAffiches();
+        const maxPoints = Math.max(0, ...mobiles.map(m => this.data.getPointCount(m)));
         let lignes = [];
         if (maxPoints < this.pointsNecessaires()) {
-            let n = this.pointsNecessaires();
-            lignes.push('Pas encore assez de points pour ce graphique : choisis « 🎯 Pointage vidéo » et pointe au moins ' +
+            const n = this.pointsNecessaires();
+            lignes.push('Pas encore assez de points pour ce graphique : étape « 🎯 Pointer », pointe au moins ' +
                 n + ' position' + (n > 1 ? 's' : '') + ' du mobile.');
         } else {
             if (this.resume) lignes.push(this.resume);
-            if (this.uniteAffichee(mobiles) === 'px') lignes.push(MESSAGE_SANS_ETALONNAGE);
+            if (this.uniteAffichee() === 'px') lignes.push(MESSAGE_SANS_ETALONNAGE);
         }
-
-        if (lignes.length > 0) {
-            infoDiv.textContent = lignes.join('\n');
-            infoDiv.style.display = 'block';
-        } else {
-            infoDiv.textContent = '';
-            infoDiv.style.display = 'none';
-        }
+        const texte = lignes.join('\n');
+        if (info.textContent !== texte) info.textContent = texte;
+        info.hidden = !texte;
     }
 
     destroy() {
@@ -500,18 +486,10 @@ class Graph {
             this.chart.destroy();
             this.chart = null;
         }
-        // Masque le résumé des mesures
-        let infoDiv = document.getElementById('acceleration-info');
-        if (infoDiv) {
-            infoDiv.style.display = 'none';
-        }
-        if (this.selector) {
-            this.selector.remove();
-            this.selector = null;
-        }
-        if (this.mobileSelector) {
-            this.mobileSelector.remove();
-            this.mobileSelector = null;
+        const info = document.getElementById('acceleration-info');
+        if (info) {
+            info.hidden = true;
+            info.textContent = '';
         }
     }
 }

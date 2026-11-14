@@ -1,188 +1,212 @@
+// videoplayer.js — lecteur d'une vidéo de la liste, image par image
+//
+// Les images sont atteintes sur une grille fixe : t = début + k / fréquence (pas d'erreur
+// qui s'accumule). Un déplacement n'est terminé qu'à l'événement « seeked » : tant que
+// l'image demandée n'est pas affichée, on n'accepte pas de nouveau point.
+
 class VideoPlayer {
-    constructor(videoFile, framerate) {
-        this.isLoaded = false;
-        this.video = createVideo([videoFile], () => {
-            // Le callback p5.js se déclenche sur canplaythrough
-            this.video.volume(0);
-            this._forceFirstFrame();
-        });
-        this.video.hide();
-        // Tablettes (iPad, Android) : vidéo muette et lue dans la page, pas en plein écran
-        this.video.elt.muted = true;
-        this.video.elt.setAttribute('muted', '');
-        this.video.elt.setAttribute('playsinline', '');
-        this.video.elt.preload = 'auto'; // Demander le préchargement complet
-
-        // Écouter loadeddata (readyState >= 2 = données de la première image disponibles)
-        this._onLoadedData = () => {
-            this._forceFirstFrame();
-        };
-        this.video.elt.addEventListener('loadeddata', this._onLoadedData);
-
-        // Vérification de secours si l'événement a déjà été déclenché
-        if (this.video.elt.readyState >= 2) {
-            this._forceFirstFrame();
-        }
-
+    constructor(chemin, framerate) {
+        this.chemin = chemin;
         this.framerate = framerate;
-        // Instant de la première image + 1 ms (voir _forceFirstFrame). Toutes les images sont
-        // ensuite atteintes sur la grille debut + k / framerate : pas d'erreur qui s'accumule.
-        this.debut = 0.001;
-
+        this.isLoaded = false;      // première image décodée et position de départ connue
+        this.erreur = null;         // message si la vidéo ne peut pas être lue
+        this.debut = 0.001;         // instant de la première image + 1 ms (voir _premiereImage)
+        this.image = 0;             // numéro de l'image affichée (0 = première)
+        this.enDeplacement = false; // vrai entre une demande de position et l'événement seeked
         this.isPlaying = false;
 
-        this.ElementsOff = true;
-        this.addElements();
+        const elt = document.createElement('video');
+        elt.muted = true;
+        elt.setAttribute('muted', '');
+        elt.setAttribute('playsinline', ''); // iPad : lue dans la page, pas en plein écran
+        elt.preload = 'auto';
+        elt.style.display = 'none';
+        document.body.appendChild(elt);
+        this.elt = elt;
+        // Compatibilité : videoPlayer.video.time() et videoPlayer.video.elt
+        this.video = {
+            elt: elt,
+            time: (t) => {
+                if (t === undefined) return elt.currentTime;
+                elt.currentTime = t;
+            },
+            duration: () => elt.duration || 0
+        };
 
-        this.video.onended(() => {
-            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
-            this.isPlaying = false;
-            this.video.time(this.video.time() - (1 / this.framerate)); // Recule de 1/framerate de seconde
+        this._surDonnees = () => this._premiereImage();
+        elt.addEventListener('loadeddata', this._surDonnees);
+        elt.addEventListener('seeked', () => this._surSeeked());
+        elt.addEventListener('ended', () => this._surFin());
+        elt.addEventListener('error', () => {
+            this.erreur = 'Impossible de lire cette vidéo. Choisis-en une autre ou recharge la page.';
         });
-
-        this.images = []; // Initialisez `images` comme tableau ou avec vos données images
+        this.chargerSource(chemin);
+        this.addElements();
     }
 
-    addElements() {
-        if (this.ElementsOff) {
+    // Donne la source à l'élément vidéo
+    chargerSource(chemin) {
+        this.elt.src = chemin;
+    }
 
-            // Boutons de 52×48 px et curseur de temps, utilisables au doigt (voir interface.js)
-            this.buttonStart = creerBoutonIcone('Revenir au début', 'media-skip-backward.png', () => this.jumpToStart());
-            this.buttonBack = creerBoutonIcone('Image précédente', 'media-step-backward.png', () => this.previousFrame());
-            this.buttonPlay = creerBoutonIcone('Lire / pause', 'media-playback-start.png', () => this.play());
-            this.buttonForward = creerBoutonIcone('Image suivante', 'media-step-forward.png', () => this.nextFrame());
+    // Dimensions natives de l'image (pixels vidéo), null tant qu'elles ne sont pas connues
+    dims() {
+        const w = this.elt.videoWidth, h = this.elt.videoHeight;
+        return w > 0 && h > 0 ? { w: w, h: h } : null;
+    }
 
-            this.slider = creerCurseurTemps();
-            this.slider.input(() => {
-                if (this.video.duration() > 0) {
-                    this.video.time(this.slider.value() * this.video.duration());
-                }
-            });
-            this.ElementsOff = false;
+    // Prêt à recevoir un point : image décodée et pas de déplacement en cours
+    pret() {
+        return this.isLoaded && !this.enDeplacement && !this.isPlaying;
+    }
+
+    // Numéro de la dernière image de la vidéo
+    derniereImage() {
+        const d = this.elt.duration;
+        if (!(d > 0)) return 0;
+        return Math.max(0, Math.ceil((d - this.debut) * this.framerate - 1e-6) - 1);
+    }
+
+    // Numéro d'image correspondant à un instant de la vidéo
+    indiceImage(t = this.elt.currentTime) {
+        return Math.max(0, Math.round((t - this.debut) * this.framerate));
+    }
+
+    // Instant affiché à l'élève, compté depuis la première image (0,000 s)
+    tempsAffiche() {
+        return this.image / this.framerate;
+    }
+
+    // Va à l'image k. Renvoie faux si elle n'existe pas (la position ne change pas).
+    allerImage(k) {
+        if (!this.isLoaded) return false;
+        if (k < 0 || k > this.derniereImage()) return false;
+        if (this.isPlaying) this.pause(false);
+        this.image = k;
+        this._cible = this.debut + k / this.framerate;
+        this.enDeplacement = true;
+        clearTimeout(this._secours);
+        // Secours : certains navigateurs n'envoient pas seeked si la position ne change pas
+        this._secours = setTimeout(() => { this.enDeplacement = false; }, 1500);
+        this.elt.currentTime = this._cible;
+        return true;
+    }
+
+    _surSeeked() {
+        if (this._cible === undefined || Math.abs(this.elt.currentTime - this._cible) < 0.0005) {
+            this.enDeplacement = false;
+            clearTimeout(this._secours);
         }
     }
 
-    draw() {
-        background(0); // Toujours nettoyer le fond (éviter les artefacts visuels)
+    nextFrame() { return this.allerImage(this.image + 1); }
+    previousFrame() { return this.allerImage(this.image - 1); }
+    jumpToStart() { return this.allerImage(0); }
 
-        // Utiliser videoWidth/videoHeight natifs qui fonctionnent même si l'élément est masqué
-        let vw = this.video.elt.videoWidth;
-        let vh = this.video.elt.videoHeight;
-
-        if (this.isLoaded && vw > 0 && vh > 0) {
-            let ratio = vw / vh;
-            let w = height * ratio;
-            let h = height;
-
-            if (w > width) {
-                w = width;
-                h = width / ratio;
-            }
-
-            let x = (width - w) / 2;
-            let y = (height - h) / 2;
-
-            stroke(0); // Couleur des bandes en noir
-            fill(0);
-            rect(0, 0, width, y); // Bande horizontale supérieure
-            rect(0, y + h + 1, width, height); // Bande horizontale inférieure
-            rect(0, 0, x, height); // Bande verticale gauche
-            rect(x + w + 1, 0, width, height); // Bande verticale droite
-            image(this.video, x, y, w, h);
-
+    // Lecture / pause ; à la pause, la vidéo est calée sur une image entière
+    play() {
+        if (!this.isLoaded) return;
+        if (this.isPlaying) {
+            this.pause(true);
         } else {
-            stroke(255);
-            fill(255);
-            textSize(48);
-            textAlign(CENTER, CENTER);
-            text('Charge la vidéo', width / 2, height / 2);
+            if (this.image >= this.derniereImage()) this.allerImage(0);
+            this.isPlaying = true;
+            const lecture = this.elt.play();
+            if (lecture && lecture.catch) lecture.catch(() => { this.isPlaying = false; });
+        }
+        this.majBoutonLecture();
+    }
+
+    pause(caler = true) {
+        this.elt.pause();
+        this.isPlaying = false;
+        this.majBoutonLecture();
+        if (caler) this.allerImage(Math.min(this.indiceImage(), this.derniereImage()));
+    }
+
+    _surFin() {
+        this.isPlaying = false;
+        this.majBoutonLecture();
+        this.allerImage(this.derniereImage());
+    }
+
+    // Force le décodage de la première image et repère son instant
+    _premiereImage() {
+        if (this.isLoaded || this._attentePremiere) return;
+        this._attentePremiere = true;
+        const elt = this.elt;
+        const fin = () => {
+            elt.removeEventListener('seeked', fin);
+            // Certaines vidéos commencent après 0 s (première image à 0,12 s pour
+            // TableHorizRectiligneUniforme) : le navigateur ramène alors la position au début réel.
+            if (elt.currentTime > 0.0015) {
+                this.debut = elt.currentTime + 0.001;
+                elt.currentTime = this.debut;
+            }
+            this.image = 0;
+            this.isLoaded = true;
+            if (typeof surSourcePrete === 'function') surSourcePrete();
+        };
+        elt.addEventListener('seeked', fin);
+        elt.currentTime = 0.001;
+    }
+
+    // Dessine l'image courante sur tout le canevas (le canevas a les proportions de la vidéo)
+    draw() {
+        background(0);
+        if (this.erreur) {
+            messageSurImage(this.erreur);
+        } else if (this.isLoaded && this.dims()) {
+            drawingContext.drawImage(this.elt, 0, 0, width, height);
+            if (this.isPlaying) {
+                const k = Math.min(this.indiceImage(), this.derniereImage());
+                this.image = k;
+            }
+        } else {
+            messageSurImage('Chargement de la vidéo…');
         }
         this.sliderUpdate();
     }
 
-    sliderUpdate() {
-        // Pendant qu'on le manipule, on ne repositionne pas le curseur (il sauterait sous le doigt)
-        if (this.slider.actif) return;
-        if (this.isLoaded && this.video.duration() > 0) {
-            // Si temps actuel + incrément de 1 frame est supérieur ou égal à la durée,
-            // on considère que c'est la dernière frame et on positionne le slider à 100%
-            if (this.video.time() + (1 / this.framerate) >= this.video.duration()) {
-                this.slider.value(1);
-            } else {
-                const progress = this.video.time() / this.video.duration();
-                this.slider.value(progress);
-            }
+    addElements() {
+        if (this.boutons) return;
+        this.boutons = creerControlesLecture(this, false);
+        this.slider = this.boutons.curseur;
+        this.buttonPlay = this.boutons.lecture;
+    }
+
+    majBoutonLecture() {
+        if (!this.buttonPlay) return;
+        const icone = this.isPlaying ? 'media-playback-pause.png' : 'media-playback-start.png';
+        if (this._icone !== icone) {
+            this._icone = icone;
+            this.buttonPlay.style.backgroundImage = 'url("img/tango/' + icone + '")';
+            this.buttonPlay.setAttribute('aria-label', this.isPlaying ? 'Pause (Espace)' : 'Lire la vidéo (Espace)');
+            this.buttonPlay.title = this.buttonPlay.getAttribute('aria-label');
         }
+    }
+
+    // Curseur de temps : une position par image
+    sliderUpdate() {
+        if (!this.slider) return;
+        const max = String(this.derniereImage());
+        if (this.slider.max !== max) this.slider.max = max;
+        if (this.slider.actif) return; // ne pas le déplacer sous le doigt
+        const v = String(this.image);
+        if (this.slider.value !== v) this.slider.value = v;
+        const texte = 'Image ' + this.image + ' sur ' + this.derniereImage();
+        if (this.slider.getAttribute('aria-valuetext') !== texte) this.slider.setAttribute('aria-valuetext', texte);
     }
 
     removeElements() {
-        this.video.elt.removeEventListener('loadeddata', this._onLoadedData);
-        this.video.remove();
-        this.buttonStart.remove();
-        this.buttonBack.remove();
-        this.buttonPlay.remove();
-        this.buttonForward.remove();
-        this.slider.remove();
-        this.ElementsOff = true;
-    }
-
-    // Numéro de l'image affichée (0 = première image de la vidéo)
-    indiceImage(t = this.video.time()) {
-        return Math.max(0, Math.round((t - this.debut) * this.framerate));
-    }
-
-    // Va à l'image k (1 ms après son début, pour que le navigateur affiche bien cette image
-    // et pas la précédente). Renvoie faux si l'image k n'existe pas.
-    allerImage(k) {
-        let t = this.debut + Math.max(0, k) / this.framerate;
-        if (k > 0 && t >= this.video.duration()) return false;
-        this.video.time(t);
-        return true;
-    }
-
-    nextFrame() {
-        return this.allerImage(this.indiceImage() + 1); // Avance d'une image
-    }
-
-    previousFrame() {
-        this.allerImage(this.indiceImage() - 1); // Recule d'une image (pas avant la première)
-    }
-
-    play() {
-        if (this.isPlaying) {
-            this.video.pause();
-            this.video.time(this.video.time() + (1 / this.framerate)); // Avance de 1/framerate de seconde
-            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-start.png")');
-        } else {
-            this.video.play();
-            this.buttonPlay.style('background-image', 'url("img/tango/media-playback-pause.png")');
-        }
-        this.isPlaying = !this.isPlaying;   
-    }
-
-    jumpToStart() {
-        if (this.isLoaded) {
-            this.video.time(this.debut);
-        }
-        // Si pas encore chargé, la première image sera affichée automatiquement
-        // par _forceFirstFrame() une fois le chargement terminé
-    }
-
-    // Force le décodage de la première image via un micro-seek
-    _forceFirstFrame() {
-        if (this.isLoaded) return; // Déjà chargé, ne rien faire
-        const vid = this.video.elt;
-        vid.currentTime = 0.001; // Force le décodage de la première image
-        vid.onseeked = () => {
-            vid.onseeked = null; // Nettoyer le gestionnaire
-            // Certaines vidéos commencent après 0 s (première image à 0,12 s pour
-            // TableHorizRectiligneUniforme) : le navigateur ramène alors la position au début réel.
-            if (vid.currentTime > 0.0015) {
-                this.debut = vid.currentTime + 0.001;
-                vid.currentTime = this.debut;
-            }
-            this.isLoaded = true;
-        };
+        clearTimeout(this._secours);
+        this.elt.removeEventListener('loadeddata', this._surDonnees);
+        this.elt.pause();
+        this.elt.removeAttribute('src');
+        this.elt.load();
+        this.elt.remove();
+        if (this.boutons) this.boutons.retirer();
+        this.boutons = null;
+        this.slider = null;
     }
 }
-

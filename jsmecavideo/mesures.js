@@ -22,17 +22,15 @@ function unitesMesure(unite) {
   return { distance: 'px', vitesse: 'px/s', decD: 1, decV: 0, decPos: 1 };
 }
 
-// Phrase d'avertissement quand les mesures sont en pixels (pas d'étalonnage)
-const MESSAGE_SANS_ETALONNAGE = '⚠️ Sans étalonnage, les distances sont en pixels (px) et les vitesses en px/s, pas en mètres. ' +
-  'Pour des mètres : menu « Étalonnage », puis pointe à nouveau.';
+// Phrase d'information quand les mesures sont en pixels (pas d'étalonnage)
+const MESSAGE_SANS_ETALONNAGE = 'Sans étalonnage, les distances sont en pixels (px) et les vitesses en px/s, pas en mètres. ' +
+  'Pour des mètres : étape « 📏 Étalonner » (tes points sont gardés).';
 
-// Nom de la vidéo courante (sans dossier ni extension)
+// Nom du fichier de la vidéo courante (sans dossier ni extension)
 function nomVideoCourante() {
-  if (typeof webcamPlayer !== 'undefined' && webcamPlayer) return 'webcam';
-  if (typeof dropdown3 !== 'undefined' && dropdown3 && typeof videoFiles !== 'undefined') {
-    let f = videoFiles[dropdown3.value()];
-    if (f) return f.path.replace('videos/', '').replace(/\.[a-z0-9]+$/i, '');
-  }
+  if (source === 'webcam') return 'webcam';
+  let f = videoCourante();
+  if (f) return f.path.replace('videos/', '').replace(/\.[a-z0-9]+$/i, '');
   return 'video';
 }
 
@@ -40,15 +38,14 @@ function nomVideoCourante() {
 function construireCSV() {
   const SEP = ';';
   let lignes = [];
-  let echelle = echelleEtalonnee
-    ? 'échelle : 1 px = ' + nombreFr(xConversionFactor * 1000, 3) + ' mm'
+  let echelle = data.echelle
+    ? 'échelle : 1 px = ' + nombreFr(data.echelle * 1000, 3) + ' mm'
     : 'sans étalonnage : distances en pixels (px)';
   lignes.push('jsMecaVidéo — vidéo : ' + nomVideoCourante() + ' — ' + echelle);
   lignes.push('');
 
-  // Une même unité pour tout le tableau : mètres seulement si tous les mobiles sont étalonnés
   let mobiles = [...Array(data.numMobiles).keys()].filter(m => data.getPointCount(m) > 0);
-  let unite = mobiles.length > 0 && mobiles.every(m => data.getUnite(m) === 'm') ? 'm' : 'px';
+  let unite = data.getUnite();
   let u = unite === 'm'
     ? { d: 'm', v: 'm/s', decPos: 4, decV: 3 }
     : { d: 'px', v: 'px/s', decPos: 1, decV: 1 };
@@ -58,16 +55,12 @@ function construireCSV() {
     'v = d / t (' + u.v + ')'].join(SEP));
 
   for (let m of mobiles) {
-    let pts = data.getPointsForMobile(m).map((p, i) => ({
-      numero: i + 1, time: p.time,
-      x: unite === 'm' ? p.x : p.xpx,
-      y: unite === 'm' ? p.y : p.ypx
-    }));
+    let pts = data.getPositions(m);
     pts.forEach((p, i) => {
       let cols = [m + 1, p.numero, nombreFr(p.time, 3), nombreFr(p.x, u.decPos), nombreFr(p.y, u.decPos)];
       let prec = pts[i - 1];
       let duree = prec ? p.time - prec.time : 0;
-      if (prec && duree > 1e-6) {
+      if (prec && duree > 1e-9) {
         let d = Math.hypot(p.x - prec.x, p.y - prec.y);
         cols.push(nombreFr(d, u.decPos), nombreFr(duree, 3), nombreFr(d / duree, u.decV));
       } else {
@@ -82,10 +75,10 @@ function construireCSV() {
 // Télécharge le fichier CSV (aucun envoi : le fichier est fabriqué dans le navigateur)
 function exporterCSV() {
   if (data.getTotalPointCount() === 0) {
-    afficherMessageTemporaire('Aucun point à exporter : pointe d’abord le mobile (menu « Pointage vidéo »).');
+    afficherMessageTemporaire('Aucun point à exporter : pointe d’abord le mobile (étape « 🎯 Pointer »).');
     return;
   }
-  let blob = new Blob(['﻿' + construireCSV()], { type: 'text/csv;charset=utf-8' });
+  let blob = new Blob(['\uFEFF' + construireCSV()], { type: 'text/csv;charset=utf-8' });
   let url = URL.createObjectURL(blob);
   let lien = document.createElement('a');
   lien.href = url;
