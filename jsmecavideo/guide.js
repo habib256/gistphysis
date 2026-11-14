@@ -19,7 +19,8 @@ const ETAPES_GUIDE = [
   {
     titre: 'Étalonner',
     texte: () => 'Étape « 📏 Étalonner » : pointe les deux bouts d’une longueur connue (une règle visible dans l’image), ' +
-      'puis écris cette longueur (ex. : 80 cm). Pourquoi ? L’écran mesure en pixels ; l’étalonnage les convertit en mètres.'
+      'puis écris cette longueur (ex. : 80 cm). Pourquoi ? L’écran mesure en pixels ; l’étalonnage les convertit en ' +
+      (typeof data !== 'undefined' && data.uniteLongueur === 'km' ? 'kilomètres.' : 'mètres.')
   },
   {
     titre: 'Pointer',
@@ -30,13 +31,14 @@ const ETAPES_GUIDE = [
     titre: 'Observer',
     texte: () => (data.dureesEgales()
       ? 'Les marques forment une chronophotographie : les positions du mobile à intervalles de temps égaux. '
-      : 'Attention : tes points ne sont pas tous séparés par la même durée Δt (pas changé, point inséré…). ') +
+      : 'Attention : tes points ne sont pas tous séparés par la même durée Δt (' +
+        (data.instants ? 'la caméra ne filme pas à un rythme parfaitement régulier' : 'pas changé, point inséré, mobile sauté…') + '). ') +
       'Alignées → trajectoire rectiligne ; sur un cercle → circulaire ; sur une courbe → curviligne. Sont-elles régulièrement espacées ?'
   },
   {
     titre: 'Conclure',
     texte: () => data.dureesEgales()
-      ? '« 📈 Graphiques » → « Distance d entre deux points » : barres de même hauteur → vitesse constante, mouvement uniforme ; ' +
+      ? '« 📈 Graphiques » → « Distance d entre deux points successifs » : barres de même hauteur → vitesse constante, mouvement uniforme ; ' +
         'de plus en plus hautes → accéléré ; de plus en plus basses → ralenti. « Vitesse » donne v = d / Δt.'
       : 'Tes durées Δt ne sont pas toutes égales : les distances d ne se comparent pas. « 📈 Graphiques » → « Vitesse sur chaque intervalle » : ' +
         'même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.'

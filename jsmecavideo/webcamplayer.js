@@ -103,6 +103,8 @@ class WebcamPlayer {
         return this.allerImage(this.image + 1);
     }
     previousFrame() { return this.allerImage(this.image - 1); }
+    allerImageChoisie(k) { return this.allerImage(k); }
+
     jumpToStart() {
         if (this.isRecording) this.stopRecording();
         return this.allerImage(0);

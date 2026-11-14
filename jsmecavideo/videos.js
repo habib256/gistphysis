@@ -28,43 +28,43 @@ const GROUPES_VIDEOS = [
 let videoFiles = [
   { path: 'videos/chute.mp4', framerate: 25, images: 17, groupe: 'Pour commencer',
     titre: 'Balle lâchée devant un mur',
-    etalon: 'La tige verticale mesure 1,85 m, du sol jusqu’à son bout du haut (c’est écrit dans la vidéo).', etalonValeurs: [1.85] },
+    etalon: '1,85 m : la tige verticale, du sol à son bout du haut (écrit dans la vidéo).', etalonValeurs: [1.85] },
   { path: 'videos/TableHorizRectiligneUniforme_631g7.mp4', framerate: 25, images: 60, groupe: 'Pour commencer',
     titre: 'Mobile lancé sur une table horizontale (coussin d’air)', etalon: '' },
   { path: 'videos/disque33t.mp4', framerate: 25, images: 50, groupe: 'Pour commencer',
     titre: 'Platine de disque à 33 tours par minute',
-    etalon: 'Les deux traits roses partent du centre du disque : 7,5 cm et 12 cm (c’est écrit dans la vidéo).', etalonValeurs: [0.075, 0.12] },
+    etalon: '7,5 cm et 12 cm : les traits roses, depuis le centre (écrit dans la vidéo).', etalonValeurs: [0.075, 0.12] },
 
   { path: 'videos/parabolique.mp4', framerate: 25, images: 28, groupe: 'Chutes et lancers',
     titre: 'Balle lancée devant un mur',
-    etalon: 'La tige verticale, à gauche, mesure 1,85 m (c’est écrit dans la vidéo).', etalonValeurs: [1.85] },
+    etalon: '1,85 m : la tige verticale, à gauche (écrit dans la vidéo).', etalonValeurs: [1.85] },
   { path: 'videos/moto-relatif.mp4', framerate: 25, images: 47, groupe: 'Chutes et lancers',
     titre: 'Balle lâchée par un motard qui roule',
-    etalon: 'Le trait blanc vertical, en bas à gauche, mesure 0,6 m (c’est écrit dans la vidéo). Il n’est visible qu’au début : étalonne sur les premières images.', etalonValeurs: [0.6] },
+    etalon: '0,6 m : le trait blanc en bas à gauche, visible seulement au début.', etalonValeurs: [0.6] },
 
   { path: 'videos/billegrosse.mp4', framerate: 25, images: 19, groupe: 'Chute dans un liquide',
     titre: 'Grosse bille (2 cm) qui tombe dans l’eau',
-    etalon: 'Le trait noir vertical mesure 20 cm (c’est écrit dans la vidéo).', etalonValeurs: [0.2] },
+    etalon: '20 cm : le trait noir vertical (écrit dans la vidéo).', etalonValeurs: [0.2] },
   { path: 'videos/billepetite.mp4', framerate: 25, images: 18, groupe: 'Chute dans un liquide',
     titre: 'Petite bille (1 cm) qui tombe dans l’eau',
-    etalon: 'Le trait noir vertical mesure 20 cm (c’est écrit dans la vidéo).', etalonValeurs: [0.2] },
+    etalon: '20 cm : le trait noir vertical (écrit dans la vidéo).', etalonValeurs: [0.2] },
   // Le panneau filmé indique « 30 images/s » pour les trois billes
   { path: 'videos/bille1-iv5.mp4', framerate: 1000000 / 33333, images: 21, dureeImage: 1 / 30, groupe: 'Chute dans un liquide',
     titre: 'Bille de 16,7 g qui tombe dans un liquide',
-    etalon: 'Entre les deux repères noirs (flèches) du tube : 0,50 m (c’est écrit dans la vidéo).', etalonValeurs: [0.5] },
+    etalon: '0,50 m : entre les deux repères noirs du tube (écrit).', etalonValeurs: [0.5] },
   { path: 'videos/bille2-iv5.mp4', framerate: 1000000 / 33333, images: 20, dureeImage: 1 / 30, groupe: 'Chute dans un liquide',
     titre: 'Bille de 28,0 g qui tombe dans un liquide',
-    etalon: 'Entre les deux repères noirs (flèches) du tube : 0,50 m (c’est écrit dans la vidéo).', etalonValeurs: [0.5] },
+    etalon: '0,50 m : entre les deux repères noirs du tube (écrit).', etalonValeurs: [0.5] },
   // Fichier encodé à 31,0 images/s, mais filmé à 30 images/s (panneau dans l'image)
   { path: 'videos/bille3-iv5.mp4', framerate: 500000 / 16129, images: 20, dureeImage: 1 / 30, groupe: 'Chute dans un liquide',
     titre: 'Bille de 43,4 g qui tombe dans un liquide',
-    etalon: 'Entre les deux repères noirs (flèches) du tube : 0,50 m (c’est écrit dans la vidéo).', etalonValeurs: [0.5] },
+    etalon: '0,50 m : entre les deux repères noirs du tube (écrit).', etalonValeurs: [0.5] },
   { path: 'videos/BilleFer_Eau25C_2g055_7mm93.mp4', framerate: 25, images: 12, groupe: 'Chute dans un liquide',
     titre: 'Bille de fer qui tombe dans une éprouvette d’eau', etalon: '' },
 
   { path: 'videos/disque45t.mp4', framerate: 25, images: 71, groupe: 'Tourner, osciller',
     titre: 'Platine de disque à 45 tours par minute',
-    etalon: 'Les deux traits roses partent du centre du disque : 7,5 cm et 12 cm (c’est écrit dans la vidéo).', etalonValeurs: [0.075, 0.12] },
+    etalon: '7,5 cm et 12 cm : les traits roses, depuis le centre (écrit dans la vidéo).', etalonValeurs: [0.075, 0.12] },
   { path: 'videos/PenduleSimpleAmorti_38cm1.mp4', framerate: 25, images: 392, groupe: 'Tourner, osciller',
     titre: 'Pendule qui oscille', etalon: '' },
   { path: 'videos/RessortVertical_Masse24g30.mp4', framerate: 25, images: 231, groupe: 'Tourner, osciller',
@@ -81,13 +81,13 @@ let videoFiles = [
 
   { path: 'videos/vague2cm5.mp4', framerate: 20, images: 39, groupe: 'Ondes à la surface de l’eau',
     titre: 'Vague dans un canal (2,5 cm d’eau)',
-    etalon: 'Entre les deux flèches ← et → sous le canal : 1 m (c’est écrit dans la vidéo).', etalonValeurs: [1] },
+    etalon: '1 m : entre les flèches ← et → sous le canal (écrit).', etalonValeurs: [1] },
   { path: 'videos/vague3cm0.mp4', framerate: 20, images: 38, groupe: 'Ondes à la surface de l’eau',
     titre: 'Vague dans un canal (3,0 cm d’eau)',
-    etalon: 'Entre les deux flèches ← et → sous le canal : 1 m (c’est écrit dans la vidéo).', etalonValeurs: [1] },
+    etalon: '1 m : entre les flèches ← et → sous le canal (écrit).', etalonValeurs: [1] },
   { path: 'videos/vague3.mp4', framerate: 25, images: 78, groupe: 'Ondes à la surface de l’eau',
     titre: 'Vague dans un aquarium',
-    etalon: 'Le trait rouge sous l’aquarium mesure 1 m (c’est écrit dans la vidéo).', etalonValeurs: [1] },
+    etalon: '1 m : le trait rouge sous l’aquarium (écrit dans la vidéo).', etalonValeurs: [1] },
 
   // Animation : le compteur en bas à gauche avance de 25 jours à chaque image ;
   // la barre en haut à gauche mesure 200 000 000 km.
@@ -95,9 +95,34 @@ let videoFiles = [
     titre: 'Vénus, la Terre et Mars autour du Soleil',
     dureeImage: 25, uniteTemps: 'jour', uniteLongueur: 'km',
     referentiel: 'C’est une animation vue de très loin, au-dessus du système solaire : le Soleil reste immobile, on décrit le mouvement des planètes par rapport au Soleil.',
-    etalon: 'La barre blanche, en haut à gauche, mesure 200 000 000 km (c’est écrit dans la vidéo). Entre deux images : 25 jours.',
+    etalon: '200 000 000 km : la barre blanche en haut à gauche. 25 jours par image.',
     etalonValeurs: [2e11] }
 ];
+
+// Dimensions des images de chaque fichier (ffprobe) : une sauvegarde doit leur correspondre
+const DIMENSIONS_VIDEOS = {
+  'videos/BilleFer_Eau25C_2g055_7mm93.mp4': [352, 288],
+  'videos/Eclatement2MA.mp4': [320, 240],
+  'videos/MasseRoule.mp4': [376, 236],
+  'videos/PenduleSimpleAmorti_38cm1.mp4': [352, 240],
+  'videos/RessortVertical_Masse24g30.mp4': [352, 240],
+  'videos/TableHorizChocPresqueElastique_R631g7_B749g2.mp4': [380, 288],
+  'videos/TableHorizRectiligneUniforme_631g7.mp4': [352, 288],
+  'videos/VenusTerreMars.mp4': [640, 480],
+  'videos/bille1-iv5.mp4': [640, 480],
+  'videos/bille2-iv5.mp4': [640, 480],
+  'videos/bille3-iv5.mp4': [640, 480],
+  'videos/billegrosse.mp4': [400, 320],
+  'videos/billepetite.mp4': [400, 320],
+  'videos/chute.mp4': [400, 320],
+  'videos/disque33t.mp4': [600, 480],
+  'videos/disque45t.mp4': [600, 480],
+  'videos/moto-relatif.mp4': [400, 320],
+  'videos/parabolique.mp4': [400, 320],
+  'videos/vague2cm5.mp4': [640, 480],
+  'videos/vague3.mp4': [600, 480],
+  'videos/vague3cm0.mp4': [640, 480]
+};
 
 // Vidéo affichée au démarrage
 const VIDEO_DEPART = 'videos/chute.mp4';

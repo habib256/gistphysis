@@ -189,8 +189,29 @@ function installerMenus() {
 
 // Bandeau de confirmation dans l'interface (pas de confirm() : il est bloqué dans certains cadres)
 // Menus inactifs pendant une question (pas deux questions empilées)
+// Pendant une question, tout est bloqué sauf ses deux boutons : menus, pastilles du guide,
+// boutons d'étalonnage, de lecture, d'annulation… (on rétablit ensuite l'état d'avant)
+let commandesBloquees = [];
 function activerMenus(actifs) {
-  ['choix-mode', 'choix-video', 'choix-mobiles', 'choix-pas'].forEach(id => { document.getElementById(id).disabled = !actifs; });
+  if (!actifs) {
+    commandesBloquees = [...document.querySelectorAll('#panneau button, #panneau select, #panneau input, #barre-outils button, #barre-outils input')]
+      .filter(e => !e.disabled);
+    commandesBloquees.forEach(e => { e.disabled = true; });
+  } else {
+    commandesBloquees.forEach(e => { e.disabled = false; });
+    commandesBloquees = [];
+  }
+}
+
+// Geste sur l'image pendant une question : la question se secoue, avec un rappel dedans
+function rappelerQuestion() {
+  const boite = document.getElementById('confirmation');
+  const rappel = document.getElementById('confirmation-rappel');
+  rappel.hidden = false;
+  boite.classList.remove('secoue');
+  void boite.offsetWidth; // relance l'animation
+  boite.classList.add('secoue');
+  annoncer('Réponds d’abord à la question.');
 }
 
 // Échap = « non » seulement quand « non » ne détruit rien (danger = vrai : « non » garde le
@@ -210,17 +231,25 @@ function demanderConfirmation(texte, libelleOui, libelleNon, surOui, surNon, dan
   document.getElementById('confirmation-texte').textContent = texte;
   oui.textContent = libelleOui;
   non.textContent = libelleNon;
+  document.getElementById('confirmation-rappel').hidden = true;
   const fermer = (action) => {
     boite.hidden = true;
+    boite.classList.remove('secoue');
     activerMenus(true);
     oui.onclick = null;
     non.onclick = null;
     echapConfirmation = null;
     if (action) action();
   };
-  // Un toucher arrivé moins de 400 ms après l'ouverture visait autre chose : ignoré
-  const ouverture = performance.now();
-  const garde = (action) => () => { if (performance.now() - ouverture >= 400) fermer(action); };
+  // Un toucher parti moins de 400 ms après l'AFFICHAGE réel de la question visait autre chose :
+  // ignoré. On compare l'heure de l'événement (e.timeStamp, même si le traitement est retardé)
+  // à l'heure du premier rendu de la question (deux requestAnimationFrame).
+  let affichee = null;
+  requestAnimationFrame(() => requestAnimationFrame(() => { affichee = performance.now(); }));
+  const garde = (action) => (e) => {
+    const instant = e && e.timeStamp ? e.timeStamp : performance.now();
+    if (affichee !== null && instant - affichee >= 400) fermer(action);
+  };
   oui.onclick = garde(surOui);
   non.onclick = garde(surNon);
   echapConfirmation = danger ? () => fermer(surNon) : null;
@@ -383,6 +412,12 @@ function passerAuMode(nouveau) {
     majModeAffichage();
     if (nouveau === 'Pointage' && ancien !== 'Pointage') reprendrePointage();
     if (nouveau === 'Calibration') {
+      const saisie = document.getElementById('real-distance');
+      if (calibrator.isCalibrated && document.activeElement !== saisie && saisie.value.trim() !== (calibrator.saisie || calibrator.texteLongueur())) {
+        saisie.value = calibrator.saisie || calibrator.texteLongueur();
+      }
+      saisie.classList.remove('erreur');
+      document.getElementById('calibration-message').classList.remove('erreur');
       majSaisieCalibration();
       // Paysage : la saisie est en haut du panneau
       if (document.body.classList.contains('lat')) document.getElementById('panneau').scrollTop = 0;
@@ -435,6 +470,8 @@ function draw() {
   } else if (etat === 'Calibration') {
     dessinerPoints(true);
     calibrator.draw(versEcran);
+    // Pendant un glisser, le message d'échelle suit l'échelle en vigueur
+    if (pointeurTactile.glisse || souris.glisse) majMessageEchelle();
   }
 
   // Viseur : suit la souris, le doigt (avec la loupe) ou le réticule clavier
@@ -546,8 +583,15 @@ function consigneAction() {
     return lect.isRecording ? '⏺ Enregistrement… Touche ● pour l’arrêter.' : '📷 Filme le mouvement : bouton ● pour enregistrer, puis pointe image par image.';
   }
   if (!lect || !lect.isLoaded) return 'Chargement de la vidéo…';
-  if (lect.deplacementImpossible) return '⛔ Impossible d’aller à une image précise avec ce serveur : pointer donnerait des mesures fausses. Ouvre l’app depuis le site.';
-  if (etat === 'Calibration') return calibrator.getInstructionMessage(tactile ? 'tactile' : 'souris');
+  if (lect.deplacementImpossible) return '⛔ Ce serveur ne donne pas les images une à une : pointage impossible.';
+  if (etat === 'Calibration') {
+    const saisie = document.getElementById('real-distance');
+    // Une autre valeur est en cours de saisie : la consigne n'est plus « ✅ échelle validée »
+    if (calibrator.isCalibrated && saisie.value.trim() !== (calibrator.saisie || calibrator.texteLongueur())) {
+      return '📏 Écris la longueur réelle (ex. : 80 cm), puis « Valider ».';
+    }
+    return calibrator.getInstructionMessage(clavier.actif ? 'clavier' : tactile ? 'tactile' : 'souris');
+  }
   if (lect.isPlaying) return '▶ Lecture… Pointer met la vidéo en pause.';
   if (finDeVideo()) return '🎬 Fin de la vidéo : dernière image pointée.';
   const m = mobileCourant();
@@ -591,6 +635,8 @@ function majTextes() {
   if (voir.hidden === fin) {
     voir.hidden = !fin;
     document.getElementById('info-bar').classList.toggle('fin', fin);
+    // Panneau latéral peu haut : le bouton vient à l'écran
+    if (fin && document.body.classList.contains('lat')) voir.scrollIntoView({ block: 'nearest' });
   }
   const lect = lecteur();
   const v = videoCourante();
@@ -611,7 +657,7 @@ function traiterPointage(x, y) {
   const s = dimensionsSource();
   if (!s || x < 0 || x > s.w || y < 0 || y > s.h) return;
   if (confirmationOuverte()) {
-    afficherMessageTemporaire('Réponds d’abord à la question au-dessus de l’image.', 3000);
+    rappelerQuestion();
     return;
   }
   if (tropPetit) return;
@@ -620,7 +666,9 @@ function traiterPointage(x, y) {
     messageTemporaire.fin = 0;
     const r = calibrator.addPoint(x, y);
     if (r === 'complet') {
-      afficherMessageTemporaire('Deux bouts déjà placés : fais-les glisser, ou « Recommencer ».');
+      afficherMessageTemporaire(calibrator.isCalibrated
+        ? '✅ Échelle validée (' + calibrator.texteEchelle() + '). Pour l’ajuster, fais glisser un bout.'
+        : 'Deux bouts déjà placés : fais-les glisser, ou « Recommencer ».');
     } else if (r === 'point2') {
       majSaisieCalibration();
       // Panneau latéral peu haut : le champ de longueur vient à l'écran
@@ -645,7 +693,7 @@ function traiterPointage(x, y) {
     return;
   }
   if (lect.deplacementImpossible) {
-    afficherMessageTemporaire('⛔ Impossible d’aller à une image précise : pointage refusé (mesures fausses).', 4000);
+    afficherMessageTemporaire('⛔ Image précise impossible à atteindre : pointage refusé.', 4000);
     return;
   }
   if (lect.isPlaying) {
@@ -745,7 +793,7 @@ function majApercuLongueur() {
   if (!saisie.value.trim()) {
     ecrire('calibration-message', texteCalibrationParDefaut());
   } else if (r.erreur) {
-    ecrire('calibration-message', r.uniteManquante ? r.erreur : 'Écris un nombre et une unité : 80 cm, 0,8 m, 800 mm…');
+    ecrire('calibration-message', /Je ne comprends pas/.test(r.erreur) ? 'Écris un nombre et une unité : 80 cm, 0,8 m, 800 mm…' : r.erreur);
   } else {
     let t = '= ' + longueurFr(r.metres);
     if (r.sansUnite) t += ' (sans unité, ce sont des mètres)';
@@ -754,12 +802,9 @@ function majApercuLongueur() {
 }
 
 function texteCalibrationParDefaut() {
-  if (calibrator.isCalibrated) {
-    return 'Échelle : ' + calibrator.texteLongueur() + ' pour ' + nombreFr(calibrator.pixelDistance, 1) +
-      ' px, soit ' + calibrator.texteEchelle() + '. Les deux bouts se déplacent encore.';
-  }
+  if (calibrator.isCalibrated) return texteEchelleEnVigueur() + ' Les bouts se déplacent encore.';
   const v = videoCourante();
-  const etalon = v && v.etalon ? 'Dans cette vidéo : ' + v.etalon : '';
+  const etalon = v && v.etalon ? 'Étalon : ' + v.etalon : '';
   if (calibrator.state === 'waiting_distance') return etalon || 'Unités acceptées : m, cm, mm (ex. : 80 cm ou 0,8 m).';
   return etalon || 'Cherche dans l’image un objet dont tu connais la longueur (une règle).';
 }
@@ -788,8 +833,8 @@ function validateCalibration() {
     validateCalibration.aConfirmer = saisie.value.trim();
     saisie.classList.add('erreur');
     msg.classList.add('erreur');
-    ecrire('calibration-message', 'Vérifie : l’objet connu de cette vidéo mesure ' + v.etalonValeurs.map(longueurFr).join(' ou ') +
-      ', tu as écrit ' + longueurFr(r.metres) + '. « Valider » à nouveau pour confirmer.');
+    ecrire('calibration-message', 'Vérifie : étalon ' + v.etalonValeurs.map(longueurFr).join(' ou ') +
+      ', tu as écrit ' + longueurFr(r.metres) + '. Revalide pour confirmer.');
     return;
   }
   validateCalibration.aConfirmer = null;
@@ -802,19 +847,33 @@ function validateCalibration() {
   saisie.classList.remove('erreur');
   msg.classList.remove('erreur');
   majSaisieCalibration();
-  // Au doigt, on referme le clavier virtuel ; au clavier ou à la souris, le focus va au
-  // bouton « Passer au pointage » (il ne retombe pas sur la page)
+  // Au doigt, on referme le clavier virtuel ; sinon le focus reste dans le champ (Entrée ne
+  // déclenche pas « Passer au pointage » dans la foulée : le message ✅ doit être lu)
   if (typePointeur === 'tactile') saisie.blur();
-  else document.getElementById('passer-pointage').focus();
-  ecrire('calibration-message', '✅ ' + calibrator.texteLongueur() + ' pour ' + nombreFr(calibrator.pixelDistance, 1) + ' px : ' + calibrator.texteEchelle() + '.');
+  ecrire('calibration-message', texteEchelleEnVigueur());
   annoncer('Échelle validée : ' + calibrator.texteEchelle());
   sauvegarderSeance();
 }
 
 // Après un glisser d'un bout : l'échelle suit (même longueur réelle)
+// « ✅ 1,85 m pour 193,0 px : 1 px = 9,59 mm. » — toujours l'échelle en vigueur
+function texteEchelleEnVigueur() {
+  return '✅ ' + calibrator.texteLongueur() + ' pour ' + nombreFr(calibrator.pixelDistance, 1) + ' px : ' + calibrator.texteEchelle() + '.';
+}
+
+// Après (ou pendant) un glisser : le message d'échelle suit l'échelle en vigueur, même si le
+// champ de longueur a le focus (on ne touche pas au contenu du champ)
 function surEtalonnageDeplace() {
-  majSaisieCalibration(true);
+  majSaisieCalibration(false);
+  majMessageEchelle();
   sauvegarderSeance();
+}
+
+function majMessageEchelle() {
+  if (!calibrator.isCalibrated) return;
+  const msg = document.getElementById('calibration-message');
+  if (msg.classList.contains('erreur')) return; // une erreur de saisie reste visible
+  ecrire('calibration-message', texteCalibrationParDefaut());
 }
 
 // Oublie l'échelle (changement de vidéo). Renvoie vrai s'il y en avait une.
@@ -866,7 +925,12 @@ const CLE_SEANCE = 'jsmecavideo-seance-v1';
 let repriseEnAttente = false;
 
 function sauvegarderSeance() {
-  if (repriseEnAttente || source !== 'video' || !calibrator) return;
+  if (repriseEnAttente || !calibrator) return;
+  if (source !== 'video') {
+    // La webcam n'est pas sauvegardée : l'ancienne sauvegarde d'une vidéo ne vaut plus
+    try { sessionStorage.removeItem(CLE_SEANCE); } catch (e) { /* rien */ }
+    return;
+  }
   try {
     const n = data.getTotalPointCount();
     if (n === 0 && !calibrator.point1) {
@@ -921,11 +985,15 @@ function seanceValide(o) {
   if ([1, 2, 5].indexOf(o.pas) < 0) return false;
   if (!Data.sauvegardeValide(o.data, v.images)) return false;
   if (!(o.dims && Number.isInteger(o.dims.w) && Number.isInteger(o.dims.h))) return false;
+  const attendues = DIMENSIONS_VIDEOS[o.video];
+  if (attendues && (attendues[0] !== o.dims.w || attendues[1] !== o.dims.h)) return false;
   // Empreinte : une sauvegarde modifiée à la main (autre vidéo, autres points) est ignorée
   if (o.controle !== empreinteSeance(o)) return false;
   const c = o.calibrateur;
   if (!c || typeof c !== 'object') return false;
-  const pointOk = p => p === null || p === undefined || (typeof p === 'object' && Number.isFinite(p.x) && Number.isFinite(p.y));
+  const pointOk = p => p === null || p === undefined || (typeof p === 'object' && Number.isFinite(p.x) && Number.isFinite(p.y) &&
+    p.x >= 0 && p.y >= 0 && p.x <= o.dims.w && p.y <= o.dims.h);
+  if (o.data.points.some(pts => pts.some(p => p.xpx > o.dims.w || p.ypx > o.dims.h))) return false;
   if (!pointOk(c.point1) || !pointOk(c.point2)) return false;
   if (c.state === 'calibrated') {
     if (!c.point1 || !c.point2 || !(c.realDistance > 0) || !Number.isFinite(c.realDistance)) return false;

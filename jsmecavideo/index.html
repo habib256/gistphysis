@@ -146,10 +146,22 @@
         }
 
         /* Portrait, étape Graphiques : la page peut défiler pour garder un graphique lisible */
-        html.defile,
-        html.defile body {
+        html.defile {
             height: auto;
             overflow-y: auto;
+        }
+
+        /* (le corps ne doit pas être un conteneur qui défile : la barre du bas y collerait) */
+        html.defile body {
+            height: auto;
+            overflow: visible;
+        }
+
+        /* Portrait, Graphiques : la barre du bas (export) reste collée en bas de l'écran */
+        body.emp.mode-graphique #barre-outils {
+            position: sticky;
+            bottom: 0;
+            z-index: 3;
         }
 
         body.emp.mode-graphique #app {
@@ -487,6 +499,11 @@
             display: block;
         }
 
+        /* Une erreur de saisie dit elle-même quoi faire : la consigne lui laisse la place */
+        body.emp #calibration-textes:has(#calibration-message.erreur) #calibration-consigne {
+            display: none;
+        }
+
         /* Paysage : en étalonnage, la saisie et les consignes passent en haut du panneau */
         body.lat.mode-etalonnage #calibration-input {
             order: -2;
@@ -553,10 +570,15 @@
             clip: rect(0 0 0 0);
         }
 
-        body.etroit #real-distance,
-        body.lat #real-distance {
+        body.etroit #real-distance {
             flex: 1 1 90px;
             width: 90px;
+        }
+
+        /* Panneau latéral : le champ prend toute la ligne (« 200 000 000 km » lisible) */
+        body.lat #real-distance {
+            flex: 1 1 100%;
+            width: 100%;
         }
 
         body.etroit #calibration-input,
@@ -822,6 +844,21 @@
             width: calc(var(--panneau) - 16px);
         }
 
+        #confirmation-rappel {
+            font-weight: bold;
+            color: #a93226;
+        }
+
+        #confirmation.secoue {
+            animation: secoue 0.4s;
+        }
+
+        @keyframes secoue {
+            0%, 100% { translate: 0 0; }
+            20%, 60% { translate: -8px 0; }
+            40%, 80% { translate: 8px 0; }
+        }
+
         #confirmation p {
             font-size: 16px;
             line-height: 21px;
@@ -1085,6 +1122,7 @@
         </div>
         <div id="confirmation" role="alertdialog" aria-labelledby="confirmation-texte" hidden>
                 <p id="confirmation-texte"></p>
+                <p id="confirmation-rappel" hidden>👉 Réponds d’abord à cette question.</p>
                 <div class="boutons">
                     <button type="button" id="confirmation-non" class="bouton"></button>
                     <button type="button" id="confirmation-oui" class="bouton bouton-danger"></button>

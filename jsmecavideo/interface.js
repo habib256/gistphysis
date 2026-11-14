@@ -19,7 +19,7 @@ const LOUPE_ECART = 34;         // distance entre le bord de la loupe et le doig
 
 // État des pointeurs (positions en pixels CSS du canevas)
 let pointeurTactile = { actif: false, id: null, x: 0, y: 0, dansImage: false, glisse: 0 };
-let souris = { dansCanvas: false, x: 0, y: 0, glisse: 0, ignorerClic: false };
+let souris = { dansCanvas: false, x: 0, y: 0, glisse: 0, ignorerClic: false, clientX: -1, clientY: -1 };
 let clavier = { actif: false, x: 0, y: 0 };   // réticule clavier (pixels vidéo)
 let typePointeur = (window.matchMedia && matchMedia('(pointer: coarse)').matches) ? 'tactile' : 'souris';
 let derniereAnnulationMenuContextuel = -Infinity;
@@ -51,7 +51,19 @@ function dimsAffichage() {
 
 // Disposition d'après la forme et la taille de la fenêtre (ou du cadre) :
 // paysage (largeur ≥ 1,1 × hauteur) → panneau latéral ; sinon barres empilées.
+// Clavier virtuel ouvert : saisie au doigt dans le champ de longueur et seule la hauteur de
+// la fenêtre a diminué (une rotation change aussi la largeur)
+let largeurFenetre = window.innerWidth, hauteurFenetre = window.innerHeight;
+function clavierVirtuelOuvert() {
+  return typePointeur === 'tactile' && document.activeElement === document.getElementById('real-distance') &&
+    window.innerWidth === largeurFenetre && window.innerHeight < hauteurFenetre;
+}
+
 function appliquerDisposition() {
+  // Pendant la saisie au clavier virtuel, la disposition ne change pas
+  if (clavierVirtuelOuvert()) return;
+  largeurFenetre = window.innerWidth;
+  hauteurFenetre = window.innerHeight;
   const W = window.innerWidth, H = window.innerHeight;
   const lat = W >= 1.1 * H && W >= 460;
   const panneau = Math.round(Math.max(210, Math.min(340, W * (H < 520 ? 0.3 : 0.27))));
@@ -91,6 +103,16 @@ function mesurerHauteurEtalonnage() {
 }
 
 function ajusterTaille() {
+  // Clavier virtuel ouvert pour la saisie de la longueur : rien ne bouge (ni disposition, ni
+  // guide, ni image) ; tout est recalculé quand le champ perd le focus
+  if (clavierVirtuelOuvert()) {
+    const saisie = document.getElementById('real-distance');
+    if (!saisie.dataset.surveille) {
+      saisie.dataset.surveille = '1';
+      saisie.addEventListener('blur', demanderAjustementTaille);
+    }
+    return;
+  }
   appliquerDisposition();
   mesurerHauteurEtalonnage();
   const scene = document.getElementById('scene');
@@ -129,9 +151,8 @@ function ajusterTaille() {
     saisie.dataset.surveille = '1';
     saisie.addEventListener('blur', demanderAjustementTaille);
   }
-  if (clavierVirtuel) {
-    conteneur.style.left = Math.floor((W - tailleAffichee.w) / 2) + 'px';
-    conteneur.style.top = '0px';
+  if (clavierVirtuel || clavierVirtuelOuvert()) {
+    // Image strictement immobile : ni taille ni place ne changent pendant la saisie
     return;
   }
   sceneMesuree = { w: W, h: H };
@@ -304,6 +325,10 @@ function installerPointageTactile(elt) {
 
   // Souris : le viseur suit la souris sur l'image ; glisser un point d'étalonnage
   elt.addEventListener('mousemove', (e) => {
+    // Un vrai mouvement de souris (pas un événement émis sans bouger) fait disparaître le réticule clavier
+    if (clavier.actif && (Math.abs(e.clientX - souris.clientX) > 2 || Math.abs(e.clientY - souris.clientY) > 2)) clavier.actif = false;
+    souris.clientX = e.clientX;
+    souris.clientY = e.clientY;
     const p = coordonneesCanvas(elt, e.clientX, e.clientY);
     souris.x = p.x;
     souris.y = p.y;
@@ -317,9 +342,13 @@ function installerPointageTactile(elt) {
   elt.addEventListener('mouseenter', () => { souris.dansCanvas = true; });
   elt.addEventListener('mouseleave', () => {
     souris.dansCanvas = false;
-    if (souris.glisse) annulerToucher(); // sortie de l'image : bout remis en place
+    if (souris.glisse) {
+      annulerToucher(); // sortie de l'image : bout remis en place
+      souris.ignorerClic = true; // le relâchement qui suivra n'est pas un pointage
+    }
   });
   elt.addEventListener('mousedown', (e) => {
+    clavier.actif = false;
     if (e.button !== 0) return;
     const p = coordonneesCanvas(elt, e.clientX, e.clientY);
     souris.glisse = pointEtalonnageProche(p);
@@ -413,6 +442,12 @@ function installerClavierImage(elt) {
 // Raccourcis de toute l'app (hors champs de saisie et menus)
 function installerRaccourcis() {
   document.addEventListener('keydown', (e) => {
+    // Échap pendant un glisser de bout d'étalonnage : le bout revient à sa place
+    if (e.key === 'Escape' && (pointeurTactile.glisse || souris.glisse)) {
+      e.preventDefault();
+      annulerToucher();
+      return;
+    }
     const cible = e.target;
     const balise = cible && cible.tagName;
     if (balise === 'INPUT' || balise === 'SELECT' || balise === 'TEXTAREA' || (cible && cible.isContentEditable)) return;
@@ -608,7 +643,7 @@ function creerControlesLecture(lecteur, webcam) {
   curseur.addEventListener('pointerdown', () => { curseur.actif = true; });
   const relacher = () => { curseur.actif = false; };
   ['pointerup', 'pointercancel', 'lostpointercapture', 'change'].forEach(ev => curseur.addEventListener(ev, relacher));
-  curseur.addEventListener('input', () => lecteur.allerImage(parseInt(curseur.value, 10) || 0));
+  curseur.addEventListener('input', () => lecteur.allerImageChoisie(parseInt(curseur.value, 10) || 0));
   parent.appendChild(curseur);
   elements.push(curseur);
 

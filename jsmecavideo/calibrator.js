@@ -138,6 +138,9 @@ class Calibrator {
 
     // Consigne d'action selon l'état (pointeur : 'tactile' ou 'souris')
     getInstructionMessage(pointeur) {
+        if (pointeur === 'clavier' && (this.state === 'waiting_point1' || this.state === 'waiting_point2')) {
+            return '⌨️ Flèches puis Entrée : pointe ' + (this.state === 'waiting_point1' ? 'un bout' : 'l’autre bout') + ' de l’objet connu. Échap : sortir.';
+        }
         let geste = pointeur === 'tactile' ? 'Touche' : 'Clique sur';
         switch (this.state) {
             case 'waiting_point1':

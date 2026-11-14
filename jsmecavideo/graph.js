@@ -208,7 +208,7 @@ class Graph {
             case 'vitesse': return 'd = distance entre deux points, Δt = durée entre ces deux points. ' +
                 'Même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.';
             case 'x(t)': case 'y(t)': return 'L’instant t est compté depuis le premier point (t = 0).';
-            case 'tableau': return 'Une ligne par point. d, Δt et v sont mesurés depuis le point précédent ; l’instant t est compté depuis le premier point. v est calculée avec le d affiché.';
+            case 'tableau': return 'Une ligne par point. d, Δt et v sont mesurés depuis le point précédent ; l’instant t est compté depuis le premier point. v est calculée avec les valeurs exactes puis arrondie : refaire d / Δt avec les valeurs affichées peut différer d’une unité sur le dernier chiffre.';
             default: return '';
         }
     }
@@ -392,11 +392,40 @@ class Graph {
             options: this.optionsCommunes({
                 x: { type: 'category', title: { display: true, text: plusieurs ? 'intervalle : de l’image n° … à l’image n° …' : 'intervalle : du point n° … au point n° …' } },
                 y: axeRond(by, yLabel)
-            }, true, grandeur === 'd' ? u.decD : u.decV)
+            }, true)
         };
     }
 
-    optionsCommunes(scales, legende, decimales) {
+    // Écriture d'une valeur dans une infobulle : même format que le tableau et le résumé
+    // pour chaque grandeur (positions, distances, vitesses, temps ; accélération à 3 chiffres)
+    formatGrandeur(quoi) {
+        const u = unitesMesure();
+        switch (quoi) {
+            case 'pos': return v => nombreLisible(v, u.decPos) + ' ' + u.distance;
+            case 'd': return v => nombreLisible(v, u.decD) + ' ' + u.distance;
+            case 'v': return v => nombreLisible(v, u.decV) + ' ' + u.vitesse;
+            case 't': return v => nombreLisible(v, u.decT) + ' ' + u.temps;
+            case 'a': return v => nombreSignificatif(v) + ' ' + uniteAcceleration();
+            default: return v => nombreLisible(v, u.decPos);
+        }
+    }
+
+    // Grandeurs portées par les axes du graphique courant
+    grandeursAxes() {
+        switch (this.graphType) {
+            case 'y(x)': return ['pos', 'pos'];
+            case 'x(t)': case 'y(t)': return ['t', 'pos'];
+            case 'v(t)': case 'vx(t)': case 'vy(t)': return ['t', 'v'];
+            case 'a(t)': return ['t', 'a'];
+            case 'ecarts': return [null, 'd'];
+            case 'vitesse': return [null, 'v'];
+            default: return [null, 'pos'];
+        }
+    }
+
+    optionsCommunes(scales, legende) {
+        const [gx, gy] = this.grandeursAxes();
+        const fx = gx ? this.formatGrandeur(gx) : null, fy = this.formatGrandeur(gy);
         return {
             responsive: true,
             maintainAspectRatio: false,
@@ -407,9 +436,10 @@ class Graph {
                 tooltip: {
                     callbacks: {
                         label: (ctx) => {
-                            const y = ctx.parsed.y;
-                            const dec = decimales !== undefined ? decimales : unitesMesure().decPos;
-                            return ctx.dataset.label + ' : ' + nombreLisible(y, dec);
+                            const y = fy(ctx.parsed.y);
+                            if (gx === 'pos') return ctx.dataset.label + ' : x = ' + fx(ctx.parsed.x) + ' ; y = ' + y;
+                            if (gx) return ctx.dataset.label + ' : ' + y + ' à t = ' + fx(ctx.parsed.x);
+                            return ctx.dataset.label + ' : ' + y;
                         }
                     }
                 }

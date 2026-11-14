@@ -83,7 +83,7 @@ class Data {
         else decT = Math.abs(this.dureeImage * 1000 - Math.round(this.dureeImage * 1000)) < 1e-6 ? 3 : 4;
         // v est calculée avec les valeurs exactes, puis arrondie à la finesse de la mesure.
         // d reçoit assez de chiffres pour que d affichée / Δt affichée redonne v affichée à une
-        // unité près de son dernier chiffre : erreur d'arrondi de d / Δt ≤ ½ unité de v.
+        // unité près de son dernier chiffre (erreur d'arrondi de d / Δt ≤ ½ unité de v).
         const pos = decimalesUtiles(pasPos);
         const v = decimalesUtiles(pasPos / dtMin);
         const d = Math.max(pos, Math.min(6, Math.ceil(v - Math.log10(dtMin) - 1e-9)));

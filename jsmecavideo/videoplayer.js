@@ -159,12 +159,19 @@ class VideoPlayer {
         this.image = k;
     }
 
+    // Navigation manuelle (boutons, flèches, curseur, Début) : l'élève choisit son image ;
+    // le « retour à l'image de travail » ne vaut que pour un toucher qui suit une lecture.
+    allerImageChoisie(k) {
+        this.aLu = false;
+        return this.allerImage(k);
+    }
+
     nextFrame() {
         if (typeof avantImageSuivante === 'function') avantImageSuivante(this.image);
-        return this.allerImage(this.image + 1);
+        return this.allerImageChoisie(this.image + 1);
     }
-    previousFrame() { return this.allerImage(this.image - 1); }
-    jumpToStart() { return this.allerImage(0); }
+    previousFrame() { return this.allerImageChoisie(this.image - 1); }
+    jumpToStart() { return this.allerImageChoisie(0); }
 
     // Lecture / pause ; à la pause, la vidéo est calée sur une image entière
     play() {
