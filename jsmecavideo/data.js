@@ -16,9 +16,10 @@ const MOBILES_STYLE = [
 ];
 
 // Décimales utiles pour une grandeur dont la plus petite variation mesurable vaut `pas`
+// (négatif pour les grands nombres : -6 = arrondi au million, pour l'animation en km)
 function decimalesUtiles(pas, max = 6) {
     if (!(pas > 0)) return 0;
-    return Math.max(0, Math.min(max, Math.ceil(-Math.log10(pas) - 1e-9)));
+    return Math.max(-9, Math.min(max, Math.ceil(-Math.log10(pas) - 1e-9)));
 }
 
 function arrondi(x, dec) {
@@ -80,7 +81,13 @@ class Data {
         if (this.uniteTemps === 'jour') decT = decimalesPas(this.dureeImage);
         else if (this.instants) decT = 3;
         else decT = Math.abs(this.dureeImage * 1000 - Math.round(this.dureeImage * 1000)) < 1e-6 ? 3 : 4;
-        return { pos: decimalesUtiles(pasPos), v: decimalesUtiles(pasPos / dtMin), t: decT };
+        // v est calculée avec les valeurs exactes, puis arrondie à la finesse de la mesure.
+        // d reçoit assez de chiffres pour que d affichée / Δt affichée redonne v affichée à une
+        // unité près de son dernier chiffre : erreur d'arrondi de d / Δt ≤ ½ unité de v.
+        const pos = decimalesUtiles(pasPos);
+        const v = decimalesUtiles(pasPos / dtMin);
+        const d = Math.max(pos, Math.min(6, Math.ceil(v - Math.log10(dtMin) - 1e-9)));
+        return { pos: pos, d: d, v: v, t: decT };
     }
 
     setNumMobiles(num) {
@@ -212,14 +219,10 @@ class Data {
     }
 
     // Lecture de la chronophotographie : pour chaque intervalle entre deux points successifs,
-    // la distance parcourue d (arrondie comme elle est affichée), la durée Δt et la vitesse
-    // v = d / Δt calculée avec ce d affiché : l'élève qui refait le calcul retrouve le v affiché.
+    // la distance d parcourue, la durée Δt et la vitesse v = d / Δt (valeurs exactes ; elles sont
+    // arrondies seulement à l'affichage, avec les décimales de formats()).
     getIntervalles(m = 0) {
-        const f = this.formats();
-        return this.intervallesBruts(m).map(iv => {
-            const d = arrondi(iv.d, f.pos);
-            return Object.assign(iv, { d: d, v: d / iv.duree });
-        });
+        return this.intervallesBruts(m).map(iv => Object.assign(iv, { v: iv.d / iv.duree }));
     }
 
     // Vrai si toutes les durées Δt (tous mobiles) sont égales (à 2 % près)
@@ -283,8 +286,9 @@ class Data {
         if (o.historique !== undefined) {
             if (!Array.isArray(o.historique)) return false;
             for (const a of o.historique) {
-                if (!a || !Number.isInteger(a.m) || a.m < 0 || a.m >= n || !Number.isInteger(a.image)) return false;
-                if (a.ancien !== null && a.ancien !== undefined && !pointValide(a.ancien)) return false;
+                if (!a || !Number.isInteger(a.m) || a.m < 0 || a.m >= n || !Number.isInteger(a.image) || a.image < 0) return false;
+                if (nbImages && a.image >= nbImages) return false;
+                if (a.ancien !== null && a.ancien !== undefined && (!pointValide(a.ancien) || a.ancien.image !== a.image)) return false;
             }
         }
         return true;

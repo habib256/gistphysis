@@ -30,7 +30,7 @@
 
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {mkdirSync, mkdtempSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, writeFileSync, rmSync, readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {servir, lancerChrome, ouvrirOnglet, ev, jusqua, pause, capture, redimensionner, clic, toucher,
@@ -70,10 +70,18 @@ const choisirVideoSansAttente = async (o, chemin) => {
   await ev(o, `(()=>{const i=videoFiles.findIndex(v=>v.path===${JSON.stringify(chemin)});const s=document.getElementById('choix-video');s.value=String(i);s.dispatchEvent(new Event('change'));})()`);
   await pause(300);
 };
+// Répond à la question affichée (après 450 ms : un toucher plus rapide est ignoré par l'app)
+const repondre = async (o, quoi) => {
+  await pause(450);
+  await ev(o, `document.getElementById('confirmation-${quoi}').click()`);
+};
+// Vraies frappes au clavier dans le champ qui a le focus
+const saisir = async (o, texte) => { await o.c.send('Input.insertText', {text: texte}, o.s); };
+const effacerChamp = async (o, n = 20) => { for (let i = 0; i < n; i++) await touche(o, 'Backspace', 'Backspace', 8); };
 // Change de vidéo (et répond « Changer de vidéo » si la question s'affiche)
 const choisirVideo = async (o, chemin) => {
   await choisirVideoSansAttente(o, chemin);
-  if (await ev(o, `!document.getElementById('confirmation').hidden`)) await ev(o, `document.getElementById('confirmation-oui').click()`);
+  if (await ev(o, `!document.getElementById('confirmation').hidden`)) await repondre(o, 'oui');
   await jusqua(o, `lecteur().chemin===${JSON.stringify(chemin)}`);
   await pret(o);
 };
@@ -87,6 +95,29 @@ const journalPropre = (o, nom) => {
   verifier(nom + ' : aucune erreur console', o.journal.erreurs.length === 0 && o.journal.console.length === 0, [...o.journal.erreurs, ...o.journal.console].slice(0, 5));
   verifier(nom + ' : aucune requête hors origine, aucun échec', externes.length === 0 && o.journal.echecs.length === 0, [...externes, ...o.journal.echecs].slice(0, 5));
 };
+// Compare l'image affichée par l'app (élément vidéo, taille native) aux images k et k-1 du
+// fichier extraites par ffmpeg (référence indépendante du navigateur)
+async function compareReference(o, video, k) {
+  let refs;
+  try {
+    const dossier = mkdtempSync(path.join(tmpdir(), 'jsmeca-ref-'));
+    refs = [k, k - 1].map(n => {
+      const f = path.join(dossier, n + '.png');
+      execFileSync('ffmpeg', ['-nostdin', '-v', 'error', '-y', '-i', path.join(RACINE, video), '-vf', `select=eq(n\\,${n})`, '-vsync', '0', '-frames:v', '1', f]);
+      return 'data:image/png;base64,' + readFileSync(f).toString('base64');
+    });
+    rmSync(dossier, {recursive: true, force: true});
+  } catch (e) {
+    return {ok: false, raison: 'ffmpeg indisponible : NON vérifié'};
+  }
+  return ev(o, `(async()=>{const v=lecteur().elt,w=v.videoWidth,h=v.videoHeight;
+    const lire=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src;});
+    const pixels=img=>{const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(img,0,0,w,h);return x.getImageData(0,0,w,h).data;};
+    const a=pixels(v),r0=pixels(await lire(${JSON.stringify(refs[0])})),r1=pixels(await lire(${JSON.stringify(refs[1])}));
+    const ecart=(p,q)=>{let s=0,n=0;for(let i=0;i<p.length;i+=4*7){s+=Math.abs(p[i]-q[i])+Math.abs(p[i+1]-q[i+1])+Math.abs(p[i+2]-q[i+2]);n+=3;}return s/n;};
+    const dk=ecart(a,r0),dk1=ecart(a,r1);return {ok:dk<3&&dk<dk1,ecartImageK:Math.round(dk*100)/100,ecartImagePrecedente:Math.round(dk1*100)/100};})()`);
+}
+
 async function onglet(w, h, options = {}) {
   const o = await ouvrirOnglet(c, (options.base || srv.base) + (options.page || '/index.html'), w, h, options);
   o.base = options.base || srv.base;
@@ -98,10 +129,11 @@ async function onglet(w, h, options = {}) {
 const MESURE = `(()=>{const d=DOC,w=d.defaultView,c=d.querySelector('canvas'),r=c.getBoundingClientRect(),W=w.innerWidth,H=w.innerHeight;
   const vis=e=>e&&!e.hidden&&e.getClientRects().length>0&&w.getComputedStyle(e).visibility!=='hidden'&&!e.closest('[hidden]');
   const petit=vis(d.getElementById('trop-petit'));
-  const coupe=['instructions','frame-info','calibration-message'].filter(id=>{const e=d.getElementById(id);return vis(e)&&e.scrollHeight>e.clientHeight+1;});
-  const cibles=[...d.querySelectorAll('#panneau button,#panneau select,#barre-outils button,#barre-outils input,#calibration-input input')].filter(vis).filter(e=>{const b=e.getBoundingClientRect();return b.height<43.5||b.width<43.5;}).map(e=>(e.id||e.className)+':'+Math.round(e.getBoundingClientRect().width)+'×'+Math.round(e.getBoundingClientRect().height));
+  const coupe=['instructions','frame-info','calibration-message','calibration-consigne'].filter(id=>{const e=d.getElementById(id);return vis(e)&&e.scrollHeight>e.clientHeight+1;})
+    .concat(['guide-texte','calibration-textes'].filter(id=>{const e=d.getElementById(id);return vis(e)&&e.scrollHeight-e.scrollTop>e.clientHeight+2&&!e.classList.contains('deborde');}).map(id=>id+' (sans indice)'));
+  const cibles=[...d.querySelectorAll('#panneau button,#panneau select,#barre-outils button,#barre-outils input,#calibration-input input,#guide button,#graphique-zone summary,#info-bar button,#scene button')].filter(vis).filter(e=>{const b=e.getBoundingClientRect();return b.height<43.5||b.width<43.5;}).map(e=>(e.id||e.className)+':'+Math.round(e.getBoundingClientRect().width)+'×'+Math.round(e.getBoundingClientRect().height));
   return {W,H,disposition:d.body.classList.contains('lat')?'latérale':'empilée',image:Math.round(r.width)+'×'+Math.round(r.height),iw:r.width,ih:r.height,
-    part:Math.round(1000*r.width*r.height/(W*H))/10,petit,coupe,cibles,
+    part:Math.round(1000*r.width*r.height/(W*H))/10,petit,coupe,cibles,rect:[r.left,r.top,r.width,r.height].map(Math.round).join(','),
     defile:d.documentElement.scrollHeight>H+1||d.documentElement.scrollWidth>W+1,
     entiere:r.top>=-0.5&&r.left>=-0.5&&r.bottom<=H+0.5&&r.right<=W+0.5};})()`;
 const mesurer = (o, doc = 'document') => ev(o, MESURE.replace('DOC', doc));
@@ -144,7 +176,7 @@ try {
         await capture(o, path.join(SORTIE, `balayage-${w}x${h}-graphique.png`));
         await ev(o, `passerAuMode('Pointage')`);
       }
-      rapport.balayage.push({taille: w + '×' + h, ...p, etalonnage: e.petit ? 'trop petit' : e.image, partEtal: e.part, coupeEtal: e.coupe, ...g});
+      rapport.balayage.push({taille: w + '×' + h, ...p, etalonnage: e.petit ? 'trop petit' : e.image, partEtal: e.part, coupeEtal: e.coupe, ciblesEtal: e.cibles, rectP: p.rect, rectE: e.rect, ...g});
     }
     journalPropre(o, 'balayage');
     await fermer(o);
@@ -180,13 +212,15 @@ try {
       Object.keys(cibles).map(t => t + ' : ' + (B.find(r => r.taille === t) || {}).part + ' %'));
     verifier('graphique et tableau ≥ 220 px de haut partout (y compris cadres)', B.every(r => r.gh >= 219.5 && r.th >= 219.5), B.filter(r => r.gh < 219.5 || r.th < 219.5).map(r => r.taille + ' ' + r.graphique + ' / ' + r.tableau));
     verifier('aucun texte coupé (consigne, ligne d’état, message d’étalonnage)', B.every(r => r.coupe.length === 0 && r.coupeEtal.length === 0), B.filter(r => r.coupe.length || r.coupeEtal.length).map(r => r.taille + ' ' + r.coupe.concat(r.coupeEtal).join(',')));
-    verifier('cibles ≥ 44 px (boutons, menus, curseur)', B.every(r => r.cibles.length === 0), [...new Set(B.flatMap(r => r.cibles))].slice(0, 12));
+    verifier('cibles ≥ 44 px (boutons, menus, curseur, guide, résumé ; à l’écran ou non)', B.every(r => r.cibles.length === 0 && (r.ciblesEtal || []).length === 0), [...new Set(B.flatMap(r => r.cibles.concat(r.ciblesEtal || [])))].slice(0, 12));
+    verifier('portrait : l’image a la même taille et la même place pour pointer et pour étalonner', B.filter(r => r.disposition === 'empilée' && !r.petit && r.rectE).every(r => r.rectP === r.rectE),
+      B.filter(r => r.disposition === 'empilée' && !r.petit && r.rectE && r.rectP !== r.rectE).map(r => r.taille + ' ' + r.rectP + ' → ' + r.rectE));
   }
 
   // ------------------------------------------------------------------ 2. Stabilité de l'image
   if (partie(2, 'Stabilité : geste, deux points, rotation, étalonnage au doigt à 334×468')) {
-    for (const [w, h] of [[334, 468], [360, 640], [640, 360], [1024, 768]]) {
-      const o = await onglet(w, h, {tactile: true});
+    for (const [w, h, dpr] of [[334, 468, 1], [360, 640, 3], [640, 360, 2], [1024, 768, 2]]) {
+      const o = await onglet(w, h, {tactile: true, dpr});
       const r0 = await rectCanevas(o);
       const a = await ecranDe(o, 200, 150);
       await doigtPose(o, a.x, a.y); await pause(120);
@@ -199,7 +233,7 @@ try {
       await toucher(o, b.x, b.y); await pause(500);
       const r2 = await rectCanevas(o);
       const n = await ev(o, `data.getTotalPointCount()`);
-      verifier(`${w}×${h} : image immobile pendant le geste (consigne « loupe ») et entre deux points`, r0 === pendant && pendant === r1 && r1 === r2 && n === 2 && /loupe/.test(consigne), {r0, pendant, r1, r2, n});
+      verifier(`${w}×${h} (densité ${dpr}) : image immobile pendant le geste (consigne « loupe ») et entre deux points`, r0 === pendant && pendant === r1 && r1 === r2 && n === 2 && /loupe/.test(consigne), {r0, pendant, r1, r2, n});
       if (w === 334) {
         await ev(o, `passerAuMode('Calibration')`); await pause(400);
         const e0 = await rectCanevas(o);
@@ -250,16 +284,20 @@ try {
       await doigtLeve(o); await pause(150);
     }
     verifier('étalonnage : champ actif et vide après le 2e point', await ev(o, `!document.getElementById('real-distance').disabled && document.getElementById('real-distance').value===''`));
-    await ev(o, `(()=>{const s=document.getElementById('real-distance');s.value='1,85 m';s.dispatchEvent(new Event('input'));})()`);
+    await ev(o, `document.getElementById('real-distance').focus()`);
+    await saisir(o, '1,85 m');
     const apercu = await ev(o, `document.getElementById('calibration-message').textContent`);
     await ev(o, `document.getElementById('validate-calibration').click()`);
     const etal = await ev(o, `({echelle:data.echelle, px:calibrator.pixelDistance, passer:!document.getElementById('passer-pointage').hidden})`);
     verifier('« 1,85 m » accepté, conversion affichée, échelle = 1,85 m / longueur en pixels vidéo', /1,85 m/.test(apercu) && Math.abs(etal.echelle * etal.px / 1.85 - 1) < 1e-9 && etal.passer, {apercu, ...etal});
-    await ev(o, `(()=>{const s=document.getElementById('real-distance');s.value='quatre-vingts';document.getElementById('validate-calibration').click();})()`);
+    await ev(o, `document.getElementById('real-distance').focus()`);
+    await effacerChamp(o); await saisir(o, 'quatre-vingts');
+    await ev(o, `document.getElementById('validate-calibration').click()`);
     await pause(500);
     const err = await ev(o, `({classe:document.getElementById('real-distance').classList.contains('erreur'),msg:document.getElementById('calibration-message').textContent})`);
     verifier('saisie invalide : erreur visible qui reste (pas effacée par le dessin)', err.classe && /comprends pas/.test(err.msg), err);
-    await ev(o, `(()=>{const s=document.getElementById('real-distance');s.value='1,85 m';s.dispatchEvent(new Event('input'));})()`);
+    await ev(o, `document.getElementById('real-distance').focus()`);
+    await effacerChamp(o); await saisir(o, '1,85 m');
     await ev(o, `document.getElementById('passer-pointage').click()`);
     await pret(o);
     for (let k = 0; k < 10; k++) {
@@ -403,11 +441,14 @@ try {
       await ev(o, `window.__recherches=0;videoPlayer.elt.addEventListener('seeking',()=>__recherches++);videoPlayer.allerImage(videoPlayer.derniereImage())`);
       await jusqua(o, `!videoPlayer.enDeplacement`);
       const atteinte = await ev(o, `({image:videoPlayer.image, affichee:videoPlayer.indiceImage(), derniere:videoPlayer.derniereImage()})`);
+      const reference = await compareReference(o, video, derniere);
+      verifier(`${video.slice(7)} : l’image affichée est l’image ${derniere} du fichier (comparée aux images ${derniere} et ${derniere - 1} extraites par ffmpeg)`, reference.ok, reference);
+      await ev(o, `__recherches=0`);
       for (let i = 0; i < 2; i++) { const p = await ecranDe(o, 100 + 5 * i, 100); await toucher(o, p.x, p.y); await pause(400); }
-      await ev(o, `__recherches=0`); await pause(3000);
+      await pause(3000);
       const r = await ev(o, `({recherches:__recherches, enDeplacement:videoPlayer.enDeplacement, voir:!document.getElementById('bouton-voir-graphiques').hidden, n:data.getTotalPointCount()})`);
-      verifier(`${video.slice(7)} : dernière image (${derniere}) atteinte et affichée ; la pointer deux fois ne déclenche aucune recherche en 3 s ; « Voir les graphiques » reste`,
-        atteinte.image === derniere && atteinte.affichee === derniere && r.recherches === 0 && !r.enDeplacement && r.voir && r.n === 1, {atteinte, ...r});
+      verifier(`${video.slice(7)} : dernière image (${derniere}) atteinte ; la pointer deux fois puis attendre 3 s : aucune recherche (compteur remis à zéro avant les touchers) ; « Voir les graphiques » reste`,
+        atteinte.image === derniere && r.recherches === 0 && !r.enDeplacement && r.voir && r.n === 1, {atteinte, ...r});
       if (video === CHUTE) {
         await capture(o, path.join(SORTIE, 'fin-de-video.png'));
         await ev(o, `data.clearAllPoints(); videoPlayer.allerImage(0)`); await jusqua(o, `!videoPlayer.enDeplacement`);
@@ -421,15 +462,19 @@ try {
     }
     const o = await onglet(1366, 768);
     await ev(o, `document.querySelector('canvas').focus()`);
-    for (let i = 0; i < 6; i++) await touche(o, 'ArrowRight', 'ArrowRight', 39);
+    await touche(o, 'Enter', 'Enter', 13); // Entrée : le réticule apparaît au centre
+    for (let i = 0; i < 5; i++) await touche(o, 'ArrowRight', 'ArrowRight', 39);
+    await pause(200); // la consigne est réécrite à l'image suivante du dessin
+    const pendant = await ev(o, `({image:lecteur().image, consigne:document.getElementById('instructions').textContent})`);
     await touche(o, 'Enter', 'Enter', 13); await pause(400);
     const k1 = await ev(o, `({n:data.getTotalPointCount(), p:data.points[0][0], s:dimensionsSource(), image:lecteur().image})`);
-    verifier('clavier sur l’image : flèches puis Entrée pointent (centre + 5 px), la vidéo avance', k1.n === 1 && Math.abs(k1.p.xpx - (k1.s.w / 2 + 5)) < 1e-6 && k1.image === 1, k1);
+    verifier('clavier : Entrée fait apparaître le réticule, les flèches le déplacent (image inchangée, consigne du réticule), Entrée pointe (centre + 5 px)',
+      pendant.image === 0 && /Échap/.test(pendant.consigne) && k1.n === 1 && Math.abs(k1.p.xpx - (k1.s.w / 2 + 5)) < 1e-6 && k1.image === 1, {pendant, k1});
     await touche(o, 'Backspace', 'Backspace', 8); await pause(300);
     verifier('clavier : Retour arrière annule', await ev(o, `data.getTotalPointCount()===0 && lecteur().image===0`));
-    await ev(o, `document.querySelector('canvas').blur()`);
+    await touche(o, 'Escape', 'Escape', 27);
     await touche(o, 'ArrowRight', 'ArrowRight', 39); await pause(300);
-    verifier('clavier hors image : → passe à l’image suivante', await ev(o, `lecteur().image===1`));
+    verifier('clavier : après Échap, → passe à l’image suivante (l’image garde le focus)', await ev(o, `lecteur().image===1 && !clavier.actif && document.activeElement.tagName==='CANVAS'`));
     await touche(o, 'Home', 'Home', 36); await pause(300);
     const p = await ecranDe(o, 100, 100);
     await o.c.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: p.x, y: p.y}, o.s);
@@ -473,17 +518,27 @@ try {
 
   // ------------------------------------------------------------------ 9. Webcam
   if (partie(9, 'Webcam simulée : instants réels, ré-enregistrement')) {
-    const o = await onglet(1024, 768);
+    // Horloge indépendante : pour chaque image de la caméra, l'instant performance.now() de son
+    // appel, relevé avant que l'app ne le reçoive
+    const o = await ouvrirOnglet(c, 'about:blank', 1024, 768);
+    o.base = srv.base;
+    await o.c.send('Page.addScriptToEvaluateOnNewDocument', {source: `(()=>{const orig=HTMLVideoElement.prototype.requestVideoFrameCallback;if(!orig)return;window.__horloge=new Map();
+      HTMLVideoElement.prototype.requestVideoFrameCallback=function(f){return orig.call(this,(now,meta)=>{window.__horloge.set(meta.mediaTime,performance.now()/1000);f(now,meta);});};})();`}, o.s);
+    await o.c.send('Page.navigate', {url: srv.base + '/index.html'}, o.s);
+    await pause(800); await pret(o);
     await ev(o, `(()=>{const s=document.getElementById('choix-video');s.value='webcam';s.dispatchEvent(new Event('change'));})()`);
     await jusqua(o, `webcamPlayer && webcamPlayer.isLoaded`);
     await ev(o, `webcamPlayer.toggleRecording()`); await pause(1500);
     await ev(o, `webcamPlayer.toggleRecording()`); await jusqua(o, `webcamPlayer.isRecorded`); await pause(300);
     for (let i = 0; i < 3; i++) { await jusqua(o, `lecteur().pret()`); const p = await ecranDe(o, 100 + 20 * i, 100); await clic(o, p.x, p.y); await pause(300); }
-    const w = await ev(o, `({images:webcamPlayer.images.length, n:data.getTotalPointCount(), durees:data.intervallesBruts(0).map(i=>i.duree), attendu:data.instants.slice(1,3).map((t,i)=>t-data.instants[i])})`);
-    verifier('webcam : chaque image a son instant mesuré ; Δt du tableau = écarts réels entre images', w.images > 5 && w.n === 3 && w.durees.length === 2 && w.durees.every((d, i) => Math.abs(d - w.attendu[i]) < 1e-9), w);
+    const w = await ev(o, `({images:webcamPlayer.images.length, n:data.getTotalPointCount(), durees:data.intervallesBruts(0).map(i=>i.duree),
+      horloge:webcamPlayer.instants.slice(0,3).map(t=>__horloge.get(t)), guide:texteDureeEntrePoints()})`);
+    const attendu = w.horloge.slice(1).map((t, i) => t - w.horloge[i]);
+    verifier('webcam : Δt du tableau = écarts mesurés par une horloge indépendante (à 10 ms près) ; le guide n’annonce pas de durée fixe', w.images > 5 && w.n === 3 && w.horloge.every(Number.isFinite) &&
+      w.durees.every((d, i) => Math.abs(d - attendu[i]) < 0.010) && /mesurée/.test(w.guide), {durees: w.durees, horloge: attendu, guide: w.guide});
     await ev(o, `webcamPlayer.toggleRecording()`); await pause(300);
     const q = await ev(o, `({question:!document.getElementById('confirmation').hidden, enregistre:webcamPlayer.isRecording})`);
-    await ev(o, `document.getElementById('confirmation-oui').click()`); await pause(800);
+    await repondre(o, 'oui'); await pause(800);
     const apres = await ev(o, `({n:data.getTotalPointCount(), enregistre:webcamPlayer.isRecording})`);
     await ev(o, `webcamPlayer.toggleRecording()`);
     verifier('nouvel enregistrement avec des points : question, puis points effacés et enregistrement lancé', q.question && !q.enregistre && apres.n === 0 && apres.enregistre, {q, apres});
@@ -504,7 +559,7 @@ try {
     const p = await ecranDe(o, 100, 100); await clic(o, p.x, p.y); await pause(300);
     const bloque = await ev(o, `data.getTotalPointCount()`);
     await capture(o, path.join(SORTIE, 'reprise.png'));
-    await ev(o, `document.getElementById('confirmation-oui').click()`);
+    await repondre(o, 'oui');
     await pret(o); await jusqua(o, `lecteur().pret() && lecteur().image===4`);
     const r = await ev(o, `({n:data.getTotalPointCount(), local:localStorage.length})`);
     verifier('« Reprendre ? » : Échap ne détruit rien (question toujours là), pointage bloqué pendant la question, puis reprise des 4 points', echap.ouverte && echap.sauvee && bloque === 0 && r.n === 4 && r.local === 0, {echap, bloque, r});
@@ -570,15 +625,14 @@ try {
     verifier('durées inégales : alerte sur le graphique et le tableau, pas d’aide « plus hautes → accéléré », guide et en-tête du CSV honnêtes',
       g.alerte && /pas toutes égales/.test(g.alerte) && !/accéléré/.test(g.aide) && /pas tous séparés/.test(g.guide) && /INÉGALES/.test(g.entete) && tab, g);
     const lignes = await ev(o, `[...document.querySelectorAll('#tableau-mesures tbody tr')].map(tr=>[...tr.children].map(td=>td.textContent))`);
-    const num = s => parseFloat(s.replace(/ /g, '').replace(',', '.'));
-    const coherent = lignes.filter(l => l[5]).every(l => {
-      const dec = (l[7].split(',')[1] || '').length;
-      return (num(l[5]) / num(l[6])).toFixed(dec) === num(l[7]).toFixed(dec);
-    });
-    verifier('tableau : d / Δt calculé avec les valeurs affichées redonne le v affiché', coherent && lignes.length === 5, lignes.slice(0, 3));
+    const num = s => parseFloat(s.replace(/\u202f/g, '').replace(',', '.'));
+    // Unité du dernier chiffre de v : 10^-decV (decV peut être négatif : arrondi à la dizaine…)
+    const decV = await ev(o, `data.formats().v`);
+    const coherent = lignes.filter(l => l[5]).every(l => Math.abs(num(l[5]) / num(l[6]) - num(l[7])) <= Math.pow(10, -decV) + 1e-9);
+    verifier('tableau : d / Δt refait avec les valeurs affichées redonne v affichée à une unité du dernier chiffre près', coherent && lignes.length === 5, lignes.slice(0, 3));
     await choisir(o, 'choix-mode', 'Pointage');
     await choisir(o, 'choix-mobiles', 2); await pause(200);
-    if (await ev(o, `!document.getElementById('confirmation').hidden`)) await ev(o, `document.getElementById('confirmation-oui').click()`);
+    if (await ev(o, `!document.getElementById('confirmation').hidden`)) await repondre(o, 'oui');
     await choisir(o, 'choix-pas', 1);
     await ev(o, `lecteur().allerImage(0)`); await jusqua(o, `lecteur().pret()`);
     for (const [x, y] of [[100, 100], [250, 100]]) { await jusqua(o, `lecteur().pret()`); const q = await ecranDe(o, x, y); await clic(o, q.x, q.y); await pause(300); }
@@ -596,19 +650,24 @@ try {
     const b = await onglet(1024, 768);
     await choisirVideo(b, 'videos/bille3-iv5.mp4');
     for (let k = 0; k < 2; k++) { await jusqua(b, `lecteur().pret()`); const q = await ecranDe(b, 300, 100 + 50 * k); await clic(b, q.x, q.y); await pause(300); }
-    const bille = await ev(b, `({duree:data.intervallesBruts(0)[0].duree})`);
-    verifier('bille3 : Δt = 1/30 s (panneau filmé) et non 1/31 s (fichier)', Math.abs(bille.duree - 1 / 30) < 1e-9, bille);
+    const bille = await ev(b, `({duree:data.intervallesBruts(0)[0].duree, guide:texteDureeEntrePoints()})`);
+    verifier('bille3 : Δt = 1/30 s (panneau filmé) et non 1/31 s (fichier) ; le guide dit « 1 image (0,0333 s) »', Math.abs(bille.duree - 1 / 30) < 1e-9 && bille.guide === '1 image (0,0333 s)', bille);
     await choisirVideo(b, 'videos/VenusTerreMars.mp4');
     await choisir(b, 'choix-mode', 'Calibration'); await pause(200);
-    for (const [vx, vy] of [[25, 10], [193, 10]]) { const q = await ecranDe(b, vx, vy); await clic(b, q.x, q.y); await pause(300); }
-    await ev(b, `(()=>{const s=document.getElementById('real-distance');s.value='200 000 000 km';document.getElementById('validate-calibration').click();})()`);
+    // Barre de 200 000 000 km : de x = 10 à x = 193, y = 10 (pixels de l'image, mesurés sur l'image extraite)
+    for (const [vx, vy] of [[10, 10], [193, 10]]) { const q = await ecranDe(b, vx, vy); await clic(b, q.x, q.y); await pause(300); }
+    await ev(b, `document.getElementById('real-distance').focus()`);
+    await saisir(b, '200 000 000 km');
+    await ev(b, `document.getElementById('validate-calibration').click()`);
     await ev(b, `passerAuMode('Pointage')`); await pret(b);
     for (let k = 0; k < 2; k++) { await jusqua(b, `lecteur().pret()`); const q = await ecranDe(b, 226 + 10 * k, 120 - 5 * k); await clic(b, q.x, q.y); await pause(300); }
+    const guide3 = await ev(b, `(()=>{const a=texteDureeEntrePoints();imagesParPoint=5;const c=texteDureeEntrePoints();imagesParPoint=1;return [a,c];})()`);
+    verifier('guide (étape 3), animation : « 1 image (25 jours) », « 5 images (125 jours) »', guide3[0] === '1 image (25 jours)' && guide3[1] === '5 images (125 jours)', guide3);
     const venus = await ev(b, `({cal:calibrator.isCalibrated, unite:data.getUnite(), v:data.uniteVitesse(), duree:data.intervallesBruts(0)[0].duree, entetes:tableauMesures().entetes, etat:document.getElementById('frame-info').textContent, guide:ETAPES_GUIDE[0].texte()})`);
     verifier('animation : distances en km, temps en jours (25 jours par image), vitesses en km/jour, référentiel du Soleil dans le guide', venus.cal && venus.unite === 'km' && venus.v === 'km/jour' && venus.duree === 25 &&
       venus.entetes.includes('instant t (jours)') && /jours/.test(venus.etat) && /Soleil/.test(venus.guide) && !/par rapport au sol/.test(venus.guide), venus);
     await choisirVideoSansAttente(b, TABLE);
-    if (await ev(b, `!document.getElementById('confirmation').hidden`)) await ev(b, `document.getElementById('confirmation-oui').click()`);
+    if (await ev(b, `!document.getElementById('confirmation').hidden`)) await repondre(b, 'oui');
     await pret(b);
     const nom = await ev(b, `({fichier:'mesures-'+nomVideoCourante()+'.csv', entete:descriptionMesures()})`);
     verifier('fichier nommé d’après le titre neutre, sans le nom du fichier vidéo', nom.fichier === 'mesures-mobile-lance-sur-une-table-horizontale-coussin-d-air.csv' && !/Uniforme/i.test(nom.entete), nom);
@@ -630,6 +689,228 @@ try {
     const cadre = await ev(f, `document.querySelector('iframe').contentDocument.getElementById('bouton-plein-ecran').hidden`);
     verifier('bouton « Plein écran » : visible hors cadre, absent dans un cadre', seul && cadre, {seul, cadre});
     await fermer(f);
+  }
+
+  // ------------------------------------------------------------------ 14. Lot 4 (deuxième relecture)
+  if (partie(14, 'Glisser interrompu, saisie, guide, arrondis, clavier, bouton de fin, paysage, questions')) {
+    // Étalonne la balle lâchée à 1,85 m au doigt, avec de vraies frappes
+    const etalonner = async (o) => {
+      await choisir(o, 'choix-mode', 'Calibration'); await pause(250);
+      for (const [vx, vy] of [[270, 305], [270, 112]]) { const p = await ecranDe(o, vx, vy); await toucher(o, p.x, p.y); await pause(300); }
+      await ev(o, `document.getElementById('real-distance').focus()`);
+      await saisir(o, '1,85 m');
+      await ev(o, `document.getElementById('validate-calibration').click()`);
+    };
+    // 1. Glisser d'un bout interrompu de quatre façons : le bout revient, une seule échelle partout
+    for (const interruption of ['deuxième doigt', 'rotation', 'touchcancel', 'question']) {
+      const o = await onglet(1024, 768, {tactile: true});
+      await etalonner(o);
+      await ev(o, `passerAuMode('Pointage')`); await pret(o);
+      for (let k = 0; k < 6; k++) { await jusqua(o, `lecteur().pret()`); const p = await ecranDe(o, 200, 60 + 20 * k); await toucher(o, p.x, p.y); await pause(300); }
+      await ev(o, `passerAuMode('Calibration')`); await pause(300);
+      const avant = await ev(o, `({echelle:data.echelle, p2:Object.assign({},calibrator.point2), etat:document.getElementById('frame-info').textContent})`);
+      const a = await ecranDe(o, 270, 112);
+      await doigtPose(o, a.x, a.y); await pause(80);
+      for (let i = 1; i <= 3; i++) { await doigtGlisse(o, a.x, a.y - 20 * i); await pause(50); }
+      const pendant = await ev(o, `calibrator.scaleFactor`);
+      if (interruption === 'deuxième doigt') {
+        await o.c.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: a.x, y: a.y - 60, id: 0}, {x: a.x + 120, y: a.y, id: 1}]}, o.s);
+      } else if (interruption === 'rotation') {
+        await redimensionner(o, 768, 1024, {tactile: true});
+      } else if (interruption === 'touchcancel') {
+        await o.c.send('Input.dispatchTouchEvent', {type: 'touchCancel', touchPoints: []}, o.s);
+      } else {
+        await choisirVideoSansAttente(o, TABLE);
+      }
+      await pause(500);
+      if (interruption !== 'touchcancel') await doigtLeve(o);
+      await pause(300);
+      if (interruption === 'question') { await touche(o, 'Escape', 'Escape', 27); await pause(200); }
+      if (interruption === 'rotation') { await redimensionner(o, 1024, 768, {tactile: true}); await pause(500); }
+      const apres = await ev(o, `({echelle:data.echelle, facteur:calibrator.scaleFactor, p2:Object.assign({},calibrator.point2), etat:document.getElementById('frame-info').textContent, entete:construireCSV().split('\\r\\n')[0]})`);
+      await o.c.send('Page.reload', {}, o.s); await pause(800);
+      await jusqua(o, `!document.getElementById('confirmation').hidden`); await repondre(o, 'oui'); await pret(o);
+      const recharge = await ev(o, `data.echelle`);
+      const echelleTexte = (t) => (t.match(/1 px = [\d, ]+ mm/) || [''])[0];
+      verifier(`glisser d’un bout interrompu (${interruption}) : bout remis à sa place, une seule échelle (calibrateur = ligne d’état = CSV = après rechargement)`,
+        pendant !== avant.echelle && apres.p2.x === avant.p2.x && apres.p2.y === avant.p2.y && apres.echelle === avant.echelle && apres.facteur === avant.echelle &&
+        echelleTexte(apres.etat) === echelleTexte(avant.etat) && apres.entete.includes(echelleTexte(avant.etat)) && Math.abs(recharge / avant.echelle - 1) < 1e-12,
+        {avant: avant.echelle, pendant, apres: apres.echelle, recharge});
+      await fermer(o);
+    }
+    {
+      // Pendant une question, on ne peut pas glisser un bout
+      const o = await onglet(1024, 768, {tactile: true});
+      await etalonner(o);
+      await ev(o, `passerAuMode('Pointage')`); await pret(o);
+      const p = await ecranDe(o, 200, 100); await toucher(o, p.x, p.y); await pause(300);
+      await ev(o, `passerAuMode('Calibration')`); await pause(300);
+      await choisirVideoSansAttente(o, TABLE);
+      const avant = await ev(o, `Object.assign({},calibrator.point2)`);
+      const a = await ecranDe(o, 270, 112);
+      await doigtPose(o, a.x, a.y); await pause(80); await doigtGlisse(o, a.x, a.y - 60); await pause(100); await doigtLeve(o); await pause(200);
+      const apres = await ev(o, `Object.assign({},calibrator.point2)`);
+      verifier('question ouverte : un bout d’étalonnage ne se déplace pas', apres.x === avant.x && apres.y === avant.y, {avant, apres});
+      // Deux questions ne s'empilent pas : menus inactifs pendant la question ; toucher trop rapide ignoré
+      const menus = await ev(o, `['choix-mode','choix-video','choix-mobiles','choix-pas'].map(id=>document.getElementById(id).disabled)`);
+      await touche(o, 'Escape', 'Escape', 27); await pause(200);
+      // Question ouverte puis toucher sur « Changer de vidéo » aussitôt (même instant) : ignoré
+      const toujours = await ev(o, `(()=>{const s=document.getElementById('choix-video');s.value='1';s.dispatchEvent(new Event('change'));
+        document.getElementById('confirmation-oui').click();return !document.getElementById('confirmation').hidden && lecteur().chemin===${JSON.stringify(CHUTE)};})()`);
+      verifier('question ouverte : les 4 menus sont inactifs ; un toucher dans les 400 ms est ignoré', menus.every(Boolean) && toujours, {menus, toujours});
+      await touche(o, 'Escape', 'Escape', 27); await pause(200);
+      const garde = await ev(o, `({menu:document.getElementById('choix-video').value, video:lecteur().chemin, actifs:!document.getElementById('choix-video').disabled})`);
+      verifier('après la question : menu et vidéo d’accord, menus de nouveau actifs', garde.menu === '0' && garde.video === CHUTE && garde.actifs, garde);
+      // La question est au-dessus des commandes, pas sur l'image
+      await choisirVideoSansAttente(o, TABLE);
+      const recouvre = await ev(o, `(()=>{const q=document.getElementById('confirmation').getBoundingClientRect(),c=document.querySelector('canvas').getBoundingClientRect();
+        const x=Math.max(0,Math.min(q.right,c.right)-Math.max(q.left,c.left)),y=Math.max(0,Math.min(q.bottom,c.bottom)-Math.max(q.top,c.top));return Math.round(100*x*y/(c.width*c.height));})()`);
+      await touche(o, 'Escape', 'Escape', 27);
+      verifier('1024×768 : la question ne recouvre pas l’image', recouvre === 0, recouvre + ' %');
+      journalPropre(o, 'questions');
+      await fermer(o);
+    }
+    for (const [w, h, page] of [[340, 573, '/index.html'], [390, 640, '/tests/cadre.html?w=340&h=573']]) {
+      // Question dans un petit écran : % de l'image recouvert
+      const o = await onglet(w, h, {tactile: true, page, sansAttente: page !== '/index.html'});
+      const doc = page === '/index.html' ? 'document' : `document.querySelector('iframe').contentDocument`;
+      if (page !== '/index.html') await jusqua(o, `(()=>{const w=document.querySelector('iframe').contentWindow;return w.lecteur&&w.lecteur()&&w.lecteur().isLoaded&&w.width>50;})()`);
+      await pause(400);
+      await ev(o, `${doc}.defaultView.eval("data.placer(0,0,100,100);sauvegarderSeance()")`);
+      await ev(o, `(()=>{const s=${doc}.getElementById('choix-video');s.value='1';s.dispatchEvent(new Event('change'));})()`);
+      await pause(300);
+      const recouvre = await ev(o, `(()=>{const d=${doc},q=d.getElementById('confirmation').getBoundingClientRect(),c=d.querySelector('canvas').getBoundingClientRect();
+        const x=Math.max(0,Math.min(q.right,c.right)-Math.max(q.left,c.left)),y=Math.max(0,Math.min(q.bottom,c.bottom)-Math.max(q.top,c.top));return Math.round(100*x*y/(c.width*c.height));})()`);
+      await capture(o, path.join(SORTIE, `question-${w}x${h}${page === '/index.html' ? '' : '-cadre'}.png`));
+      verifier(`${page === '/index.html' ? '' : 'cadre '}340×573 : la question recouvre au plus 10 % de l’image`, recouvre <= 10, recouvre + ' %');
+      await fermer(o);
+    }
+    // 2. Champ de longueur déjà validé : on peut l'effacer et taper autre chose (vraies frappes)
+    {
+      const o = await onglet(1024, 768, {tactile: true});
+      await etalonner(o);
+      await ev(o, `document.getElementById('real-distance').focus()`);
+      await effacerChamp(o, 12);
+      const vide = await ev(o, `document.getElementById('real-distance').value`);
+      await saisir(o, '5');
+      const cinq = await ev(o, `document.getElementById('real-distance').value`);
+      await touche(o, 'Backspace', 'Backspace', 8);
+      await saisir(o, '60 cm');
+      const valeur = await ev(o, `document.getElementById('real-distance').value`);
+      await ev(o, `document.getElementById('validate-calibration').click()`); await pause(200);
+      const verif = await ev(o, `document.getElementById('calibration-message').textContent`);
+      await ev(o, `document.getElementById('validate-calibration').click()`); await pause(200); // confirmation (étalon : 1,85 m)
+      const reel = await ev(o, `calibrator.realDistance`);
+      verifier('champ déjà validé : effacé au Retour arrière, il reste vide ; « 5 », Retour arrière, « 60 cm » : vérification (étalon 1,85 m) puis 0,60 m', vide === '' && cinq === '5' && valeur === '60 cm' && /Vérifie/.test(verif) && Math.abs(reel - 0.6) < 1e-12, {vide, cinq, valeur, verif, reel});
+      journalPropre(o, 'saisie');
+      await fermer(o);
+    }
+    // 4. Arrondis : demi-unités, v exacte puis arrondie, d / Δt à la main
+    {
+      const o = await onglet(1024, 768);
+      const ar = await ev(o, `[nombreFr(0.95,1), nombreFr(0.038/0.04,1), nombreFr(1.005,2), nombreFr(-0.05,1), nombreFr(1095480,-4), nombreSignificatif(1095480)]`);
+      verifier('arrondis : 0,95 → « 1,0 » ; 0,038 / 0,040 → « 1,0 » ; 1,005 → « 1,01 » ; 1 095 480 à 3 chiffres → « 1 100 000 »', ar[0] === '1,0' && ar[1] === '1,0' && ar[2] === '1,01' && ar[5].replace(/ /g, ' ') === '1 100 000', ar);
+      // Positions connues, injectées à l'entrée du pointage ; v attendue calculée ici, indépendamment
+      const POS = [[200, 60], [203.4, 71.9], [206.1, 90.35], [209.9, 115.2]];
+      await choisir(o, 'choix-mode', 'Calibration'); await pause(200);
+      await ev(o, `traiterPointage(270,305);traiterPointage(270,112)`);
+      await ev(o, `document.getElementById('real-distance').focus()`); await saisir(o, '1,85 m');
+      await ev(o, `document.getElementById('validate-calibration').click()`);
+      await ev(o, `passerAuMode('Pointage')`); await pret(o);
+      for (const [x, y] of POS) { await jusqua(o, `lecteur().pret()`); await ev(o, `traiterPointage(${x},${y})`); await pause(100); }
+      await choisir(o, 'choix-mode', 'Graphique'); await choisir(o, 'choix-type-graphique', 'tableau'); await pause(300);
+      const lignes = await ev(o, `[...document.querySelectorAll('#tableau-mesures tbody tr')].map(tr=>[...tr.children].map(td=>td.textContent))`);
+      const echelle = 1.85 / 193;
+      const decV14 = await ev(o, `data.formats().v`);
+      const num = t => parseFloat(t.replace(/ /g, '').replace(',', '.'));
+      const res = lignes.slice(1).map((l, i) => {
+        const v = Math.hypot(POS[i + 1][0] - POS[i][0], POS[i + 1][1] - POS[i][1]) * echelle / 0.04;
+        const dec = decV14;
+        return {affichee: l[7], attendue: v.toFixed(Math.max(0, dec) + 2), arrondieOk: Math.abs(num(l[7]) - v) <= 0.5 * Math.pow(10, -dec) + 1e-9,
+          main: Math.abs(num(l[5]) / num(l[6]) - num(l[7])) <= Math.pow(10, -dec) + 1e-12};
+      });
+      verifier('v affichée = v exacte (calculée ici) arrondie ; d / Δt refait avec les valeurs affichées redonne v à une unité près', res.length === 3 && res.every(r => r.arrondieOk && r.main), res);
+      await fermer(o);
+    }
+    // 5. Souris puis clavier : un clic n'active pas le réticule ; ← → changent d'image
+    {
+      const o = await onglet(1366, 768);
+      const p = await ecranDe(o, 150, 150); await clic(o, p.x, p.y); await pause(400);
+      const apresClic = await ev(o, `({image:lecteur().image, actif:clavier.actif, focus:document.activeElement.tagName})`);
+      await touche(o, 'ArrowRight', 'ArrowRight', 39); await pause(300);
+      await touche(o, 'Enter', 'Enter', 13); await pause(200);
+      const r = await ev(o, `({image:lecteur().image, actif:clavier.actif, n:data.getTotalPointCount(), titre:document.querySelector('canvas').title})`);
+      verifier('après un clic sur l’image : → change d’image (pas de réticule) ; Entrée fait apparaître le réticule sans pointer ; la règle est dans l’info-bulle',
+        apresClic.image === 1 && !apresClic.actif && r.image === 2 && r.actif && r.n === 1 && /Entrée/.test(r.titre) && /Échap/.test(r.titre), {apresClic, r});
+      await fermer(o);
+    }
+    // 6. Bouton « Voir les graphiques » hors de l'image, 7. paysage peu haut : champ visible
+    for (const [w, h, page] of [[360, 640, '/index.html'], [390, 640, '/tests/cadre.html?w=340&h=573']]) {
+      const o = await onglet(w, h, {tactile: true, page, sansAttente: page !== '/index.html'});
+      const doc = page === '/index.html' ? 'document' : `document.querySelector('iframe').contentDocument`;
+      if (page !== '/index.html') await jusqua(o, `(()=>{const w=document.querySelector('iframe').contentWindow;return w.lecteur&&w.lecteur()&&w.lecteur().isLoaded&&w.width>50;})()`);
+      await pause(300);
+      await ev(o, `${doc}.defaultView.eval("lecteur().allerImage(16)")`); await pause(600);
+      await ev(o, `${doc}.defaultView.eval("traiterPointage(150,250)")`); await pause(400);
+      const r = await ev(o, `(()=>{const d=${doc},w=d.defaultView,b=d.getElementById('bouton-voir-graphiques').getBoundingClientRect(),c=d.querySelector('canvas').getBoundingClientRect();
+        return {visible:!d.getElementById('bouton-voir-graphiques').hidden,dansFenetre:b.top>=0&&b.bottom<=w.innerHeight,horsImage:b.bottom<=c.top||b.top>=c.bottom||b.right<=c.left||b.left>=c.right,consigneCoupee:d.getElementById('instructions').scrollHeight>d.getElementById('instructions').clientHeight+1};})()`);
+      await capture(o, path.join(SORTIE, `fin-${w}x${h}${page === '/index.html' ? '' : '-cadre'}.png`));
+      verifier(`${page === '/index.html' ? '360×640' : 'cadre 340×573'} : « Voir les graphiques » visible, hors de l’image, consigne non coupée`, r.visible && r.dansFenetre && r.horsImage && !r.consigneCoupee, r);
+      await fermer(o);
+    }
+    for (const [w, h] of [[640, 360], [844, 390]]) {
+      const o = await onglet(w, h, {tactile: true});
+      await choisir(o, 'choix-mode', 'Calibration'); await pause(300);
+      for (const [vx, vy] of [[270, 305], [270, 112]]) { const p = await ecranDe(o, vx, vy); await toucher(o, p.x, p.y); await pause(300); }
+      const r = await ev(o, `(()=>{const H=innerHeight,ok=id=>{const b=document.getElementById(id).getBoundingClientRect();return b.height>0&&b.top>=0&&b.bottom<=H;};
+        return {champ:ok('real-distance'),valider:ok('validate-calibration'),recommencer:ok('reset-calibration'),etalon:(()=>{const b=document.getElementById('calibration-message').getBoundingClientRect();return b.top>=0&&b.top+19<=H;})()};})()`);
+      await capture(o, path.join(SORTIE, `etalonnage-paysage-${w}x${h}.png`));
+      verifier(`${w}×${h} : après les deux bouts, champ, « Valider », « Recommencer » et étalon à l’écran`, r.champ && r.valider && r.recommencer && r.etalon, r);
+      await fermer(o);
+    }
+    // Lecture : un clic pendant la lecture met en pause sur l'image de travail ; le clic suivant pointe
+    {
+      const o = await onglet(1024, 768);
+      const q = await ecranDe(o, 150, 150); await clic(o, q.x, q.y); await pause(400);
+      await ev(o, `lecteur().play()`); await pause(200);
+      const p = await ecranDe(o, 160, 160); await clic(o, p.x, p.y); await pause(500);
+      const un = await ev(o, `({n:data.getTotalPointCount(), image:lecteur().image, lecture:lecteur().isPlaying})`);
+      await jusqua(o, `lecteur().pret()`);
+      await clic(o, p.x + 3, p.y); await pause(400);
+      const deux = await ev(o, `({n:data.getTotalPointCount(), images:data.points[0].map(p=>p.image)})`);
+      verifier('pendant la lecture : 1er clic = pause sur l’image de travail (image 1), 2e clic = point', !un.lecture && un.n === 1 && un.image === 1 && deux.n === 2 && deux.images.join() === '0,1', {un, deux});
+      // Ordinateur : fenêtre réduite pendant la saisie → l'image est redimensionnée (pas de « clavier virtuel »)
+      await choisir(o, 'choix-mode', 'Calibration'); await pause(300);
+      await ev(o, `traiterPointage(270,305);traiterPointage(270,112)`);
+      await ev(o, `document.getElementById('real-distance').focus()`);
+      const avant = await rectCanevas(o);
+      await redimensionner(o, 1024, 560); await pause(600);
+      const r = await ev(o, `(()=>{const c=document.querySelector('canvas').getBoundingClientRect(),s=document.getElementById('scene').getBoundingClientRect();return {bas:Math.round(c.bottom),scene:Math.round(s.bottom)};})()`);
+      verifier('ordinateur : fenêtre moins haute pendant la saisie → image redimensionnée, entière', r.bas <= r.scene + 1, {avant, ...r});
+      await fermer(o);
+    }
+    // Sauvegardes fabriquées : historique incohérent, image hors bornes dans l'historique, autre vidéo
+    {
+      const o = await onglet(1024, 768);
+      for (let k = 0; k < 2; k++) { await jusqua(o, `lecteur().pret()`); const p = await ecranDe(o, 200, 60 + 20 * k); await clic(o, p.x, p.y); await pause(300); }
+      const vraie = JSON.parse(await ev(o, `sessionStorage.getItem('jsmecavideo-seance-v1')`));
+      const fabriquees = [
+        Object.assign({}, vraie, {data: Object.assign({}, vraie.data, {historique: [{m: 0, image: 1, ancien: {image: 5, xpx: 1, ypx: 1}}]})}),
+        Object.assign({}, vraie, {data: Object.assign({}, vraie.data, {historique: [{m: 0, image: 9999, ancien: null}]})}),
+        Object.assign({}, vraie, {video: 'videos/billegrosse.mp4'})
+      ];
+      let ignorees = 0;
+      for (const f of fabriquees) {
+        await ev(o, `sessionStorage.setItem('jsmecavideo-seance-v1', ${JSON.stringify(JSON.stringify(f))})`);
+        await o.c.send('Page.reload', {}, o.s); await pause(700); await pret(o);
+        if (await ev(o, `document.getElementById('confirmation').hidden && data.getTotalPointCount()===0`)) ignorees++;
+      }
+      verifier('3 sauvegardes fabriquées (historique incohérent, image 9999, autre vidéo) ignorées', ignorees === 3, {ignorees});
+      const masse = await ev(o, `videoFiles.find(v=>v.path.includes('MasseRoule')).images`);
+      verifier('MasseRoule : la dernière image (autre plan) n’est pas proposée (19 images, 0 à 18)', masse === 19, masse);
+      journalPropre(o, 'sauvegardes');
+      await fermer(o);
+    }
   }
 } catch (e) {
   console.error(e);

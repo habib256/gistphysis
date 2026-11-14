@@ -75,7 +75,8 @@ let videoFiles = [
   { path: 'videos/Eclatement2MA.mp4', framerate: 25, images: 70, groupe: 'Mobiles sur coussin d’air',
     titre: 'Deux mobiles attachés qui se séparent', etalon: '' },
 
-  { path: 'videos/MasseRoule.mp4', framerate: 15, images: 20, groupe: 'Autres mouvements',
+  // La 20e et dernière image est un autre plan (gros plan sur une règle) : on ne la propose pas
+  { path: 'videos/MasseRoule.mp4', framerate: 15, images: 19, groupe: 'Autres mouvements',
     titre: 'Cylindre qui roule sur un rail', etalon: '' },
 
   { path: 'videos/vague2cm5.mp4', framerate: 20, images: 39, groupe: 'Ondes à la surface de l’eau',

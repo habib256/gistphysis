@@ -74,8 +74,25 @@ function guideGenant(w, h) {
   return w * h < 0.4 * window.innerWidth * window.innerHeight || h < 0.4 * window.innerHeight;
 }
 
+// Portrait : la barre d'étalonnage prend exactement la hauteur des réglages + barre de consigne
+// qu'elle remplace ; on la mesure en disposition « pointage » (classe retirée un instant).
+function mesurerHauteurEtalonnage() {
+  const b = document.body;
+  if (!b.classList.contains('emp')) return;
+  const etal = b.classList.contains('mode-etalonnage');
+  if (etal) b.classList.remove('mode-etalonnage');
+  const menu = document.getElementById('menu');
+  const reglages = document.getElementById('reglages');
+  const info = document.getElementById('info-bar');
+  const ecart = parseFloat(getComputedStyle(menu).rowGap) || 0;
+  const h = reglages.offsetHeight + ecart + info.offsetHeight;
+  if (etal) b.classList.add('mode-etalonnage');
+  if (h > 0) document.documentElement.style.setProperty('--hauteur-etalonnage', h + 'px');
+}
+
 function ajusterTaille() {
   appliquerDisposition();
+  mesurerHauteurEtalonnage();
   const scene = document.getElementById('scene');
   const conteneur = document.getElementById('canvas-container');
   if (!scene || !conteneur || typeof resizeCanvas !== 'function') return;
@@ -106,7 +123,7 @@ function ajusterTaille() {
   // Clavier virtuel ouvert pour écrire la longueur : seule la hauteur diminue ; l'image garde
   // sa taille (calée en haut, centrée en largeur). Une rotation (largeur qui change) redimensionne.
   const saisie = document.getElementById('real-distance');
-  const clavierVirtuel = document.activeElement === saisie && tailleAffichee.w > 0 &&
+  const clavierVirtuel = typePointeur === 'tactile' && document.activeElement === saisie && tailleAffichee.w > 0 &&
     W === sceneMesuree.w && H < sceneMesuree.h && h < tailleAffichee.h;
   if (!saisie.dataset.surveille) {
     saisie.dataset.surveille = '1';
@@ -191,9 +208,23 @@ function gesteEnCours() {
   return pointeurTactile.actif || souris.glisse > 0;
 }
 
+// Abandonne le geste en cours. Un glisser de bout d'étalonnage interrompu (deuxième doigt,
+// rotation, touchcancel, question qui s'ouvre…) remet le bout à sa place d'origine.
 function annulerToucher() {
+  const glisse = pointeurTactile.glisse || souris.glisse;
   pointeurTactile.actif = false;
   pointeurTactile.id = null;
+  pointeurTactile.glisse = 0;
+  souris.glisse = 0;
+  if (glisse && typeof calibrator !== 'undefined' && calibrator) {
+    calibrator.annulerGlisser();
+    if (typeof surEtalonnageDeplace === 'function') surEtalonnageDeplace();
+  }
+}
+
+// Fin normale d'un glisser : le bout reste à sa nouvelle place
+function terminerGlisser() {
+  if (typeof calibrator !== 'undefined' && calibrator) calibrator.finGlisser();
   pointeurTactile.glisse = 0;
   souris.glisse = 0;
 }
@@ -201,6 +232,7 @@ function annulerToucher() {
 // Point d'étalonnage proche (1 ou 2) d'une position écran, 0 sinon
 function pointEtalonnageProche(p) {
   if (etat !== 'Calibration' || !calibrator) return 0;
+  if (typeof confirmationOuverte === 'function' && confirmationOuverte()) return 0; // pas pendant une question
   let meilleur = 0, dmin = 24;
   [calibrator.point1, calibrator.point2].forEach((q, i) => {
     if (!q) return;
@@ -219,7 +251,7 @@ function installerPointageTactile(elt) {
     souris.dansCanvas = false;
     clavier.actif = false;
     if (e.touches.length > 1) {
-      annulerToucher(); // deuxième doigt (pincement…) : on abandonne le geste
+      annulerToucher(); // deuxième doigt (pincement…) : on abandonne le geste (bout remis en place)
       return;
     }
     const t = e.changedTouches[0];
@@ -230,6 +262,7 @@ function installerPointageTactile(elt) {
     pointeurTactile.y = p.y;
     pointeurTactile.dansImage = estDansImage(p);
     pointeurTactile.glisse = pointEtalonnageProche(p);
+    if (pointeurTactile.glisse) calibrator.debutGlisser(pointeurTactile.glisse);
   }, { passive: false });
 
   elt.addEventListener('touchmove', (e) => {
@@ -254,11 +287,13 @@ function installerPointageTactile(elt) {
     if (!t) return;
     const p = coordonneesCanvas(elt, t.clientX, t.clientY);
     const glisse = pointeurTactile.glisse;
-    annulerToucher();
     if (glisse) {
+      terminerGlisser();
+      annulerToucher();
       surEtalonnageDeplace();
       return;
     }
+    annulerToucher();
     if (estDansImage(p)) {
       const v = versVideo(p.x, p.y);
       traiterPointage(v.x, v.y);
@@ -282,17 +317,18 @@ function installerPointageTactile(elt) {
   elt.addEventListener('mouseenter', () => { souris.dansCanvas = true; });
   elt.addEventListener('mouseleave', () => {
     souris.dansCanvas = false;
-    if (souris.glisse) { souris.glisse = 0; surEtalonnageDeplace(); }
+    if (souris.glisse) annulerToucher(); // sortie de l'image : bout remis en place
   });
   elt.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     const p = coordonneesCanvas(elt, e.clientX, e.clientY);
     souris.glisse = pointEtalonnageProche(p);
+    if (souris.glisse) calibrator.debutGlisser(souris.glisse);
     souris.ignorerClic = false;
   });
   window.addEventListener('mouseup', () => {
     if (souris.glisse) {
-      souris.glisse = 0;
+      terminerGlisser();
       souris.ignorerClic = true; // ce n'était pas un pointage
       surEtalonnageDeplace();
     }
@@ -302,7 +338,10 @@ function installerPointageTactile(elt) {
   elt.addEventListener('click', (e) => {
     if (e.button !== 0 || !modePointageActif()) return;
     if (souris.ignorerClic) { souris.ignorerClic = false; return; }
-    if (e.detail > 1 || performance.now() - dernierPointageSouris < 250) return;
+    if (e.detail > 1 || performance.now() - dernierPointageSouris < 250) {
+      afficherMessageTemporaire('Double-clic ignoré : un seul clic suffit pour pointer.', 2000);
+      return;
+    }
     typePointeur = 'souris';
     if ((e.ctrlKey || e.metaKey) && etat === 'Pointage') {
       if (!annulationDejaTraitee()) annulerDernierPoint();
@@ -340,18 +379,14 @@ function installerClavierImage(elt) {
     const s = dimensionsSource();
     const pas = e.shiftKey ? 10 : 1;
     const fleches = { ArrowLeft: [-pas, 0], ArrowRight: [pas, 0], ArrowUp: [0, -pas], ArrowDown: [0, pas] };
-    if (fleches[e.key]) {
+    // Règle : sans réticule, ← → changent d'image (raccourci de toute l'app). Le réticule
+    // n'apparaît qu'avec Entrée quand l'image a le focus ; alors les flèches le déplacent,
+    // Entrée pointe, Échap le fait disparaître.
+    if (fleches[e.key] && clavier.actif) {
       e.preventDefault();
       e.stopPropagation();
-      if (!clavier.actif) {
-        clavier.actif = true;
-        clavier.x = s.w / 2;
-        clavier.y = s.h / 2;
-      } else {
-        clavier.x = Math.min(s.w, Math.max(0, clavier.x + fleches[e.key][0]));
-        clavier.y = Math.min(s.h, Math.max(0, clavier.y + fleches[e.key][1]));
-      }
-      typePointeur = 'clavier';
+      clavier.x = Math.min(s.w, Math.max(0, clavier.x + fleches[e.key][0]));
+      clavier.y = Math.min(s.h, Math.max(0, clavier.y + fleches[e.key][1]));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
@@ -363,11 +398,12 @@ function installerClavierImage(elt) {
         return;
       }
       traiterPointage(clavier.x, clavier.y);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === 'Escape' && clavier.actif) {
+      e.stopPropagation();
       clavier.actif = false;
+      typePointeur = 'souris';
     }
   });
-  elt.addEventListener('focus', () => { typePointeur = 'clavier'; });
   elt.addEventListener('blur', () => {
     clavier.actif = false;
     if (typePointeur === 'clavier') typePointeur = 'souris';
@@ -501,6 +537,18 @@ function dessinerLoupe(x, y, couleurReticule) {
   fill(couleurReticule);
   ellipse(cx, cy, 3, 3);
   pop();
+}
+
+// Zone de texte qui défile : ombre en bas (indice « il y a une suite ») tant que la fin
+// n'est pas visible
+function marquerDebordement(el) {
+  if (!el) return;
+  const maj = () => el.classList.toggle('deborde', el.scrollHeight - el.scrollTop - el.clientHeight > 2);
+  if (!el.dataset.debordeSuivi) {
+    el.dataset.debordeSuivi = '1';
+    el.addEventListener('scroll', maj, { passive: true });
+  }
+  maj();
 }
 
 // Texte centré sur l'image (chargement, erreur)

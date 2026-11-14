@@ -11,30 +11,34 @@ const TAILLE_NUMERO = 14;   // numéros des points (px)
 function tracerForme(forme, x, y, t) {
     const h = t / 2;
     switch (forme) {
-        case 'plus':
-            line(x - h, y, x + h, y);
-            line(x, y - h, x, y + h);
+        case 'plus': {
+            const c = 3;
+            line(x - h, y, x - c, y); line(x + c, y, x + h, y);
+            line(x, y - h, x, y - c); line(x, y + c, x, y + h);
             break;
+        }
         case 'rond':
             ellipse(x, y, t, t);
             break;
         case 'carre':
             rect(x - h + 1, y - h + 1, t - 2, t - 2);
             break;
-        default: // croix
-            line(x - h, y - h, x + h, y + h);
-            line(x + h, y - h, x - h, y + h);
+        default: { // croix au centre évidé : le mobile reste visible sous la marque
+            const c = 2.5;
+            line(x - h, y - h, x - c, y - c); line(x + c, y + c, x + h, y + h);
+            line(x + h, y - h, x + c, y - c); line(x - c, y + c, x - h, y + h);
+        }
     }
 }
 
 function dessinerMarque(style, x, y, t = TAILLE_MARQUE) {
     push();
     noFill();
-    stroke(0, 0, 0, 220);
-    strokeWeight(5);
+    stroke(0, 0, 0, 200);
+    strokeWeight(4);
     tracerForme(style.forme, x, y, t);
     stroke(style.r, style.g, style.b);
-    strokeWeight(2.4);
+    strokeWeight(2);
     tracerForme(style.forme, x, y, t);
     pop();
 }

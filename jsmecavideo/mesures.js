@@ -9,12 +9,26 @@
 //   téléchargé sur l'appareil : rien n'est envoyé sur Internet.
 // - Vocabulaire unique : « instant t » (compté depuis le premier point), « durée Δt »,
 //   « v = d / Δt ». Mêmes décimales partout (data.formats()) : à 1 pixel vidéo près.
-//   v est calculée avec le d affiché : refaire d / Δt avec les valeurs affichées redonne v.
+//   v est calculée avec les valeurs exactes puis arrondie ; d et Δt sont écrits avec assez de
+//   chiffres pour que d / Δt, refait avec les valeurs affichées, redonne v à l'arrondi près
+//   (une unité du dernier chiffre au plus).
 
 // Écrit un nombre avec `decimales` chiffres après la virgule (virgule française)
+// Arrondi correct des demi-unités (0,95 → 1,0 ; toFixed donnerait 0,9) ; décimales négatives :
+// arrondi à la dizaine, à la centaine… (-6 : au million)
+function arrondiDecimal(x, d) {
+  if (d < 0) {
+    const f = Math.pow(10, -d);
+    return Math.sign(x) * Math.round(Math.abs(x) / f) * f;
+  }
+  const a = Math.abs(x);
+  const r = /e/i.test(String(a)) ? Math.round(a * Math.pow(10, d)) / Math.pow(10, d) : Number(Math.round(Number(a + 'e' + d)) + 'e-' + d);
+  return Math.sign(x) * r;
+}
+
 function nombreFr(valeur, decimales) {
   if (!isFinite(valeur)) return '—';
-  let s = Number(valeur).toFixed(decimales);
+  let s = arrondiDecimal(Number(valeur), decimales).toFixed(Math.max(0, decimales));
   if (/^-0(\.0*)?$/.test(s)) s = s.slice(1); // pas de « -0,00 »
   return s.replace('.', ',');
 }
@@ -30,12 +44,12 @@ function nombreLisible(valeur, decimales) {
 // Unités et décimales à afficher (mêmes règles que le tableau et le fichier)
 function unitesMesure() {
   const f = data.formats();
-  return { distance: data.getUnite(), vitesse: data.uniteVitesse(), temps: data.libelleTemps(), decD: f.pos, decV: f.v, decPos: f.pos, decT: f.t };
+  return { distance: data.getUnite(), vitesse: data.uniteVitesse(), temps: data.libelleTemps(), decD: f.d, decV: f.v, decPos: f.pos, decT: f.t };
 }
 
 // Phrase d'information quand les mesures sont en pixels (pas d'étalonnage)
 const MESSAGE_SANS_ETALONNAGE = 'Sans étalonnage : distances en pixels (px), vitesses en px/s. Pour des mètres : étape « 📏 Étalonner » (tes points sont gardés).';
-const MESSAGE_DUREES_INEGALES = '⚠️ Les durées Δt entre les points ne sont pas toutes égales : les écarts d ne se comparent pas directement. Compare plutôt les vitesses v = d / Δt.';
+const MESSAGE_DUREES_INEGALES = '⚠️ Les durées Δt entre les points ne sont pas toutes égales : les distances d ne se comparent pas directement. Compare plutôt les vitesses v = d / Δt.';
 
 // Nom de fichier neutre, tiré du titre de la vidéo (« mesures-balle-lachee-devant-un-mur.csv »)
 function nomVideoCourante() {
@@ -53,7 +67,7 @@ function tableauMesures(lisible = false) {
   const ud = data.getUnite(), uv = data.uniteVitesse(), ut = data.libelleTemps();
   const plusieurs = data.numMobiles > 1;
   const entetes = (plusieurs ? ['Mobile'] : []).concat(['Point n°', 'Image n°', 'instant t (' + ut + ')', 'x (' + ud + ')', 'y (' + ud + ')',
-    'd depuis le point précédent (' + ud + ')', 'durée Δt depuis le point précédent (' + ut + ')', 'v = d / Δt (' + uv + ')']);
+    'distance d depuis le point précédent (' + ud + ')', 'durée Δt depuis le point précédent (' + ut + ')', 'v = d / Δt (' + uv + ')']);
   let lignes = [];
   for (let m = 0; m < data.numMobiles; m++) {
     const pts = data.getPositions(m);
@@ -62,7 +76,7 @@ function tableauMesures(lisible = false) {
       let cols = (plusieurs ? [String(m + 1)] : []).concat([String(p.numero), String(p.image), num(p.time, f.t),
         num(p.x, f.pos), num(p.y, f.pos)]);
       const iv = i > 0 ? intervalles.find(x => x.a === p.numero) : null;
-      if (iv) cols.push(num(iv.d, f.pos), num(iv.duree, f.t), num(iv.v, f.v));
+      if (iv) cols.push(num(iv.d, f.d), num(iv.duree, f.t), num(iv.v, f.v));
       else cols.push('', '', '');
       lignes.push(cols);
     });
@@ -151,6 +165,13 @@ function afficherTableauMesures(zone) {
   });
   table.appendChild(tbody);
   zone.appendChild(table);
+  // Tableau plus large que l'écran : on le dit (les colonnes d, Δt et v sont à droite)
+  if (zone.scrollWidth > zone.clientWidth + 2) {
+    const indice = document.createElement('p');
+    indice.className = 'indice-defilement';
+    indice.textContent = '↔ Fais glisser le tableau vers la gauche pour voir d, Δt et v.';
+    zone.insertBefore(indice, table);
+  }
   return t.lignes.length;
 }
 
@@ -169,5 +190,5 @@ function exporterCSV() {
   lien.click();
   lien.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
-  afficherMessageTemporaire('💾 Fichier « ' + lien.download + ' » enregistré : ouvre-le avec un tableur.');
+  afficherMessageTemporaire('💾 Mesures enregistrées (fichier .csv pour tableur).');
 }

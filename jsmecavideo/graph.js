@@ -9,7 +9,7 @@
 const GROUPE_LYCEE = 'Pour aller plus loin (lycée)';
 const TYPES_GRAPHIQUES = [
     { valeur: 'y(x)', libelle: 'Trajectoire (positions successives)' },
-    { valeur: 'ecarts', libelle: 'Écart entre deux positions (d)' },
+    { valeur: 'ecarts', libelle: 'Distance d entre deux points successifs' },
     { valeur: 'vitesse', libelle: 'Vitesse sur chaque intervalle (v = d / Δt)' },
     { valeur: 'x(t)', libelle: 'Position x au cours du temps' },
     { valeur: 'y(t)', libelle: 'Position y au cours du temps' },
@@ -19,6 +19,11 @@ const TYPES_GRAPHIQUES = [
     { valeur: 'vy(t)', libelle: 'Vitesse verticale vy(t)', groupe: GROUPE_LYCEE },
     { valeur: 'a(t)', libelle: 'Accélération a(t)', groupe: GROUPE_LYCEE }
 ];
+
+// Unité d'accélération : m/s², px/s², km/jour²
+function uniteAcceleration() {
+    return data.uniteVitesse().replace(/\/(s|jour)$/, '/$1²');
+}
 
 // Lisible au vidéoprojecteur
 Chart.defaults.font.size = 15;
@@ -56,6 +61,17 @@ function bornesRondes(min, max, inclureZero) {
     return { min: Math.floor(min / pas + 1e-9) * pas, max: Math.ceil(max / pas - 1e-9) * pas, pas: pas };
 }
 
+// Graduations exactement aux multiples du pas (Chart.js en invente d'autres quand le pas est
+// grand : il cale alors la première graduation sur la borne de l'axe)
+function graduationsRondes(pas) {
+    return (axe) => {
+        const a = Math.ceil(axe.min / pas - 1e-9), b = Math.floor(axe.max / pas + 1e-9);
+        const ticks = [];
+        for (let k = a; k <= b && ticks.length < 60; k++) ticks.push({ value: k * pas });
+        axe.ticks = ticks;
+    };
+}
+
 // Options d'un axe linéaire à graduations rondes, écrites à la française
 function axeRond(b, titre) {
     const dec = decimalesPas(b.pas);
@@ -63,6 +79,7 @@ function axeRond(b, titre) {
         type: 'linear',
         min: b.min,
         max: b.max,
+        afterBuildTicks: graduationsRondes(b.pas),
         ticks: { stepSize: b.pas, includeBounds: false, callback: (v) => nombreLisible(v, dec) },
         title: { display: true, text: titre }
     };
@@ -164,7 +181,7 @@ class Graph {
     getGraphTitle() {
         switch (this.graphType) {
             case 'y(x)': return 'Trajectoire : positions successives du mobile';
-            case 'ecarts': return 'Écart entre deux positions successives';
+            case 'ecarts': return 'Distance d parcourue entre deux points successifs';
             case 'vitesse': return 'Vitesse sur chaque intervalle : v = d / Δt';
             case 'x(t)': return 'Position horizontale x au cours du temps';
             case 'y(t)': return 'Position verticale y au cours du temps';
@@ -272,7 +289,7 @@ class Graph {
                     break;
                 case 'a(t)':
                     pts = this.data.getAccelerations(m).map(a => ({ x: a.time, y: a.a }));
-                    yLabel = 'accélération a (' + u.vitesse + '/' + (data.uniteTemps === 'jour' ? 'jour' : 's') + ')';
+                    yLabel = 'accélération a (' + uniteAcceleration() + ')';
                     zeroY = true;
                     break;
             }
@@ -367,7 +384,7 @@ class Graph {
         });
         this.averages = [];
         this.resume = resumes.join('\n');
-        const yLabel = grandeur === 'd' ? 'distance d parcourue (' + u.distance + ')' : 'vitesse v (' + u.vitesse + ')';
+        const yLabel = grandeur === 'd' ? 'distance d (' + u.distance + ')' : 'vitesse v (' + u.vitesse + ')';
         const by = bornesRondes(0, max, true); // barres partant de zéro : on compare honnêtement les hauteurs
         return {
             type: 'bar',
@@ -411,7 +428,7 @@ class Graph {
         let texte;
         if (grandeur === 'd') {
             const dec = u.decD;
-            texte = prefixe + valeurs.length + ' écart' + (valeurs.length > 1 ? 's' : '') +
+            texte = prefixe + valeurs.length + ' distance' + (valeurs.length > 1 ? 's' : '') + ' d' +
                 ' · de ' + n(min, dec) + ' à ' + n(max, dec) + ' ' + u.distance +
                 ' · moyenne ' + n(moyenne, dec) + ' ' + u.distance;
             if (!plusieurs) texte += ' · ' + texteDurees();
@@ -431,9 +448,9 @@ class Graph {
 
     resumeCourbes(unite) {
         if (this.graphType === 'a(t)' && this.averages.length > 0) {
-            const ua = data.uniteVitesse() + '/' + (data.uniteTemps === 'jour' ? 'jour' : 's');
-            if (this.averages.length === 1) return 'Moyenne : ' + nombreFr(this.averages[0].avg, 2) + ' ' + ua;
-            return this.averages.map(a => 'Moyenne mobile ' + (a.mobile + 1) + ' : ' + nombreFr(a.avg, 2) + ' ' + ua).join('  |  ');
+            const ua = uniteAcceleration();
+            if (this.averages.length === 1) return 'Moyenne : ' + nombreSignificatif(this.averages[0].avg) + ' ' + ua;
+            return this.averages.map(a => 'Moyenne mobile ' + (a.mobile + 1) + ' : ' + nombreSignificatif(a.avg) + ' ' + ua).join('  |  ');
         }
         return '';
     }
@@ -504,6 +521,7 @@ class Graph {
             axes.y.min = cy - echelle * h / 2;
             axes.y.max = cy + echelle * h / 2;
             [axes.x, axes.y].forEach(a => {
+                a.afterBuildTicks = graduationsRondes(pas);
                 a.ticks.stepSize = pas;
                 a.ticks.includeBounds = false;
                 a.ticks.callback = (v) => nombreLisible(v, dec);

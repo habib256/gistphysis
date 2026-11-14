@@ -28,8 +28,9 @@ function lireLongueur(texte) {
 }
 
 // Nombre avec 3 chiffres significatifs (au moins), espaces entre les milliers
+// (aussi pour les grands nombres : 1 095 480 → 1 100 000)
 function nombreSignificatif(x, chiffres = 3) {
-    const dec = Math.max(0, chiffres - 1 - Math.floor(Math.log10(Math.abs(x) || 1)));
+    const dec = chiffres - 1 - Math.floor(Math.log10(Math.abs(x) || 1));
     return nombreLisible(x, Math.min(dec, 6));
 }
 
@@ -76,6 +77,21 @@ class Calibrator {
             return 'point2';
         }
         return 'complet';
+    }
+
+    // Début d'un glisser : on retient la place d'origine du bout
+    debutGlisser(i) {
+        const p = i === 1 ? this.point1 : this.point2;
+        this._glisse = p ? { i: i, x: p.x, y: p.y } : null;
+    }
+
+    finGlisser() { this._glisse = null; }
+
+    // Glisser interrompu : le bout revient à sa place (et l'échelle avec lui)
+    annulerGlisser() {
+        if (!this._glisse) return;
+        this.deplacerPoint(this._glisse.i, this._glisse.x, this._glisse.y);
+        this._glisse = null;
     }
 
     // Déplace un des deux points (glisser) ; l'échelle suit si elle était validée

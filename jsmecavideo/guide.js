@@ -24,7 +24,7 @@ const ETAPES_GUIDE = [
   {
     titre: 'Pointer',
     texte: () => 'Étape « 🎯 Pointer » : pointe toujours le même endroit du mobile (son centre). Après chaque point, la vidéo avance de ' +
-      texteDureeEntrePoints() + '. Une erreur ? « ↶ Annuler ». Mouvement lent ? « Images pointées : 1 sur 5 » rend les écarts plus faciles à comparer.'
+      texteDureeEntrePoints() + '. Une erreur ? « ↶ Annuler ». Mouvement lent ? « Images pointées : 1 sur 5 » rend les distances plus faciles à comparer.'
   },
   {
     titre: 'Observer',
@@ -36,9 +36,9 @@ const ETAPES_GUIDE = [
   {
     titre: 'Conclure',
     texte: () => data.dureesEgales()
-      ? '« 📈 Graphiques » → « Écart entre deux positions » : barres de même hauteur → vitesse constante, mouvement uniforme ; ' +
+      ? '« 📈 Graphiques » → « Distance d entre deux points » : barres de même hauteur → vitesse constante, mouvement uniforme ; ' +
         'de plus en plus hautes → accéléré ; de plus en plus basses → ralenti. « Vitesse » donne v = d / Δt.'
-      : 'Tes durées Δt ne sont pas toutes égales : les écarts d ne se comparent pas. « 📈 Graphiques » → « Vitesse sur chaque intervalle » : ' +
+      : 'Tes durées Δt ne sont pas toutes égales : les distances d ne se comparent pas. « 📈 Graphiques » → « Vitesse sur chaque intervalle » : ' +
         'même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.'
   }
 ];
@@ -51,15 +51,15 @@ let guide = {
   ouvertParEleve: false // rouvert par l'élève : on ne le replie plus tout seul
 };
 
-// « 1 image (0,04 s) » ou « 5 images (0,2 s) » selon la vidéo et le réglage « Images pointées »
+// Durée entre deux points, même source et même écriture que le tableau : « 1 image (0,040 s) »,
+// « 5 images (125 jours) ». Webcam : pas de durée fixe (chaque image a son instant mesuré).
 function texteDureeEntrePoints() {
-  let fps = 25;
-  const lect = typeof lecteur === 'function' ? lecteur() : null;
-  if (lect) fps = lect.framerate;
   const n = typeof imagesParPoint !== 'undefined' ? imagesParPoint : 1;
-  const duree = n / fps;
-  const decimales = Math.abs(duree * 100 - Math.round(duree * 100)) < 1e-6 ? 2 : 3;
-  return (n === 1 ? '1 image' : n + ' images') + ' (' + nombreFr(duree, decimales) + ' s)';
+  const images = n === 1 ? '1 image' : n + ' images';
+  if (typeof data === 'undefined') return images;
+  if (data.instants) return images + ' (durée mesurée pour chaque image de la caméra)';
+  const f = data.formats();
+  return images + ' (' + nombreFr(n * data.dureeImage, f.t) + ' ' + data.libelleTemps() + ')';
 }
 
 // Étape suggérée d'après l'état de l'application
@@ -142,4 +142,5 @@ function majGuide(force = false) {
   const p = document.getElementById('guide-texte');
   if (p.textContent !== texte) p.textContent = texte;
   guide.texteAffiche = texte;
+  marquerDebordement(p);
 }

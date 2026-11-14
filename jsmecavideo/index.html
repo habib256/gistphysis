@@ -296,14 +296,7 @@
             min-width: 44px;
         }
 
-        /* Portrait étroit ou peu haut, pendant l'étalonnage : les réglages du pointage et la
-           ligne d'état laissent la place à la saisie et à l'image */
-        body.emp.mode-etalonnage.etroit #reglages,
-        body.emp.mode-etalonnage.bas #reglages,
-        body.emp.mode-etalonnage.etroit #frame-info,
-        body.emp.mode-etalonnage.bas #frame-info {
-            display: none;
-        }
+
 
         body.etroit .fleche,
         body.lat .fleche {
@@ -449,12 +442,63 @@
         /* ---------------- Étalonnage ---------------- */
         #calibration-input {
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 6px 8px;
+            flex-direction: column;
+            gap: 6px;
             padding: 6px 10px;
             background: #14532d;
             color: #fff;
+        }
+
+        #calibration-ligne {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 8px;
+        }
+
+        #calibration-textes {
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        #calibration-consigne {
+            display: none;
+            font-weight: bold;
+            font-size: 15px;
+            line-height: 19px;
+        }
+
+        /* Portrait, étalonnage : la barre d'étalonnage prend exactement la place des réglages et
+           de la barre de consigne (même taille et même place de l'image que pour pointer) */
+        body.emp.mode-etalonnage #reglages,
+        body.emp.mode-etalonnage #info-bar {
+            display: none;
+        }
+
+        body.emp.mode-etalonnage #calibration-input {
+            height: var(--hauteur-etalonnage, auto);
+        }
+
+        body.emp #calibration-textes {
+            flex: 1 1 auto;
+        }
+
+        body.emp #calibration-consigne {
+            display: block;
+        }
+
+        /* Paysage : en étalonnage, la saisie et les consignes passent en haut du panneau */
+        body.lat.mode-etalonnage #calibration-input {
+            order: -2;
+        }
+
+        body.lat.mode-etalonnage #info-bar {
+            order: -1;
+        }
+
+        /* Texte qui déborde d'une zone qui défile : ombre en bas comme indice */
+        .deborde {
+            box-shadow: inset 0 -14px 10px -10px rgba(0, 0, 0, 0.45);
         }
 
         #calibration-input label {
@@ -533,21 +577,12 @@
         }
 
         #calibration-message {
-            flex: 1 1 100%;
             font-size: 15px;
             line-height: 19px;
             color: #e8f6ee;
         }
 
-        /* Portrait : hauteur fixe, l'image ne saute pas quand le texte change */
-        body.emp #calibration-message {
-            height: 38px;
-            overflow-y: auto;
-        }
 
-        body.emp.etroit #calibration-message {
-            height: 57px;
-        }
 
         #calibration-message.erreur {
             color: #fff;
@@ -608,8 +643,8 @@
 
         #graph-aide-bloc summary {
             cursor: pointer;
-            min-height: 32px;
-            line-height: 32px;
+            min-height: 44px;
+            line-height: 44px;
             font-weight: 600;
             color: var(--bleu);
         }
@@ -638,6 +673,15 @@
             min-height: 220px;
             overflow: auto;
             margin-top: 4px;
+        }
+
+        .indice-defilement {
+            position: sticky;
+            left: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--bleu);
+            margin-bottom: 4px;
         }
 
         #tableau-mesures {
@@ -714,22 +758,56 @@
             text-align: center;
         }
 
-        #bouton-voir-graphiques {
-            position: absolute;
-            right: 8px;
-            bottom: 8px;
-            z-index: 4;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        #info-bar {
+            position: relative;
         }
 
-        /* Demande de confirmation (au-dessus de l'image : la mise en page ne bouge pas) */
-        #confirmation {
+        /* Fin de vidéo : bouton à droite de la barre de consigne (le texte lui laisse la place) */
+        #bouton-voir-graphiques {
             position: absolute;
-            left: 50%;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 2;
+            padding: 4px 10px;
+        }
+
+        #info-bar.fin #instructions,
+        #info-bar.fin #frame-info {
+            padding-right: 130px;
+        }
+
+        body.emp:not(.etroit) #info-bar.fin #instructions,
+        body.emp:not(.etroit) #info-bar.fin #frame-info {
+            padding-right: 230px;
+        }
+
+        /* Panneau latéral : le bouton passe sous le texte, sur toute la largeur */
+        body.lat #info-bar.fin #instructions,
+        body.lat #info-bar.fin #frame-info {
+            padding-right: 0;
+        }
+
+        body.lat #info-bar.fin {
+            padding-bottom: 56px;
+        }
+
+        body.lat #bouton-voir-graphiques {
+            top: auto;
+            bottom: 6px;
+            transform: none;
+            left: 10px;
+            right: 10px;
+        }
+
+        /* Demande de confirmation : au-dessus des commandes, pas sur l'image (la mise en page ne
+           bouge pas ; en portrait elle couvre les menus, en paysage le panneau latéral) */
+        #confirmation {
+            position: fixed;
+            left: 8px;
             top: 8px;
-            transform: translateX(-50%);
-            width: min(520px, calc(100% - 16px));
-            max-height: calc(100% - 16px);
+            width: min(520px, calc(100vw - 16px));
+            max-height: calc(100vh - 16px);
             overflow-y: auto;
             padding: 10px 12px;
             background: #fff;
@@ -738,6 +816,10 @@
             border-radius: 10px;
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
             z-index: 5;
+        }
+
+        body.lat #confirmation {
+            width: calc(var(--panneau) - 16px);
         }
 
         #confirmation p {
@@ -948,17 +1030,26 @@
             <div id="info-bar">
                 <p id="instructions">Chargement de la vidéo…</p>
                 <p id="frame-info">Image 0</p>
+                <!-- Fin de la vidéo : bouton dans la barre de consigne, jamais sur l'image -->
+                <button type="button" id="bouton-voir-graphiques" class="bouton bouton-principal" hidden>📈<span class="libelle-long"> Voir les</span> graphiques</button>
             </div>
             <div id="calibration-input" hidden>
-                <label for="real-distance">Longueur réelle :</label>
-                <!-- type texte + clavier décimal : accepte « 80 cm », « 0,8 », « 0.8 m », « 800 mm » -->
-                <input type="text" id="real-distance" inputmode="decimal" enterkeyhint="done" autocomplete="off"
-                    placeholder="ex. : 80 cm" aria-describedby="calibration-message">
-                <!-- « Valider » et « Passer au pointage » occupent la même place (jamais les deux) -->
-                <button type="button" id="validate-calibration" class="bouton">Valider</button>
-                <button type="button" id="passer-pointage" class="bouton" hidden><span class="libelle-long">Passer au pointage</span><span class="libelle-court">Pointer</span> →</button>
-                <button type="button" id="reset-calibration" class="bouton">Recommencer</button>
-                <p id="calibration-message" aria-live="polite"></p>
+                <div id="calibration-ligne">
+                    <label for="real-distance">Longueur réelle :</label>
+                    <!-- type texte + clavier décimal : accepte « 80 cm », « 0,8 », « 0.8 m », « 800 mm » -->
+                    <input type="text" id="real-distance" inputmode="decimal" enterkeyhint="done" autocomplete="off"
+                        placeholder="ex. : 80 cm" aria-describedby="calibration-message">
+                    <!-- « Valider » et « Passer au pointage » occupent la même place (jamais les deux) -->
+                    <button type="button" id="validate-calibration" class="bouton">Valider</button>
+                    <button type="button" id="passer-pointage" class="bouton" hidden><span class="libelle-long">Passer au pointage</span><span class="libelle-court">Pointer</span> →</button>
+                    <button type="button" id="reset-calibration" class="bouton">Recommencer</button>
+                </div>
+                <!-- Portrait : la consigne d'étalonnage est ici (la barre de consigne est masquée) ;
+                     zone de hauteur fixe qui défile, avec un indice quand elle déborde -->
+                <div id="calibration-textes">
+                    <p id="calibration-consigne"></p>
+                    <p id="calibration-message" aria-live="polite"></p>
+                </div>
             </div>
             <div id="choix-graphique" hidden></div>
             <div id="guide" role="region" aria-label="Guide de l’activité">
@@ -969,7 +1060,6 @@
         <div id="scene">
             <div id="canvas-container"></div>
             <p id="trop-petit" hidden>📱 L’image serait trop petite pour pointer avec précision. Tourne ton écran ou agrandis la fenêtre.</p>
-            <button type="button" id="bouton-voir-graphiques" class="bouton bouton-principal" hidden>📈 Voir les graphiques</button>
             <div id="graphique-zone" hidden>
                 <h2 id="graph-titre"></h2>
                 <details id="graph-aide-bloc"><summary>Comment lire ce graphique ?</summary>
@@ -980,13 +1070,7 @@
                 <div id="tableau-zone" hidden tabindex="0" aria-label="Tableau des mesures"></div>
                 <div id="acceleration-info" role="status" hidden></div>
             </div>
-            <div id="confirmation" role="alertdialog" aria-labelledby="confirmation-texte" hidden>
-                <p id="confirmation-texte"></p>
-                <div class="boutons">
-                    <button type="button" id="confirmation-non" class="bouton"></button>
-                    <button type="button" id="confirmation-oui" class="bouton bouton-danger"></button>
-                </div>
-            </div>
+
         </div>
         <div id="barre-outils">
             <div id="controls">
@@ -999,6 +1083,13 @@
                 title="Fichier CSV (séparateur point-virgule, virgule décimale) pour LibreOffice Calc ou un autre tableur. Rien n’est envoyé sur Internet.">💾
                 Enregistrer les mesures (tableur)</button>
         </div>
+        <div id="confirmation" role="alertdialog" aria-labelledby="confirmation-texte" hidden>
+                <p id="confirmation-texte"></p>
+                <div class="boutons">
+                    <button type="button" id="confirmation-non" class="bouton"></button>
+                    <button type="button" id="confirmation-oui" class="bouton bouton-danger"></button>
+                </div>
+            </div>
         <div id="annonce" class="sr-only" role="status" aria-live="polite"></div>
     </div>
 </body>
