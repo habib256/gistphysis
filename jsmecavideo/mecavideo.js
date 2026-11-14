@@ -396,7 +396,7 @@ function passerAuMode(nouveau) {
   const lect = lecteur();
 
   if (nouveau === 'Graphique') {
-    if (lect && lect.isPlaying) lect.pause(false);
+    if (lect && lect.isPlaying) lect.pause(true); // calage par une vraie recherche
     noLoop();
     // Portrait : le guide se replie pour laisser la place au graphique
     if (guide.ouvert && !guide.ouvertParEleve && document.body.classList.contains('emp')) {
@@ -629,7 +629,8 @@ function majTextes() {
   ecrire('frame-info', texteEtat());
   const sansPoint = data.getTotalPointCount() === 0;
   const annuler = document.getElementById('bouton-annuler');
-  if (annuler.disabled !== sansPoint) annuler.disabled = sansPoint;
+  const annulerInactif = sansPoint || confirmationOuverte(); // inactif aussi pendant une question
+  if (annuler.disabled !== annulerInactif) annuler.disabled = annulerInactif;
   const voir = document.getElementById('bouton-voir-graphiques');
   const fin = etat === 'Pointage' && finDeVideo();
   if (voir.hidden === fin) {
@@ -774,7 +775,7 @@ function annulerDernierPoint() {
   const r = data.annuler();
   if (!r) return;
   const lect = lecteur();
-  if (lect) lect.allerImage(r.image);
+  if (lect) lect.allerImageChoisie(r.image); // Annuler = image choisie (même pendant la lecture)
   messageTemporaire.fin = 0; // « Point inséré… » ne doit pas rester affiché
   annoncer('Dernier point annulé (image ' + r.image + ').');
   sauvegarderSeance();

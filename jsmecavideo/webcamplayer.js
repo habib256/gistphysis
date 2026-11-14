@@ -103,7 +103,11 @@ class WebcamPlayer {
         return this.allerImage(this.image + 1);
     }
     previousFrame() { return this.allerImage(this.image - 1); }
-    allerImageChoisie(k) { return this.allerImage(k); }
+    allerImageChoisie(k) {
+        const ok = this.allerImage(k);
+        this.aLu = false;
+        return ok;
+    }
 
     jumpToStart() {
         if (this.isRecording) this.stopRecording();
@@ -122,10 +126,15 @@ class WebcamPlayer {
         this.majBoutonLecture();
     }
 
+    // Même interface que le lecteur vidéo : ici l'image affichée est toujours this.image
+    // (des images enregistrées, pas de décodage) ; pas de recherche à attendre.
     pause() {
+        if (this.isPlaying) this.aLu = true;
         this.isPlaying = false;
         this.majBoutonLecture();
     }
+
+    indiceImage() { return Math.max(0, this.image); }
 
     draw() {
         background(0);

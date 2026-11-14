@@ -42,6 +42,11 @@ class VideoPlayer {
         elt.addEventListener('loadeddata', this._surDonnees);
         elt.addEventListener('seeked', () => this._surSeeked());
         elt.addEventListener('ended', () => { if (this.isPlaying) this._surFin(); });
+        // Lecture arrêtée par le navigateur lui-même (page cachée, politique de lecture…) :
+        // même calage que pour une pause demandée
+        elt.addEventListener('pause', () => { if (this.isPlaying && !elt.ended) this.pause(true); });
+        this._surVisibilite = () => { if (document.hidden && this.isPlaying) this.pause(true); };
+        document.addEventListener('visibilitychange', this._surVisibilite);
         elt.addEventListener('error', () => {
             if (this.retire || !elt.getAttribute('src')) return;
             this.erreur = 'Impossible de lire cette vidéo. Choisis-en une autre ou recharge la page.';
@@ -112,12 +117,15 @@ class VideoPlayer {
     }
 
     // Va à l'image k. Renvoie faux si elle n'existe pas (la position ne change pas).
-    // Ne relance jamais une recherche vers la position déjà atteinte.
+    // Ne relance jamais une recherche vers la position déjà atteinte… sauf après une lecture :
+    // pause() invalide this.image, si bien que l'image affichée à l'arrêt est TOUJOURS le
+    // résultat d'une recherche (Chrome peut montrer, à l'arrêt d'une lecture, l'image qui suit
+    // celle que donne currentTime). La cible est le milieu de l'image k.
     allerImage(k) {
         if (!this.isLoaded) return false;
         if (k < 0 || k > this.derniereImage()) return false;
         if (this.isPlaying) this.pause(false);
-        const cible = this.debut + k / this.framerate;
+        const cible = this.debut - 0.001 + (k + 0.5) / this.framerate;
         if (k === this.image && !this.enDeplacement && !this.elt.seeking && this.indiceImage() === k) {
             return true; // déjà affichée
         }
@@ -162,8 +170,9 @@ class VideoPlayer {
     // Navigation manuelle (boutons, flèches, curseur, Début) : l'élève choisit son image ;
     // le « retour à l'image de travail » ne vaut que pour un toucher qui suit une lecture.
     allerImageChoisie(k) {
-        this.aLu = false;
-        return this.allerImage(k);
+        const ok = this.allerImage(k); // (arrête la lecture si besoin)
+        this.aLu = false;              // puis : c'est l'élève qui a choisi cette image
+        return ok;
     }
 
     nextFrame() {
@@ -182,17 +191,24 @@ class VideoPlayer {
             if (this.image >= this.derniereImage()) this.allerImage(0);
             this.isPlaying = true;
             const lecture = this.elt.play();
-            if (lecture && lecture.catch) lecture.catch(() => { this.isPlaying = false; });
+            if (lecture && lecture.catch) lecture.catch(() => { if (this.isPlaying) this.pause(true); });
         }
         this.majBoutonLecture();
     }
 
+    // Arrêt d'une lecture, quel que soit le chemin (bouton, Espace, toucher, changement de mode,
+    // page cachée…). INVARIANT : this.image est invalidée ; la prochaine allerImage fait donc
+    // toujours une vraie recherche, et aucun point n'est accepté avant son « seeked ».
+    // caler = faux seulement quand l'appelant lance lui-même la recherche juste après.
     pause(caler = true) {
-        this.elt.pause();
+        const etaitEnLecture = this.isPlaying;
         this.isPlaying = false;
+        this.elt.pause();
         this.majBoutonLecture();
-        this.aLu = true; // l'élève a regardé la vidéo : on reviendra à l'image de travail
-        if (caler) this.allerImage(Math.min(this.indiceImage(), this.derniereImage()));
+        if (etaitEnLecture || caler) this.aLu = true; // l'élève a regardé la vidéo
+        const k = Math.min(this.indiceImage(), this.derniereImage());
+        this.image = -1;
+        if (caler) this.allerImage(k);
     }
 
     // Fin d'une LECTURE (jamais déclenchée par une simple recherche)
@@ -273,6 +289,7 @@ class VideoPlayer {
     removeElements() {
         this.retire = true;
         clearTimeout(this._secours);
+        document.removeEventListener('visibilitychange', this._surVisibilite);
         this.elt.removeEventListener('loadeddata', this._surDonnees);
         this.elt.pause();
         this.elt.removeAttribute('src');

@@ -1086,6 +1086,124 @@ try {
       await fermer(o);
     }
   }
+
+  // ------------------------------------------------------------------ 16. Pause : image affichée = image pointée
+  if (partie(16, 'Pause pendant la lecture : l’image pointée est celle réellement affichée (référence ffmpeg)')) {
+    // Images de référence de chaque vidéo, réduites, extraites par ffmpeg (indépendantes du navigateur)
+    const references = (video, w, h) => {
+      try {
+        const brut = execFileSync('ffmpeg', ['-nostdin', '-v', 'error', '-i', path.join(RACINE, video), '-vf', `scale=${w}:${h}:flags=bilinear`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], {maxBuffer: 1 << 28});
+        return brut.toString('base64');
+      } catch (e) { return null; }
+    };
+    let total = 0, decales = 0, finies = 0;
+    const details = [];
+    for (const [video, w, h] of [[TABLE, 176, 144], ['videos/bille1-iv5.mp4', 160, 120]]) {
+      const refs = references(video, w, h);
+      if (!refs) { verifier('références ffmpeg', false, 'ffmpeg indisponible : NON vérifié'); break; }
+      for (const tactile of [true, false]) {
+        const o = await onglet(1024, 768, {tactile});
+        await choisirVideo(o, video);
+        await ev(o, `(()=>{const b=atob(${JSON.stringify(refs)}),n=${w * h * 3},t=new Uint8Array(b.length);for(let i=0;i<b.length;i++)t[i]=b.charCodeAt(i);
+          window.__refs=[];for(let k=0;k*n<t.length;k++)window.__refs.push(t.subarray(k*n,(k+1)*n));
+          const c=document.createElement('canvas');c.width=${w};c.height=${h};window.__cx=c.getContext('2d',{willReadFrequently:true});
+          window.__affichee=()=>{__cx.drawImage(lecteur().elt,0,0,${w},${h});const d=__cx.getImageData(0,0,${w},${h}).data;let best=-1,bs=Infinity,second=Infinity;
+            __refs.forEach((r,k)=>{let s=0;for(let i=0,j=0;i<d.length;i+=4,j+=3)s+=Math.abs(d[i]-r[j])+Math.abs(d[i+1]-r[j+1])+Math.abs(d[i+2]-r[j+2]);
+              if(s<bs){second=bs;bs=s;best=k;}else if(s<second)second=s;});return {k:best,ecart:bs/(${w * h * 3}),suivant:second/(${w * h * 3})};};})()`);
+        const lecture = `#controls button[aria-label^="Lire"], #controls button[aria-label^="Pause"]`;
+        const appuyer = async (sel) => {
+          const b = await ev(o, `(()=>{const r=document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()`);
+          if (tactile) await toucher(o, b.x, b.y); else await clic(o, b.x, b.y);
+        };
+        const cible = await ecranDe(o, 150, 150);
+        for (let essai = 0; essai < 12; essai++) {
+          const geste = ['espace', 'bouton', 'image'][essai % 3];
+          const attente = 70 + (essai * 53) % (video === TABLE ? 1500 : 450);
+          await ev(o, `lecteur().allerImageChoisie(0)`); await jusqua(o, `lecteur().pret()`);
+          await appuyer(lecture);
+          await pause(attente);
+          if (!(await ev(o, `lecteur().isPlaying`))) { finies++; continue; }
+          if (geste === 'espace') await touche(o, ' ', 'Space', 32, 0, ' ');
+          else if (geste === 'bouton') await appuyer(lecture);
+          else if (tactile) await toucher(o, cible.x, cible.y); else await clic(o, cible.x, cible.y);
+          await pause(100);
+          await jusqua(o, `lecteur().pret()`); await pause(150);
+          const aff = await ev(o, `__affichee()`);
+          await pause(300); // (pas de double-clic)
+          if (tactile) await toucher(o, cible.x, cible.y); else await clic(o, cible.x, cible.y);
+          await pause(250);
+          const p = await ev(o, `(data.points[0][0]||{}).image`);
+          total++;
+          const ok = p === aff.k;
+          if (!ok) decales++;
+          details.push([video.slice(7, 17), tactile ? 'doigt' : 'souris', geste, attente, 'affichée ' + aff.k, 'pointée ' + p, ok ? 'ok' : 'DÉCALÉ']);
+          await ev(o, `(()=>{while(data.getTotalPointCount())data.annuler();})()`);
+        }
+        journalPropre(o, 'pauses ' + video.slice(7) + (tactile ? ' (doigt)' : ' (souris)'));
+        await fermer(o);
+      }
+    }
+    rapport.pauses = details;
+    verifier(`pause (Espace, bouton, toucher de l’image ; doigt et souris ; vidéo commençant à 0,12 s et vidéo à 30 images/s) : ${total} pauses, ${decales} point(s) sur une autre image que celle affichée (ffmpeg)`,
+      total >= 40 && decales === 0, {total, decales, lectureFinieAvantPause: finies, exemples: details.slice(0, 4)});
+    // Webcam : toucher pendant la lecture de la séquence, sans point : pas d'erreur, puis le toucher pointe
+    {
+      const o = await onglet(1024, 768);
+      await ev(o, `(()=>{const s=document.getElementById('choix-video');s.value='webcam';s.dispatchEvent(new Event('change'));})()`);
+      await jusqua(o, `webcamPlayer && webcamPlayer.isLoaded`);
+      await ev(o, `webcamPlayer.toggleRecording()`); await pause(1500);
+      await ev(o, `webcamPlayer.toggleRecording()`); await jusqua(o, `webcamPlayer.isRecorded`); await pause(300);
+      await ev(o, `webcamPlayer.play()`); await pause(300);
+      const p = await ecranDe(o, 100, 100); await clic(o, p.x, p.y); await pause(400);
+      const apres = await ev(o, `({lecture:webcamPlayer.isPlaying, n:data.getTotalPointCount(), image:webcamPlayer.image})`);
+      await clic(o, p.x + 5, p.y); await pause(400);
+      const n2 = await ev(o, `({n:data.getTotalPointCount(), image:data.points[0][0]&&data.points[0][0].image})`);
+      verifier('webcam : toucher pendant la lecture = pause sans erreur, le toucher suivant pointe l’image affichée', !apres.lecture && apres.n === 0 && n2.n === 1 && n2.image === apres.image && o.journal.erreurs.length === 0, {apres, n2, erreurs: o.journal.erreurs});
+      await fermer(o);
+    }
+    // Pendant la lecture, ◀◀ / ▶▶ / curseur / Annuler : le toucher suivant pointe l'image choisie
+    {
+      const o = await onglet(1024, 768, {tactile: true});
+      await choisirVideo(o, TABLE);
+      for (let k = 0; k < 3; k++) { await jusqua(o, `lecteur().pret()`); const p = await ecranDe(o, 100 + 10 * k, 150); await toucher(o, p.x, p.y); await pause(300); }
+      const res = [];
+      for (const [nom, action] of [
+        ['image suivante', `document.querySelector('[aria-label^="Image suivante"]').click()`],
+        ['curseur', `(()=>{const c=document.querySelector('.curseur-temps');c.value='20';c.dispatchEvent(new Event('input'));})()`],
+        ['Annuler', `document.getElementById('bouton-annuler').click()`]]) {
+        await ev(o, `lecteur().play()`); await pause(300);
+        await ev(o, action); await jusqua(o, `lecteur().pret()`);
+        const choisie = await ev(o, `lecteur().image`);
+        const p = await ecranDe(o, 200, 100); await toucher(o, p.x, p.y); await pause(400);
+        const r = await ev(o, `({aLu:lecteur().aLu, msg:document.getElementById('instructions').textContent})`);
+        const pointee = await ev(o, `data.points[0].some(p=>p.image===${choisie} && Math.abs(p.xpx-200)<1)`);
+        res.push({nom, choisie, pointee, retour: /Retour à l’image de travail/.test(r.msg)});
+      }
+      verifier('pendant la lecture, image suivante / curseur / Annuler : le toucher suivant pointe l’image choisie (pas de retour à l’image de travail)', res.every(r => r.pointee && !r.retour), res);
+      await fermer(o);
+    }
+    // Réticule clavier, flèches, clic sans bouger la souris : le point va au réticule affiché
+    {
+      const o = await onglet(1366, 768);
+      const p = await ecranDe(o, 300, 250);
+      await o.c.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: p.x, y: p.y}, o.s);
+      await ev(o, `document.querySelector('canvas').focus()`);
+      await touche(o, 'Enter', 'Enter', 13);
+      for (let i = 0; i < 4; i++) await touche(o, 'ArrowLeft', 'ArrowLeft', 37);
+      const ret = await ev(o, `({x:clavier.x,y:clavier.y})`);
+      await o.c.send('Input.dispatchMouseEvent', {type: 'mousePressed', x: p.x, y: p.y, button: 'left', buttons: 1, clickCount: 1}, o.s);
+      await o.c.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x: p.x, y: p.y, button: 'left', buttons: 0, clickCount: 1}, o.s);
+      await pause(400);
+      const pt = await ev(o, `(()=>{const q=data.points[0][0];return q&&{x:q.xpx,y:dimensionsSource().h-q.ypx};})()`);
+      verifier('réticule clavier puis clic sans bouger la souris : le point va au réticule affiché', pt && Math.abs(pt.x - ret.x) < 1e-6 && Math.abs(pt.y - ret.y) < 1e-6, {reticule: ret, point: pt});
+      // Pendant une question, « Annuler » est inactif
+      await choisirVideoSansAttente(o, TABLE); await pause(200);
+      const annuler = await ev(o, `document.getElementById('bouton-annuler').disabled`);
+      await touche(o, 'Escape', 'Escape', 27);
+      verifier('pendant une question, « Annuler » est inactif (et le reste après plusieurs images)', annuler, annuler);
+      await fermer(o);
+    }
+  }
 } catch (e) {
   console.error(e);
   echecs.push('exception : ' + e.message);

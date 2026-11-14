@@ -348,7 +348,6 @@ function installerPointageTactile(elt) {
     }
   });
   elt.addEventListener('mousedown', (e) => {
-    clavier.actif = false;
     if (e.button !== 0) return;
     const p = coordonneesCanvas(elt, e.clientX, e.clientY);
     souris.glisse = pointEtalonnageProche(p);
@@ -376,9 +375,15 @@ function installerPointageTactile(elt) {
       if (!annulationDejaTraitee()) annulerDernierPoint();
       return;
     }
+    dernierPointageSouris = performance.now();
+    // Réticule clavier affiché (souris pas bougée depuis) : le clic pointe au réticule, que
+    // l'élève voit — jamais sous une souris invisible
+    if (clavier.actif) {
+      traiterPointage(clavier.x, clavier.y);
+      return;
+    }
     const p = coordonneesCanvas(elt, e.clientX, e.clientY);
     if (!estDansImage(p)) return;
-    dernierPointageSouris = performance.now();
     const v = versVideo(p.x, p.y);
     traiterPointage(v.x, v.y);
   });
