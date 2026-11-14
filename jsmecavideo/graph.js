@@ -13,6 +13,7 @@ const TYPES_GRAPHIQUES = [
     { valeur: 'vitesse', libelle: 'Vitesse sur chaque intervalle (v = d / Δt)' },
     { valeur: 'x(t)', libelle: 'Position x au cours du temps' },
     { valeur: 'y(t)', libelle: 'Position y au cours du temps' },
+    { valeur: 'tableau', libelle: 'Tableau des mesures' },
     { valeur: 'v(t)', libelle: 'Vitesse v(t), méthode centrée', groupe: GROUPE_LYCEE },
     { valeur: 'vx(t)', libelle: 'Vitesse horizontale vx(t)', groupe: GROUPE_LYCEE },
     { valeur: 'vy(t)', libelle: 'Vitesse verticale vy(t)', groupe: GROUPE_LYCEE },
@@ -167,6 +168,7 @@ class Graph {
             case 'vx(t)': return 'Vitesse horizontale vx au cours du temps';
             case 'vy(t)': return 'Vitesse verticale vy au cours du temps';
             case 'a(t)': return 'Accélération a au cours du temps';
+            case 'tableau': return 'Tableau des mesures';
             default: return 'Graphique';
         }
     }
@@ -181,6 +183,7 @@ class Graph {
             case 'vitesse': return 'd = distance entre deux points, Δt = durée entre ces deux points. ' +
                 'Même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.';
             case 'x(t)': case 'y(t)': return 'L’instant t est compté depuis le premier point (t = 0).';
+            case 'tableau': return 'Une ligne par point. d, Δt et v sont mesurés depuis le point précédent ; l’instant t est compté depuis le premier point.';
             default: return '';
         }
     }
@@ -422,6 +425,17 @@ class Graph {
         p.textContent = aide;
         p.hidden = !aide;
 
+        const tableau = this.graphType === 'tableau';
+        document.getElementById('graph-cadre').hidden = tableau;
+        const zone = document.getElementById('tableau-zone');
+        zone.hidden = !tableau;
+        if (tableau) {
+            this.resume = '';
+            afficherTableauMesures(zone);
+            this.updateAccelerationInfo();
+            return;
+        }
+        zone.innerHTML = '';
         const config = this.getChartConfig();
         this.chart = new Chart(this.canvas, config);
         if (this.graphType === 'y(x)') this.egaliserEchelles();

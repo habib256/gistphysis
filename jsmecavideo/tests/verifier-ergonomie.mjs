@@ -166,12 +166,16 @@ try {
     const csv = await ev(o, `construireCSV()`);
     const lignes = csv.split('\r\n');
     verifier('CSV : CRLF, point-virgule, virgule décimale, 1 ligne par point', csv.endsWith('\r\n') && lignes.filter(l => /^1;\d+;/.test(l)).length === 10 && !/\d\.\d/.test(lignes.slice(2).join('')), lignes.slice(0, 5));
+    verifier('CSV : en-têtes « Image n° », « instant t », « durée Δt », « v = d / Δt » ; fréquence et pas rappelés',
+      /Image n°/.test(lignes[2]) && /instant t \(s\)/.test(lignes[2]) && /durée Δt/.test(lignes[2]) && /v = d \/ Δt \(m\/s\)/.test(lignes[2]) && /25 images\/s, 1 point toutes les 5 images/.test(lignes[0]), lignes[0]);
     writeFileSync(path.join(SORTIE, 'mesures.csv'), '\uFEFF' + csv);
     // Même pointage exact que la mesure « avant » (positions vidéo données sans arrondi d'écran)
     const exact = await ev(o, `(()=>{const sauve=JSON.stringify(data.serialiser());data.clearAllPoints();for(let k=0;k<10;k++){data.placer(0,5*k,60+22.3*k,288-(150.4+0.7*k));}
-      const r={csv:construireCSV()};data.restaurer(JSON.parse(sauve));return r;})()`);
+      const r={csv:construireCSV(),iv:data.getIntervalles(0)};data.restaurer(JSON.parse(sauve));return r;})()`);
+    verifier('pointage exact identique à l’ancienne version : d = 0,0671 m, Δt = 0,200 s, v = 0,336 m/s (arrondis de l’ancien CSV)',
+      exact.iv.length === 9 && exact.iv.every(iv => iv.d.toFixed(4) === '0.0671' && iv.duree.toFixed(3) === '0.200' && iv.v.toFixed(3) === '0.336'), exact.iv[0]);
     const colonnes = exact.csv.split('\r\n').filter(l => /^1;\d+;/.test(l)).map(l => l.split(';').slice(-3).join(';'));
-    verifier('pointage exact identique : colonnes d ; Δt ; v du CSV = ancienne version (0,0671 ; 0,200 ; 0,336)', colonnes.slice(1).every(c => c === '0,0671;0,200;0,336'), colonnes.slice(0, 3));
+    verifier('CSV : décimales réglées sur l’échelle (1 px = 3 mm → d au mm, v au cm/s)', colonnes.slice(1).every(c => c === '0,067;0,200;0,34'), colonnes.slice(0, 3));
     rapport.csvExact = exact.csv;
     // Graphiques puis retour
     await choisir(o, 'choix-mode', 'Graphique');
@@ -391,6 +395,84 @@ try {
     await capture(o, path.join(SORTIE, 'webcam.png'));
     verifier('webcam : proposée en localhost, enregistrement, pointage, avance d’une image', propose && w.images > 5 && w.n === 1 && w.image === 1, w);
     journalPropre(o, 'webcam');
+    await fermer(o);
+  }
+  }
+
+  // ------------------------------------------------------------------ 9. Lot 2 : reprise, tableau, serveur sans Range, plein écran, densité
+  if (partie(9)) {
+  console.log('9. Reprise après rechargement, tableau, serveur sans Range, plein écran, densité 2');
+  {
+    const o = await onglet(1024, 768);
+    await choisirVideo(o, VIDEO_TABLE);
+    await pause(200);
+    await pret(o);
+    await jusqua(o, `dimensionsSource().w===352`);
+    await choisir(o, 'choix-pas', 5);
+    for (let k = 0; k < 4; k++) {
+      await jusqua(o, `lecteur().pret()`);
+      const p = await ecranDe(o, 60 + 22.3 * k, 150);
+      await clic(o, p.x, p.y);
+      await pause(300);
+    }
+    await o.c.send('Page.reload', {}, o.s);
+    await pause(800);
+    await jusqua(o, `!document.getElementById('confirmation').hidden`);
+    const texte = await ev(o, `document.getElementById('confirmation-texte').textContent`);
+    await capture(o, path.join(SORTIE, 'lot2-reprise.png'));
+    await ev(o, `document.getElementById('confirmation-oui').click()`);
+    await pret(o);
+    await jusqua(o, `lecteur().pret() && lecteur().image===20`);
+    const r = await ev(o, `({n:data.getTotalPointCount(), pas:imagesParPoint, video:lecteur().chemin, image:lecteur().image})`);
+    verifier('rechargement : « Reprendre ton pointage ? » puis 4 points, pas et vidéo retrouvés, reprise image 20', /Reprendre ton pointage/.test(texte) && r.n === 4 && r.pas === 5 && r.video === VIDEO_TABLE && r.image === 20, {texte, ...r});
+    const stockage = await ev(o, `({session:!!sessionStorage.getItem('jsmecavideo-seance-v1'), local:localStorage.length})`);
+    verifier('sauvegarde dans sessionStorage seulement (rien dans localStorage)', stockage.session && stockage.local === 0, stockage);
+    // Tableau des mesures
+    await choisir(o, 'choix-mode', 'Graphique');
+    await choisir(o, 'choix-type-graphique', 'tableau');
+    await pause(300);
+    const tab = await ev(o, `({lignes:document.querySelectorAll('#tableau-mesures tbody tr').length, entetes:[...document.querySelectorAll('#tableau-mesures th')].map(t=>t.textContent), cadre:document.getElementById('graph-cadre').hidden})`);
+    await capture(o, path.join(SORTIE, 'lot2-tableau.png'));
+    verifier('tableau des mesures : vrai tableau HTML, 4 lignes, mêmes colonnes que le CSV', tab.lignes === 4 && tab.cadre && tab.entetes.includes('Image n°') && tab.entetes.includes('durée Δt depuis le point précédent (s)'), tab);
+    // Vidéo chargée en local (blob:)
+    verifier('vidéo chargée en entier puis lue en local (blob:)', await ev(o, `lecteur().elt.src.startsWith('blob:')`));
+    journalPropre(o, 'reprise');
+    await fermer(o);
+  }
+  {
+    // Serveur qui ignore les requêtes Range : se déplacer dans la vidéo doit marcher quand même
+    const sansRange = await servir(RACINE, 0, {sansRange: true});
+    const o = await ouvrirOnglet(c, sansRange.base + '/index.html', 1024, 768);
+    o.base = sansRange.base;
+    await pret(o);
+    await ev(o, `lecteur().allerImage(7)`);
+    await jusqua(o, `lecteur().pret()`);
+    const t = await ev(o, `({image:lecteur().image, temps:lecteur().elt.currentTime})`);
+    verifier('serveur sans Range : aller à l’image 7 fonctionne', t.image === 7 && Math.abs(t.temps - (0.001 + 7 / 25)) < 0.002, t);
+    journalPropre(o, 'sans Range');
+    await fermer(o);
+    await sansRange.close();
+  }
+  {
+    // Plein écran : bouton visible seul, absent dans un cadre
+    const o = await onglet(1366, 768);
+    const seul = await ev(o, `!document.getElementById('bouton-plein-ecran').hidden`);
+    await fermer(o);
+    const f = await ouvrirOnglet(c, srv.base + '/tests/cadre.html', 1024, 768, {tactile: true});
+    f.base = srv.base;
+    await jusqua(f, `(()=>{const w=document.querySelector('iframe').contentWindow;return w.lecteur&&w.lecteur()&&w.lecteur().isLoaded;})()`);
+    await pause(400);
+    const cadre = await ev(f, `(()=>{const w=document.querySelector('iframe').contentWindow,d=w.document,r=d.querySelector('canvas').getBoundingClientRect();return {bouton:d.getElementById('bouton-plein-ecran').hidden, defil:d.documentElement.scrollHeight>w.innerHeight+1, part:Math.round(100*r.width*r.height/(w.innerWidth*w.innerHeight))};})()`);
+    await capture(f, path.join(SORTIE, 'lot2-dans-un-cadre.png'));
+    verifier('bouton « Plein écran » : visible hors cadre, absent dans un cadre ; l’app remplit le cadre sans défiler', seul && cadre.bouton && !cadre.defil, {seul, cadre});
+    journalPropre(f, 'cadre');
+    await fermer(f);
+  }
+  {
+    const o = await onglet(1024, 768, {tactile: true, dpr: 2});
+    const m = await ev(o, `(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect();return {css:[Math.round(r.width),Math.round(r.height)],memoire:[c.width,c.height]};})()`);
+    verifier('écran haute densité (×2) : mémoire du canevas = 2 × taille affichée', m.memoire[0] === 2 * m.css[0] && Math.abs(m.memoire[1] - 2 * m.css[1]) <= 1, m);
+    await capture(o, path.join(SORTIE, 'lot2-densite-2.png'));
     await fermer(o);
   }
   }

@@ -19,7 +19,7 @@ const TYPES = {
 };
 
 // Serveur statique avec Range ; renvoie {base, close()}
-export function servir(racine, port = 0) {
+export function servir(racine, port = 0, {sansRange = false} = {}) {
   const serveur = createServer((req, res) => {
     let chemin = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (chemin.endsWith('/')) chemin += 'index.html';
@@ -29,7 +29,7 @@ export function servir(racine, port = 0) {
     }
     const taille = statSync(fichier).size;
     const type = TYPES[path.extname(fichier).toLowerCase()] || 'application/octet-stream';
-    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    const m = sansRange ? null : /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
     if (m) {
       let debut = m[1] === '' ? taille - Number(m[2]) : Number(m[1]);
       let fin = m[1] !== '' && m[2] !== '' ? Number(m[2]) : taille - 1;
@@ -41,7 +41,7 @@ export function servir(racine, port = 0) {
       createReadStream(fichier, {start: debut, end: fin}).pipe(res);
       return;
     }
-    res.writeHead(200, {'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': taille, 'Cache-Control': 'no-store'});
+    res.writeHead(200, {'Content-Type': type, ...(sansRange ? {} : {'Accept-Ranges': 'bytes'}), 'Content-Length': taille, 'Cache-Control': 'no-store'});
     createReadStream(fichier).pipe(res);
   });
   return new Promise(resolve => serveur.listen(port, '127.0.0.1', () => {

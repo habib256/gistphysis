@@ -244,8 +244,10 @@
 
             #bouton-guide,
             #bouton-plein-ecran {
-                flex: 1 1 40%;
+                flex: 1 1 auto;
                 margin-left: 0;
+                padding: 4px 8px;
+                white-space: nowrap;
             }
         }
 
@@ -498,6 +500,9 @@
         }
 
         #acceleration-info {
+            flex: 0 0 auto;
+            margin-top: 4px;
+            border-radius: 6px;
             padding: 6px 10px;
             background: #22313f;
             color: #f4f7f9;
@@ -533,6 +538,11 @@
             position: relative;
             flex: 1 1 auto;
             min-height: 0;
+        }
+
+        #graph-cadre[hidden],
+        #tableau-zone[hidden] {
+            display: none;
         }
 
         #tableau-zone {
@@ -672,6 +682,13 @@
             }
         }
 
+        /* Écran étroit : pas de bouton « Plein écran » (pas la place sur la ligne des réglages) */
+        @media (max-width: 419px) {
+            #bouton-plein-ecran {
+                display: none !important;
+            }
+        }
+
         /* Très étroit : le curseur de temps garde de la place (début : touche ou curseur) */
         @media (max-width: 399px) {
             .bouton-debut {
@@ -801,7 +818,7 @@
                         </select>
                     </label>
                     <button type="button" id="bouton-guide" class="bouton" aria-controls="guide">📋 Guide</button>
-                    <button type="button" id="bouton-plein-ecran" class="bouton" hidden>⛶ Plein écran</button>
+                    <button type="button" id="bouton-plein-ecran" class="bouton" hidden aria-pressed="false">⛶<span class="libelle-long"> Plein écran</span></button>
                 </div>
             </div>
             <div id="info-bar">
@@ -825,7 +842,6 @@
                 <ol id="guide-etapes"></ol>
                 <p id="guide-texte" aria-live="polite"></p>
             </div>
-            <div id="acceleration-info" role="status" hidden></div>
         </div>
         <div id="scene">
             <div id="canvas-container"></div>
@@ -834,6 +850,7 @@
                 <p id="graph-aide"></p>
                 <div id="graph-cadre"><canvas id="graphique" role="img" aria-label="Graphique"></canvas></div>
                 <div id="tableau-zone" hidden tabindex="0" aria-label="Tableau des mesures"></div>
+                <div id="acceleration-info" role="status" hidden></div>
             </div>
             <div id="confirmation" role="alertdialog" aria-labelledby="confirmation-texte" hidden>
                 <p id="confirmation-texte"></p>

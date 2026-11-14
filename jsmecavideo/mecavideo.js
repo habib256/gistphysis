@@ -57,11 +57,43 @@ function setup() {
     majApercuLongueur();
   });
 
+  installerPleinEcran();
+
   const depart = Math.max(0, videoFiles.findIndex(v => v.path === VIDEO_DEPART));
   chargerVideo(depart);
 
   installerMiseAEchelle();
   majModeAffichage();
+  proposerReprise();
+}
+
+// Bouton « Plein écran » : seulement quand l'app n'est pas dans un cadre (dans le site,
+// c'est la page qui l'entoure qui le fournit)
+function installerPleinEcran() {
+  const bouton = document.getElementById('bouton-plein-ecran');
+  let dansCadre = true;
+  try { dansCadre = window.self !== window.top; } catch (e) { dansCadre = true; }
+  const racine = document.documentElement;
+  const demander = racine.requestFullscreen || racine.webkitRequestFullscreen;
+  const possible = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+  if (dansCadre || !demander || !possible) return;
+  bouton.hidden = false;
+  const actif = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const maj = () => {
+    bouton.setAttribute('aria-pressed', actif() ? 'true' : 'false');
+    bouton.title = actif() ? 'Quitter le plein écran (Échap)' : 'Afficher l’app sur tout l’écran';
+    bouton.setAttribute('aria-label', bouton.title);
+  };
+  bouton.addEventListener('click', () => {
+    if (actif()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else {
+      const r = demander.call(racine);
+      if (r && r.catch) r.catch(() => {});
+    }
+  });
+  document.addEventListener('fullscreenchange', maj);
+  document.addEventListener('webkitfullscreenchange', maj);
+  maj();
 }
 
 // Menu des vidéos : groupes (« Pour commencer » en tête), titres lisibles, webcam à la fin
@@ -145,10 +177,13 @@ function installerMenus() {
 }
 
 // Bandeau de confirmation dans l'interface (pas de confirm() : il est bloqué dans certains cadres)
-function demanderConfirmation(texte, libelleOui, libelleNon, surOui, surNon) {
+function demanderConfirmation(texte, libelleOui, libelleNon, surOui, surNon, danger = true) {
   const boite = document.getElementById('confirmation');
   const oui = document.getElementById('confirmation-oui');
   const non = document.getElementById('confirmation-non');
+  oui.classList.toggle('bouton-danger', danger);
+  oui.classList.toggle('bouton-principal', !danger);
+  boite.style.borderColor = danger ? '' : '#145a32';
   document.getElementById('confirmation-texte').textContent = texte;
   oui.textContent = libelleOui;
   non.textContent = libelleNon;
@@ -161,7 +196,7 @@ function demanderConfirmation(texte, libelleOui, libelleNon, surOui, surNon) {
   oui.onclick = () => fermer(surOui);
   non.onclick = () => fermer(surNon);
   boite.hidden = false;
-  non.focus();
+  (danger ? non : oui).focus();
 }
 
 // ---------------------------------------------------------------------------
@@ -679,7 +714,78 @@ function majSaisieCalibration(majMessage = true) {
 }
 
 // ---------------------------------------------------------------------------
-// Sauvegarde de la séance (remplacée plus loin si sessionStorage est disponible)
+// Sauvegarde de la séance dans sessionStorage
 // ---------------------------------------------------------------------------
+// Le travail survit à un rechargement de la page, mais pas à la fermeture de l'onglet :
+// sur une tablette de classe partagée, l'élève suivant ne retrouve pas le travail du
+// précédent (c'est pourquoi on n'utilise pas localStorage). Rien n'est envoyé nulle part.
 
-function sauvegarderSeance() { }
+const CLE_SEANCE = 'jsmecavideo-seance-v1';
+let repriseEnAttente = false;
+
+function sauvegarderSeance() {
+  if (repriseEnAttente || source !== 'video' || !calibrator) return;
+  try {
+    const n = data.getTotalPointCount();
+    if (n === 0 && !calibrator.point1) {
+      sessionStorage.removeItem(CLE_SEANCE);
+      return;
+    }
+    sessionStorage.setItem(CLE_SEANCE, JSON.stringify({
+      video: videoFiles[indexVideo].path,
+      pas: imagesParPoint,
+      etat: etat,
+      data: data.serialiser(),
+      calibrateur: calibrator.serialiser()
+    }));
+  } catch (e) {
+    // Stockage refusé (navigation privée, cadre restreint…) : on continue sans sauvegarde
+  }
+}
+
+function lireSeance() {
+  try {
+    const o = JSON.parse(sessionStorage.getItem(CLE_SEANCE) || 'null');
+    if (!o || typeof o.video !== 'string' || videoFiles.findIndex(v => v.path === o.video) < 0) return null;
+    return o;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Au chargement : « Reprendre ton pointage ? » si une séance a été enregistrée
+function proposerReprise() {
+  const o = lireSeance();
+  if (!o) return;
+  const v = videoFiles.find(f => f.path === o.video);
+  const n = (o.data && Array.isArray(o.data.points)) ? o.data.points.reduce((s, p) => s + (Array.isArray(p) ? p.length : 0), 0) : 0;
+  const etalonne = o.calibrateur && o.calibrateur.state === 'calibrated';
+  if (n === 0 && !etalonne) return;
+  repriseEnAttente = true;
+  demanderConfirmation('Reprendre ton pointage ? Vidéo « ' + v.titre + ' » : ' + (n === 1 ? '1 point' : n + ' points') +
+    (etalonne ? ', étalonnage fait' : '') + '.',
+    'Reprendre', 'Recommencer à zéro',
+    () => { repriseEnAttente = false; restaurerSeance(o); },
+    () => {
+      repriseEnAttente = false;
+      try { sessionStorage.removeItem(CLE_SEANCE); } catch (e) { /* rien */ }
+    },
+    false);
+}
+
+function restaurerSeance(o) {
+  const i = videoFiles.findIndex(v => v.path === o.video);
+  if (i < 0) return;
+  chargerVideo(i);
+  imagesParPoint = [1, 2, 5].indexOf(o.pas) >= 0 ? o.pas : 1;
+  document.getElementById('choix-pas').value = String(imagesParPoint);
+  data.restaurer(o.data);
+  document.getElementById('choix-mobiles').value = String(data.numMobiles);
+  calibrator.restaurer(o.calibrateur);
+  data.echelle = calibrator.isCalibrated ? calibrator.scaleFactor : null;
+  document.getElementById('real-distance').value = calibrator.isCalibrated ? (calibrator.saisie || metresFr(calibrator.realDistance)) : '';
+  passerAuMode(o.etat === 'Calibration' || o.etat === 'Graphique' ? o.etat : 'Pointage');
+  if (data.getTotalPointCount() > 0) replierGuideAuPremierPoint();
+  annoncer('Pointage repris : ' + data.getTotalPointCount() + ' points.');
+  sauvegarderSeance();
+}

@@ -38,15 +38,47 @@ class VideoPlayer {
         elt.addEventListener('seeked', () => this._surSeeked());
         elt.addEventListener('ended', () => this._surFin());
         elt.addEventListener('error', () => {
+            if (this.retire || !elt.getAttribute('src')) return;
             this.erreur = 'Impossible de lire cette vidéo. Choisis-en une autre ou recharge la page.';
         });
         this.chargerSource(chemin);
         this.addElements();
     }
 
-    // Donne la source à l'élément vidéo
+    // Charge tout le fichier (15 à 400 Ko) puis le donne à l'élément vidéo par une adresse
+    // locale (blob:) : se déplacer dans la vidéo marche même si le serveur ne gère pas les
+    // requêtes partielles (Range). Repli : adresse directe si le chargement échoue (file://…).
     chargerSource(chemin) {
-        this.elt.src = chemin;
+        this.chargement = 0;
+        const repli = () => {
+            if (this.retire) return;
+            this.repli = true;
+            this.elt.src = chemin;
+        };
+        if (typeof fetch !== 'function' || typeof URL.createObjectURL !== 'function') {
+            repli();
+            return;
+        }
+        fetch(chemin).then(reponse => {
+            if (!reponse.ok) throw new Error('HTTP ' + reponse.status);
+            const total = Number(reponse.headers.get('Content-Length')) || 0;
+            if (!reponse.body || !total || typeof reponse.body.getReader !== 'function') return reponse.blob();
+            const lecteurFlux = reponse.body.getReader();
+            const morceaux = [];
+            let recu = 0;
+            const lire = () => lecteurFlux.read().then(({ done, value }) => {
+                if (done) return new Blob(morceaux, { type: reponse.headers.get('Content-Type') || 'video/mp4' });
+                morceaux.push(value);
+                recu += value.length;
+                this.chargement = Math.min(1, recu / total);
+                return lire();
+            });
+            return lire();
+        }).then(blob => {
+            if (this.retire) return;
+            this.urlObjet = URL.createObjectURL(blob);
+            this.elt.src = this.urlObjet;
+        }).catch(repli);
     }
 
     // Dimensions natives de l'image (pixels vidéo), null tant qu'elles ne sont pas connues
@@ -163,7 +195,8 @@ class VideoPlayer {
                 this.image = k;
             }
         } else {
-            messageSurImage('Chargement de la vidéo…');
+            const pct = this.chargement > 0 && this.chargement < 1 ? ' ' + Math.round(this.chargement * 100) + ' %' : '';
+            messageSurImage('Chargement de la vidéo…' + pct);
         }
         this.sliderUpdate();
     }
@@ -199,12 +232,14 @@ class VideoPlayer {
     }
 
     removeElements() {
+        this.retire = true;
         clearTimeout(this._secours);
         this.elt.removeEventListener('loadeddata', this._surDonnees);
         this.elt.pause();
         this.elt.removeAttribute('src');
         this.elt.load();
         this.elt.remove();
+        if (this.urlObjet) URL.revokeObjectURL(this.urlObjet);
         if (this.boutons) this.boutons.retirer();
         this.boutons = null;
         this.slider = null;
