@@ -358,7 +358,7 @@ class Graph {
             animation: false,
             locale: 'fr-FR',
             plugins: {
-                legend: { display: legende, labels: { usePointStyle: true } },
+                legend: { display: legende, labels: { usePointStyle: true, sort: (a, b) => a.datasetIndex - b.datasetIndex } },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => {
