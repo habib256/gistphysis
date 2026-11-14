@@ -15,14 +15,72 @@ const MOBILES_STYLE = [
     { r: 230, g: 159, b: 0, hex: '#E69F00', forme: 'carre', symbole: '□', chart: 'rect', nom: 'jaune orangé' }
 ];
 
+// Décimales utiles pour une grandeur dont la plus petite variation mesurable vaut `pas`
+function decimalesUtiles(pas, max = 6) {
+    if (!(pas > 0)) return 0;
+    return Math.max(0, Math.min(max, Math.ceil(-Math.log10(pas) - 1e-9)));
+}
+
+function arrondi(x, dec) {
+    const f = Math.pow(10, dec);
+    return Math.round(x * f) / f;
+}
+
 class Data {
     constructor() {
         this.numMobiles = 1;     // nombre de mobiles suivis (1 à 4)
         this.points = [[]];      // un tableau par mobile, trié par numéro d'image
-        this.framerate = 25;     // images par seconde de la source
+        this.dureeImage = 0.04;  // durée entre deux images (dans l'unité de temps)
+        this.instants = null;    // webcam : instant réel de chaque image (s), sinon null
+        this.uniteTemps = 's';   // 's' ou 'jour' (animation astronomique)
+        this.uniteLongueur = 'm';// unité d'affichage après étalonnage : 'm' ou 'km'
         this.echelle = null;     // mètres par pixel vidéo (null = pas d'étalonnage)
         this.historique = [];    // actions annulables : {m, image, ancien}
         this.colors = MOBILES_STYLE;
+    }
+
+    // Cadence et unités de la source (appelé à chaque changement de vidéo)
+    configurer({ dureeImage, uniteTemps, uniteLongueur, instants }) {
+        this.dureeImage = dureeImage;
+        this.uniteTemps = uniteTemps || 's';
+        this.uniteLongueur = uniteLongueur || 'm';
+        this.instants = instants || null;
+    }
+
+    facteurLongueur() { return this.uniteLongueur === 'km' ? 1000 : 1; }
+
+    // Instant de l'image k dans l'unité de temps, depuis la première image du fichier
+    tempsImage(k) {
+        if (this.instants && this.instants.length) {
+            const i = Math.max(0, Math.min(k, this.instants.length - 1));
+            return this.instants[i] - this.instants[0];
+        }
+        return k * this.dureeImage;
+    }
+
+    // Instant t de l'image k compté depuis le premier point (définition unique : ligne
+    // d'état, tableau, graphiques, fichier)
+    instant(k) {
+        return this.tempsImage(k) - this.tempsImage(this.premiereImagePointee());
+    }
+
+    libelleTemps() { return this.uniteTemps === 'jour' ? 'jours' : 's'; }
+    uniteVitesse() { return this.getUnite() + '/' + (this.uniteTemps === 'jour' ? 'jour' : 's'); }
+
+    // Décimales communes à tout l'affichage (tableau, résumé, infobulles, fichier) :
+    // positions et distances à 1 pixel vidéo près, vitesses à la même finesse, temps exacts
+    formats() {
+        const pasPos = this.echelle ? this.echelle / this.facteurLongueur() : 1;
+        let dtMin = Infinity;
+        for (let m = 0; m < this.numMobiles; m++) {
+            this.intervallesBruts(m).forEach(iv => { if (iv.duree < dtMin) dtMin = iv.duree; });
+        }
+        if (!isFinite(dtMin)) dtMin = this.dureeImage * Math.max(1, typeof imagesParPoint !== 'undefined' ? imagesParPoint : 1);
+        let decT;
+        if (this.uniteTemps === 'jour') decT = decimalesPas(this.dureeImage);
+        else if (this.instants) decT = 3;
+        else decT = Math.abs(this.dureeImage * 1000 - Math.round(this.dureeImage * 1000)) < 1e-6 ? 3 : 4;
+        return { pos: decimalesUtiles(pasPos), v: decimalesUtiles(pasPos / dtMin), t: decT };
     }
 
     setNumMobiles(num) {
@@ -95,14 +153,13 @@ class Data {
         return this.points[m].findIndex(p => p.image === k) + 1;
     }
 
-    // Points d'un mobile (copie), avec t = durée depuis la première image pointée
+    // Points d'un mobile (copie), avec t = instant compté depuis le premier point
     getPointsForMobile(m) {
-        let k0 = this.premiereImagePointee();
         return (this.points[m] || []).map(p => ({
             image: p.image,
             xpx: p.xpx,
             ypx: p.ypx,
-            time: (p.image - k0) / this.framerate,
+            time: this.instant(p.image),
             mobile: m
         }));
     }
@@ -125,12 +182,12 @@ class Data {
         return this.points.reduce((s, pts) => s + pts.length, 0);
     }
 
-    // Unité des positions : « m » si une échelle est validée, sinon « px »
-    getUnite() { return this.echelle ? 'm' : 'px'; }
+    // Unité des positions : « m » (ou « km ») si une échelle est validée, sinon « px »
+    getUnite() { return this.echelle ? this.uniteLongueur : 'px'; }
 
     // Positions d'un mobile dans l'unité courante
     getPositions(m = 0) {
-        let f = this.echelle || 1;
+        let f = this.echelle ? this.echelle / this.facteurLongueur() : 1;
         return this.getPointsForMobile(m).map((p, i) => ({
             numero: i + 1,
             image: p.image,
@@ -140,19 +197,38 @@ class Data {
         }));
     }
 
-    // Lecture de la chronophotographie : pour chaque intervalle entre deux points successifs,
-    // la distance parcourue d, la durée Δt et la vitesse moyenne v = d / Δt.
-    getIntervalles(m = 0) {
+    // Intervalles avant arrondi (d exact)
+    intervallesBruts(m = 0) {
         let pos = this.getPositions(m);
         let intervalles = [];
         for (let i = 1; i < pos.length; i++) {
             let a = pos[i - 1], b = pos[i];
             let duree = b.time - a.time;
-            if (!(duree > 1e-9)) continue;
-            let d = Math.hypot(b.x - a.x, b.y - a.y);
-            intervalles.push({ de: a.numero, a: b.numero, duree: duree, d: d, v: d / duree });
+            if (!(duree > 1e-12)) continue;
+            intervalles.push({ de: a.numero, a: b.numero, imageDe: a.image, imageA: b.image, tDe: a.time, tA: b.time,
+                duree: duree, d: Math.hypot(b.x - a.x, b.y - a.y) });
         }
         return intervalles;
+    }
+
+    // Lecture de la chronophotographie : pour chaque intervalle entre deux points successifs,
+    // la distance parcourue d (arrondie comme elle est affichée), la durée Δt et la vitesse
+    // v = d / Δt calculée avec ce d affiché : l'élève qui refait le calcul retrouve le v affiché.
+    getIntervalles(m = 0) {
+        const f = this.formats();
+        return this.intervallesBruts(m).map(iv => {
+            const d = arrondi(iv.d, f.pos);
+            return Object.assign(iv, { d: d, v: d / iv.duree });
+        });
+    }
+
+    // Vrai si toutes les durées Δt (tous mobiles) sont égales (à 2 % près)
+    dureesEgales() {
+        let durees = [];
+        for (let m = 0; m < this.numMobiles; m++) durees = durees.concat(this.intervallesBruts(m).map(iv => iv.duree));
+        if (durees.length < 2) return true;
+        const min = Math.min(...durees), max = Math.max(...durees);
+        return max - min <= 0.02 * min;
     }
 
     // Vitesses par dérivation centrée : v[i] = (pos[i+1] - pos[i-1]) / (t[i+1] - t[i-1])
@@ -190,17 +266,35 @@ class Data {
         return { numMobiles: this.numMobiles, points: this.points, historique: this.historique };
     }
 
-    restaurer(o) {
-        if (!o || !Array.isArray(o.points)) return false;
-        this.numMobiles = Math.max(1, Math.min(4, o.numMobiles | 0 || 1));
-        this.points = [];
-        for (let m = 0; m < this.numMobiles; m++) {
-            let pts = Array.isArray(o.points[m]) ? o.points[m] : [];
-            this.points.push(pts.filter(p => p && isFinite(p.image) && isFinite(p.xpx) && isFinite(p.ypx))
-                .map(p => ({ image: p.image | 0, xpx: +p.xpx, ypx: +p.ypx }))
-                .sort((a, b) => a.image - b.image));
+    // Vérifie strictement une sauvegarde ; renvoie faux (sans rien changer) si elle est
+    // incohérente. nbImages : nombre d'images de la vidéo (0 si inconnu).
+    static sauvegardeValide(o, nbImages) {
+        if (!o || typeof o !== 'object') return false;
+        const n = o.numMobiles;
+        if (!Number.isInteger(n) || n < 1 || n > 4) return false;
+        if (!Array.isArray(o.points) || o.points.length !== n) return false;
+        const pointValide = p => p && typeof p === 'object' && Number.isInteger(p.image) && p.image >= 0 &&
+            (!nbImages || p.image < nbImages) && Number.isFinite(p.xpx) && Number.isFinite(p.ypx) &&
+            p.xpx >= 0 && p.ypx >= 0 && p.xpx < 10000 && p.ypx < 10000;
+        for (const pts of o.points) {
+            if (!Array.isArray(pts) || !pts.every(pointValide)) return false;
+            if (new Set(pts.map(p => p.image)).size !== pts.length) return false;
         }
-        this.historique = Array.isArray(o.historique) ? o.historique.filter(a => a && a.m < this.numMobiles) : [];
+        if (o.historique !== undefined) {
+            if (!Array.isArray(o.historique)) return false;
+            for (const a of o.historique) {
+                if (!a || !Number.isInteger(a.m) || a.m < 0 || a.m >= n || !Number.isInteger(a.image)) return false;
+                if (a.ancien !== null && a.ancien !== undefined && !pointValide(a.ancien)) return false;
+            }
+        }
+        return true;
+    }
+
+    restaurer(o, nbImages = 0) {
+        if (!Data.sauvegardeValide(o, nbImages)) return false;
+        this.numMobiles = o.numMobiles;
+        this.points = o.points.map(pts => pts.map(p => ({ image: p.image, xpx: p.xpx, ypx: p.ypx })).sort((a, b) => a.image - b.image));
+        this.historique = (o.historique || []).map(a => ({ m: a.m, image: a.image, ancien: a.ancien ? { image: a.ancien.image, xpx: a.ancien.xpx, ypx: a.ancien.ypx } : null }));
         return true;
     }
 }

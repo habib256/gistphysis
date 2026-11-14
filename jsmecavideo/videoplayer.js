@@ -5,9 +5,14 @@
 // l'image demandée n'est pas affichée, on n'accepte pas de nouveau point.
 
 class VideoPlayer {
-    constructor(chemin, framerate) {
+    // framerate : images par seconde DU FICHIER (pour aller d'image en image) ;
+    // nbImages : nombre d'images du fichier (ffprobe), car la durée annoncée par le navigateur
+    // est fausse au début pour les vidéos qui ne commencent pas à 0 s.
+    constructor(chemin, framerate, nbImages) {
         this.chemin = chemin;
         this.framerate = framerate;
+        this.nbImages = nbImages || 0;
+        this.deplacementImpossible = false; // vrai si le serveur ne permet pas d'aller à une image
         this.isLoaded = false;      // première image décodée et position de départ connue
         this.erreur = null;         // message si la vidéo ne peut pas être lue
         this.debut = 0.001;         // instant de la première image + 1 ms (voir _premiereImage)
@@ -36,7 +41,7 @@ class VideoPlayer {
         this._surDonnees = () => this._premiereImage();
         elt.addEventListener('loadeddata', this._surDonnees);
         elt.addEventListener('seeked', () => this._surSeeked());
-        elt.addEventListener('ended', () => this._surFin());
+        elt.addEventListener('ended', () => { if (this.isPlaying) this._surFin(); });
         elt.addEventListener('error', () => {
             if (this.retire || !elt.getAttribute('src')) return;
             this.erreur = 'Impossible de lire cette vidéo. Choisis-en une autre ou recharge la page.';
@@ -52,7 +57,7 @@ class VideoPlayer {
         this.chargement = 0;
         const repli = () => {
             if (this.retire) return;
-            this.repli = true;
+            this.repli = true; // lecture directe : le déplacement image par image sera vérifié
             this.elt.src = chemin;
         };
         if (typeof fetch !== 'function' || typeof URL.createObjectURL !== 'function') {
@@ -94,44 +99,70 @@ class VideoPlayer {
 
     // Numéro de la dernière image de la vidéo
     derniereImage() {
+        if (this.nbImages > 0) return this.nbImages - 1;
         const d = this.elt.duration;
         if (!(d > 0)) return 0;
         return Math.max(0, Math.ceil((d - this.debut) * this.framerate - 1e-6) - 1);
     }
 
-    // Numéro d'image correspondant à un instant de la vidéo
+    // Numéro de l'image affichée à l'instant t de la vidéo (image k : de début + k/fps à
+    // début + (k+1)/fps ; this.debut vaut le début réel + 1 ms)
     indiceImage(t = this.elt.currentTime) {
-        return Math.max(0, Math.round((t - this.debut) * this.framerate));
-    }
-
-    // Instant affiché à l'élève, compté depuis la première image (0,000 s)
-    tempsAffiche() {
-        return this.image / this.framerate;
+        return Math.max(0, Math.floor((t - this.debut + 0.001) * this.framerate + 1e-6));
     }
 
     // Va à l'image k. Renvoie faux si elle n'existe pas (la position ne change pas).
+    // Ne relance jamais une recherche vers la position déjà atteinte.
     allerImage(k) {
         if (!this.isLoaded) return false;
         if (k < 0 || k > this.derniereImage()) return false;
         if (this.isPlaying) this.pause(false);
+        const cible = this.debut + k / this.framerate;
+        if (k === this.image && !this.enDeplacement && !this.elt.seeking && this.indiceImage() === k) {
+            return true; // déjà affichée
+        }
         this.image = k;
-        this._cible = this.debut + k / this.framerate;
+        this._cible = cible;
+        this._essais = 0;
         this.enDeplacement = true;
         clearTimeout(this._secours);
-        // Secours : certains navigateurs n'envoient pas seeked si la position ne change pas
-        this._secours = setTimeout(() => { this.enDeplacement = false; }, 1500);
-        this.elt.currentTime = this._cible;
+        // Secours : si aucun seeked n'arrive, on vérifie l'image affichée après 1,5 s
+        this._secours = setTimeout(() => this._verifierPosition(true), 1500);
+        this.elt.currentTime = cible;
         return true;
     }
 
     _surSeeked() {
-        if (this._cible === undefined || Math.abs(this.elt.currentTime - this._cible) < 0.0005) {
-            this.enDeplacement = false;
-            clearTimeout(this._secours);
-        }
+        if (this._cible === undefined || this.elt.seeking) return;
+        this._verifierPosition(false);
     }
 
-    nextFrame() { return this.allerImage(this.image + 1); }
+    // L'image affichée est-elle bien l'image demandée ? Sinon on réessaie (la durée annoncée
+    // grandit pendant le décodage), puis on signale que le déplacement est impossible.
+    _verifierPosition(secours) {
+        if (!this.enDeplacement) return;
+        const k = this.indiceImage();
+        if (k === this.image) {
+            this.enDeplacement = false;
+            clearTimeout(this._secours);
+            return;
+        }
+        if (this._essais < 3 && !secours) {
+            this._essais++;
+            this.elt.currentTime = this._cible;
+            return;
+        }
+        // Déplacement impossible (serveur sans requêtes partielles, par exemple)
+        this.enDeplacement = false;
+        clearTimeout(this._secours);
+        this.deplacementImpossible = true;
+        this.image = k;
+    }
+
+    nextFrame() {
+        if (typeof avantImageSuivante === 'function') avantImageSuivante(this.image);
+        return this.allerImage(this.image + 1);
+    }
     previousFrame() { return this.allerImage(this.image - 1); }
     jumpToStart() { return this.allerImage(0); }
 
@@ -153,12 +184,16 @@ class VideoPlayer {
         this.elt.pause();
         this.isPlaying = false;
         this.majBoutonLecture();
+        this.aLu = true; // l'élève a regardé la vidéo : on reviendra à l'image de travail
         if (caler) this.allerImage(Math.min(this.indiceImage(), this.derniereImage()));
     }
 
+    // Fin d'une LECTURE (jamais déclenchée par une simple recherche)
     _surFin() {
         this.isPlaying = false;
+        this.aLu = true;
         this.majBoutonLecture();
+        this.image = -1; // force le calage
         this.allerImage(this.derniereImage());
     }
 
@@ -190,10 +225,7 @@ class VideoPlayer {
             messageSurImage(this.erreur);
         } else if (this.isLoaded && this.dims()) {
             drawingContext.drawImage(this.elt, 0, 0, width, height);
-            if (this.isPlaying) {
-                const k = Math.min(this.indiceImage(), this.derniereImage());
-                this.image = k;
-            }
+            if (this.isPlaying) this.image = Math.min(this.indiceImage(), this.derniereImage());
         } else {
             const pct = this.chargement > 0 && this.chargement < 1 ? ' ' + Math.round(this.chargement * 100) + ' %' : '';
             messageSurImage('Chargement de la vidéo…' + pct);

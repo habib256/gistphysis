@@ -5,10 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>jsMecaVidéo dans un cadre (test)</title>
 <link rel="icon" href="data:,">
-<style>html,body{margin:0;height:100%;background:#eee}iframe{display:block;width:100%;height:calc(100% - 80px);margin-top:40px;border:0}</style>
+<style>html,body{margin:0;height:100%;background:#eee}iframe{display:block;border:0;margin:20px auto 0}</style>
 </head>
 <body>
-<!-- Page de test : l'app dans un cadre de la taille que le site lui donnerait -->
-<iframe src="../index.html" title="jsMecaVidéo" allow="fullscreen; camera"></iframe>
+<!-- Page de test : l'app dans un cadre de taille donnée (?w=340&h=573), comme dans le site -->
+<iframe title="jsMecaVidéo" allow="fullscreen; camera"></iframe>
+<script>
+  const q = new URLSearchParams(location.search);
+  const f = document.querySelector('iframe');
+  f.style.width = (q.get('w') || 984) + 'px';
+  f.style.height = (q.get('h') || 688) + 'px';
+  f.src = '../index.html';
+</script>
 </body>
 </html>

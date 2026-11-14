@@ -33,6 +33,7 @@ class WebcamPlayer {
         this.retire = false;
         this.isLoaded = false;    // flux de la caméra disponible
         this.images = [];         // images enregistrées (canevas)
+        this.instants = [];       // instant réel de chaque image (s)
         this.image = 0;           // numéro de l'image affichée
         this.frameIndex = 0;      // (ancien nom, gardé synchronisé)
         this.isPlaying = false;
@@ -87,7 +88,6 @@ class WebcamPlayer {
 
     derniereImage() { return Math.max(0, this.images.length - 1); }
 
-    tempsAffiche() { return this.image / this.framerate; }
 
     allerImage(k) {
         if (!this.isRecorded || k < 0 || k > this.derniereImage()) return false;
@@ -98,7 +98,10 @@ class WebcamPlayer {
         return true;
     }
 
-    nextFrame() { return this.allerImage(this.image + 1); }
+    nextFrame() {
+        if (typeof avantImageSuivante === 'function') avantImageSuivante(this.image);
+        return this.allerImage(this.image + 1);
+    }
     previousFrame() { return this.allerImage(this.image - 1); }
     jumpToStart() {
         if (this.isRecording) this.stopRecording();
@@ -183,26 +186,51 @@ class WebcamPlayer {
 
     toggleRecording() {
         if (!this.isLoaded || this.erreur) return;
-        if (this.isRecording) this.stopRecording();
+        if (this.isRecording) {
+            this.stopRecording();
+            return;
+        }
+        // Un nouvel enregistrement remplace la séquence : les points pointés dessus seraient faux
+        if (typeof avantNouvelEnregistrement === 'function') avantNouvelEnregistrement(() => this.startRecording());
         else this.startRecording();
     }
 
-    // Enregistre une image toutes les 1/fréquence s (copie du flux dans un canevas)
+    // Enregistre environ `framerate` images par seconde, chacune avec son instant réel :
+    // la cadence d'une caméra (et d'une tablette chargée) n'est pas régulière.
     startRecording() {
         this.images = [];
+        this.instants = [];
         this.isRecorded = false;
         this.isRecording = true;
         this.image = 0;
-        this._minuterie = setInterval(() => {
+        const capturer = (instant) => {
             const w = this.cam.videoWidth, h = this.cam.videoHeight;
-            if (!w || !h) return;
+            if (!w || !h || !this.isRecording) return;
             const c = document.createElement('canvas');
             c.width = w;
             c.height = h;
             c.getContext('2d').drawImage(this.cam, 0, 0, w, h);
             this.images.push(c);
+            this.instants.push(instant);
             if (this.images.length >= WEBCAM_MAX_IMAGES) this.stopRecording();
-        }, 1000 / this.framerate);
+        };
+        const periode = 1 / this.framerate;
+        if (typeof this.cam.requestVideoFrameCallback === 'function') {
+            // Une image de la caméra = un appel, avec l'instant de sa prise (mediaTime)
+            let dernier = -Infinity;
+            const suivante = (maintenant, meta) => {
+                if (!this.isRecording) return;
+                const t = meta && isFinite(meta.mediaTime) ? meta.mediaTime : maintenant / 1000;
+                if (t - dernier >= periode * 0.9) {
+                    dernier = t;
+                    capturer(t);
+                }
+                this._rvfc = this.cam.requestVideoFrameCallback(suivante);
+            };
+            this._rvfc = this.cam.requestVideoFrameCallback(suivante);
+        } else {
+            this._minuterie = setInterval(() => capturer(performance.now() / 1000), 1000 / this.framerate);
+        }
         this._clignote = setInterval(() => {
             if (this.buttonRecord) this.buttonRecord.style.opacity = this.buttonRecord.style.opacity === '0.3' ? '1' : '0.3';
         }, 500);
@@ -210,6 +238,7 @@ class WebcamPlayer {
 
     stopRecording() {
         clearInterval(this._minuterie);
+        if (this._rvfc !== undefined && this.cam && this.cam.cancelVideoFrameCallback) this.cam.cancelVideoFrameCallback(this._rvfc);
         clearInterval(this._clignote);
         if (this.buttonRecord) this.buttonRecord.style.opacity = '1';
         this.isRecording = false;

@@ -30,7 +30,10 @@ function setup() {
   canvas.parent('canvas-container');
   canvasElt = canvas.elt;
   canvasElt.setAttribute('tabindex', '0');
-  canvasElt.setAttribute('role', 'img');
+  // Image interactive (on y pointe) : rôle « application », consigne et état en description
+  canvasElt.setAttribute('role', 'application');
+  canvasElt.setAttribute('aria-roledescription', 'image de la vidéo à pointer');
+  canvasElt.setAttribute('aria-describedby', 'instructions frame-info');
   canvasElt.setAttribute('aria-label', 'Image de la vidéo');
   noCursor();
 
@@ -177,6 +180,13 @@ function installerMenus() {
 }
 
 // Bandeau de confirmation dans l'interface (pas de confirm() : il est bloqué dans certains cadres)
+// Échap = « non » seulement quand « non » ne détruit rien (danger = vrai : « non » garde le
+// travail). Pour « Reprendre ton pointage ? », Échap ne fait rien : il faut choisir.
+let echapConfirmation = null;
+function confirmationOuverte() {
+  return !document.getElementById('confirmation').hidden;
+}
+
 function demanderConfirmation(texte, libelleOui, libelleNon, surOui, surNon, danger = true) {
   const boite = document.getElementById('confirmation');
   const oui = document.getElementById('confirmation-oui');
@@ -191,10 +201,13 @@ function demanderConfirmation(texte, libelleOui, libelleNon, surOui, surNon, dan
     boite.hidden = true;
     oui.onclick = null;
     non.onclick = null;
+    echapConfirmation = null;
     if (action) action();
   };
   oui.onclick = () => fermer(surOui);
   non.onclick = () => fermer(surNon);
+  echapConfirmation = danger ? () => fermer(surNon) : null;
+  annulerToucher();
   boite.hidden = false;
   (danger ? non : oui).focus();
 }
@@ -236,9 +249,9 @@ function chargerVideo(i) {
   indexVideo = i;
   document.getElementById('choix-video').value = String(i);
   const v = videoFiles[i];
-  data.framerate = v.framerate;
+  data.configurer({ dureeImage: v.dureeImage || 1 / v.framerate, uniteTemps: v.uniteTemps, uniteLongueur: v.uniteLongueur });
   nouvelleSource();
-  videoPlayer = new VideoPlayer(v.path, v.framerate);
+  videoPlayer = new VideoPlayer(v.path, v.framerate, v.images);
   if (etat === 'Graphique') passerAuMode('Pointage');
   demanderAjustementTaille();
   majModeAffichage();
@@ -249,7 +262,7 @@ function chargerWebcam() {
   source = 'webcam';
   document.getElementById('choix-video').value = 'webcam';
   webcamPlayer = new WebcamPlayer(15);
-  data.framerate = webcamPlayer.framerate;
+  data.configurer({ dureeImage: 1 / webcamPlayer.framerate, instants: [] });
   nouvelleSource();
   if (etat === 'Graphique') passerAuMode('Pointage');
   demanderAjustementTaille();
@@ -258,8 +271,36 @@ function chargerWebcam() {
 
 // Appelé quand la source est prête (vidéo décodée, caméra ouverte, séquence enregistrée)
 function surSourcePrete() {
+  // Webcam : les instants réels de chaque image enregistrée servent aux temps
+  if (source === 'webcam' && webcamPlayer) data.instants = webcamPlayer.instants.slice();
   demanderAjustementTaille();
   reprendrePointage();
+}
+
+// Webcam : un nouvel enregistrement remplace la séquence ; les points pointés dessus
+// n'auraient plus de sens. On demande confirmation et on les efface.
+function avantNouvelEnregistrement(demarrer) {
+  const n = data.getTotalPointCount();
+  if (n === 0) {
+    demarrer();
+    return;
+  }
+  demanderConfirmation('Un nouvel enregistrement remplace la séquence filmée et efface ' + (n === 1 ? 'ton point' : 'tes ' + n + ' points') + '.',
+    'Enregistrer à nouveau', 'Garder mes points', () => {
+      data.clearAllPoints();
+      annoncer('Points effacés : nouvel enregistrement.');
+      demarrer();
+    }, null);
+}
+
+// Passer à l'image suivante alors que tous les mobiles ne sont pas pointés : on prévient
+function avantImageSuivante(k) {
+  if (etat !== 'Pointage' || data.numMobiles < 2) return;
+  const n = data.points.filter(pts => pts.some(p => p.image === k)).length;
+  if (n > 0 && n < data.numMobiles) {
+    afficherMessageTemporaire('⚠️ Image ' + k + ' : ' + n + ' mobile' + (n > 1 ? 's' : '') + ' sur ' + data.numMobiles +
+      ' pointé' + (n > 1 ? 's' : '') + '. Les autres manqueront sur cette image.', 4000);
+  }
 }
 
 // Image où reprendre : celle qui suit le dernier point (ou la dernière image pointée si
@@ -295,7 +336,14 @@ function passerAuMode(nouveau) {
   if (nouveau === 'Graphique') {
     if (lect && lect.isPlaying) lect.pause(false);
     noLoop();
+    // Portrait : le guide se replie pour laisser la place au graphique
+    if (guide.ouvert && !guide.ouvertParEleve && document.body.classList.contains('emp')) {
+      guide.ouvert = false;
+      majGuide(true);
+    }
     majModeAffichage();
+    appliquerDisposition();
+    ajusterTaille();
     graph.updateChart();
   } else {
     graph.destroy();
@@ -303,12 +351,13 @@ function passerAuMode(nouveau) {
     if (nouveau === 'Pointage' && ancien !== 'Pointage') reprendrePointage();
     if (nouveau === 'Calibration') {
       majSaisieCalibration();
-      // Écran étroit : le guide se replie pour laisser la place à l'image et à la saisie
-      if (guide.ouvert && window.matchMedia('(max-width: 599px)').matches) {
+      // Portrait : le guide se replie pour laisser la place à l'image et à la saisie
+      if (guide.ouvert && !guide.ouvertParEleve && document.body.classList.contains('emp')) {
         guide.ouvert = false;
         majGuide(true);
       }
     }
+    appliquerDisposition();
     loop();
     demanderAjustementTaille();
   }
@@ -320,6 +369,8 @@ function passerAuMode(nouveau) {
 function majModeAffichage() {
   const graphique = etat === 'Graphique';
   document.body.classList.toggle('mode-pointage', modePointageActif());
+  document.body.classList.toggle('mode-etalonnage', etat === 'Calibration');
+  document.body.classList.toggle('mode-graphique', graphique);
   document.getElementById('canvas-container').hidden = graphique;
   document.getElementById('graphique-zone').hidden = !graphique;
   document.getElementById('choix-graphique').hidden = !graphique;
@@ -347,7 +398,9 @@ function draw() {
   else background(0);
 
   if (etat === 'Pointage') {
-    dessinerPoints();
+    // Pendant un geste (doigt posé, loupe), les marques des autres points s'effacent presque :
+    // elles ne cachent pas le mobile, ni sur l'image ni dans la loupe
+    dessinerPoints(gesteEnCours() || loupeVisible() ? 'leger' : false);
     visor.drawLegend(data, mobileCourant());
   } else if (etat === 'Calibration') {
     dessinerPoints(true);
@@ -382,8 +435,8 @@ function dessinerPoints(discret = false) {
       if (discret) {
         push();
         noStroke();
-        fill(style.r, style.g, style.b, 150);
-        ellipse(e.x, e.y, 5, 5);
+        fill(style.r, style.g, style.b, discret === 'leger' ? 70 : 150);
+        ellipse(e.x, e.y, discret === 'leger' ? 3 : 5, discret === 'leger' ? 3 : 5);
         pop();
         return;
       }
@@ -463,18 +516,16 @@ function consigneAction() {
     return lect.isRecording ? '⏺ Enregistrement… Touche ● pour l’arrêter.' : '📷 Filme le mouvement : bouton ● pour enregistrer, puis pointe image par image.';
   }
   if (!lect || !lect.isLoaded) return 'Chargement de la vidéo…';
-  if (etat === 'Calibration') {
-    const v = videoCourante();
-    return calibrator.getInstructionMessage(tactile ? 'tactile' : 'souris');
-  }
+  if (lect.deplacementImpossible) return '⛔ Impossible d’aller à une image précise avec ce serveur : pointer donnerait des mesures fausses. Ouvre l’app depuis le site.';
+  if (etat === 'Calibration') return calibrator.getInstructionMessage(tactile ? 'tactile' : 'souris');
   if (lect.isPlaying) return '▶ Lecture… Pointer met la vidéo en pause.';
-  if (finDeVideo()) return '🎬 Fin de la vidéo : tu as pointé la dernière image possible. Regarde maintenant les graphiques.';
+  if (finDeVideo()) return '🎬 Fin de la vidéo : dernière image possible pointée. Regarde les graphiques.';
   const m = mobileCourant();
-  if (m < 0) return 'Cette image est déjà pointée. Pointer à nouveau remplace son point.';
+  if (m < 0) return 'Image déjà pointée : pointer à nouveau remplace son point.';
   const quoi = data.numMobiles > 1 ? 'le mobile ' + (m + 1) + ' ' + data.getColor(m).symbole : 'le centre du mobile';
-  if (typePointeur === 'clavier') return '⌨️ Flèches : déplacer le réticule (Maj : ×10) · Entrée : pointer ' + quoi + ' · Retour arrière : annuler.';
-  if (tactile) return '👆 Pose le doigt sur ' + quoi + ', ajuste avec la loupe, puis relâche.';
-  return '🖱 Clique sur ' + quoi + '. Ctrl+clic ou « ↶ Annuler » retire le dernier point.';
+  if (typePointeur === 'clavier') return '⌨️ Flèches : réticule (Maj : ×10) · Entrée : pointer ' + quoi + ' · Retour arrière : annuler.';
+  if (tactile) return '👆 Pose le doigt sur ' + quoi + ', ajuste avec la loupe, relâche.';
+  return '🖱 Clique sur ' + quoi + '. Ctrl+clic ou « ↶ Annuler » : retirer le dernier point.';
 }
 
 function texteEtat() {
@@ -483,7 +534,8 @@ function texteEtat() {
   let morceaux = [];
   if (etat !== 'Graphique' && lect && (lect.isLoaded || lect.isRecorded)) {
     morceaux.push('Image ' + lect.image + '/' + lect.derniereImage());
-    morceaux.push('t = ' + nombreFr(lect.tempsAffiche(), 3) + ' s');
+    // Instant t : même définition que le tableau et le fichier (t = 0 au premier point)
+    if (n > 0) morceaux.push('t = ' + nombreFr(data.instant(lect.image), data.formats().t) + ' ' + data.libelleTemps());
   }
   morceaux.push(n <= 1 ? n + ' point' : n + ' points');
   morceaux.push(calibrator.isCalibrated ? calibrator.texteEchelle() : 'mesures en px');
@@ -501,9 +553,10 @@ function majTextes() {
   if (voir.hidden === fin) voir.hidden = !fin;
   const lect = lecteur();
   const v = videoCourante();
+  const n = data.getTotalPointCount();
   const label = (v ? 'Vidéo « ' + v.titre + ' »' : 'Caméra') +
     (lect && lect.isLoaded ? ', image ' + lect.image + ' sur ' + lect.derniereImage() : '') +
-    ', ' + (sansPoint ? 'aucun point' : data.getTotalPointCount() + ' points') + ' pointés';
+    ', ' + (n === 0 ? 'aucun point' : n === 1 ? '1 point' : n + ' points');
   if (canvasElt.getAttribute('aria-label') !== label) canvasElt.setAttribute('aria-label', label);
   majGuide();
 }
@@ -516,8 +569,14 @@ function majTextes() {
 function traiterPointage(x, y) {
   const s = dimensionsSource();
   if (!s || x < 0 || x > s.w || y < 0 || y > s.h) return;
+  if (confirmationOuverte()) {
+    afficherMessageTemporaire('Réponds d’abord à la question au-dessus de l’image.', 3000);
+    return;
+  }
+  if (tropPetit) return;
 
   if (etat === 'Calibration') {
+    messageTemporaire.fin = 0;
     const r = calibrator.addPoint(x, y);
     if (r === 'complet') {
       afficherMessageTemporaire('Les deux bouts sont déjà placés : fais-les glisser pour les ajuster, ou « Recommencer ».');
@@ -542,6 +601,10 @@ function traiterPointage(x, y) {
     afficherMessageTemporaire('⏳ La vidéo se charge encore : attends un instant.');
     return;
   }
+  if (lect.deplacementImpossible) {
+    afficherMessageTemporaire('⛔ Impossible d’aller à une image précise : pointage refusé (mesures fausses).', 4000);
+    return;
+  }
   if (lect.isPlaying) {
     lect.pause(true);
     afficherMessageTemporaire('⏸ Vidéo mise en pause sur une image : pointe maintenant.', 3000);
@@ -551,6 +614,20 @@ function traiterPointage(x, y) {
     afficherMessageTemporaire('⏳ La vidéo avance : pointe dans un instant.', 1500);
     return;
   }
+  // Après une lecture : on revient d'abord à l'image de travail (celle qui suit le dernier
+  // point ; la première s'il n'y a pas de point et que la lecture est allée jusqu'au bout)
+  if (lect.aLu) {
+    lect.aLu = false;
+    const n = data.getTotalPointCount();
+    let cible = -1;
+    if (n > 0) cible = imageDeReprise();
+    else if (lect.image >= lect.derniereImage()) cible = 0;
+    if (cible >= 0 && cible !== lect.image) {
+      lect.allerImage(cible);
+      afficherMessageTemporaire('↩ Retour à l’image de travail (image ' + cible + ') : pointe maintenant.', 3500);
+      return;
+    }
+  }
 
   const k = lect.image;
   let m = data.mobileAPointer(k);
@@ -558,7 +635,6 @@ function traiterPointage(x, y) {
   const type = data.placer(m, k, x, s.h - y);
   const numero = data.numeroDuPoint(m, k);
   messageTemporaire.fin = 0;
-  replierGuideAuPremierPoint();
 
   const tousPointes = data.mobileAPointer(k) < 0;
   const nom = (data.numMobiles > 1 ? 'mobile ' + (m + 1) + ', ' : '') + 'point ' + numero;
@@ -594,11 +670,12 @@ function mobileLePlusProche(k, xpx, ypx) {
 
 // Annule la dernière action et revient à l'image concernée
 function annulerDernierPoint() {
-  if (etat !== 'Pointage') return;
+  if (etat !== 'Pointage' || confirmationOuverte()) return;
   const r = data.annuler();
   if (!r) return;
   const lect = lecteur();
   if (lect) lect.allerImage(r.image);
+  messageTemporaire.fin = 0; // « Point inséré… » ne doit pas rester affiché
   annoncer('Dernier point annulé (image ' + r.image + ').');
   sauvegarderSeance();
 }
@@ -616,9 +693,9 @@ function majApercuLongueur() {
   if (!saisie.value.trim()) {
     ecrire('calibration-message', texteCalibrationParDefaut());
   } else if (r.erreur) {
-    ecrire('calibration-message', 'Écris un nombre et une unité : 80 cm, 0,8 m, 800 mm…');
+    ecrire('calibration-message', r.uniteManquante ? r.erreur : 'Écris un nombre et une unité : 80 cm, 0,8 m, 800 mm…');
   } else {
-    let t = '= ' + metresFr(r.metres);
+    let t = '= ' + longueurFr(r.metres);
     if (r.sansUnite) t += ' (sans unité, ce sont des mètres)';
     ecrire('calibration-message', t);
   }
@@ -626,12 +703,12 @@ function majApercuLongueur() {
 
 function texteCalibrationParDefaut() {
   if (calibrator.isCalibrated) {
-    return 'Échelle actuelle : ' + metresFr(calibrator.realDistance) + ' pour ' + nombreFr(calibrator.pixelDistance, 1) +
-      ' px, soit ' + calibrator.texteEchelle() + '. Tu peux encore faire glisser les deux bouts.';
+    return 'Échelle : ' + calibrator.texteLongueur() + ' pour ' + nombreFr(calibrator.pixelDistance, 1) +
+      ' px, soit ' + calibrator.texteEchelle() + '. Les deux bouts se déplacent encore.';
   }
   const v = videoCourante();
   const etalon = v && v.etalon ? 'Dans cette vidéo : ' + v.etalon : '';
-  if (calibrator.state === 'waiting_distance') return 'Unités acceptées : m, cm, mm (ex. : 80 cm ou 0,8 m). ' + etalon;
+  if (calibrator.state === 'waiting_distance') return etalon || 'Unités acceptées : m, cm, mm (ex. : 80 cm ou 0,8 m).';
   return etalon || 'Cherche dans l’image un objet dont tu connais la longueur (une règle).';
 }
 
@@ -651,6 +728,19 @@ function validateCalibration() {
     saisie.focus();
     return;
   }
+  // Vraisemblance : si la vidéo montre un étalon, la longueur doit lui ressembler. Sinon
+  // on demande de vérifier ; « Valider » une 2e fois avec la même saisie confirme.
+  const v = videoCourante();
+  const proche = !v || !v.etalonValeurs || v.etalonValeurs.some(e => Math.abs(r.metres / e - 1) <= 0.15);
+  if (!proche && validateCalibration.aConfirmer !== saisie.value.trim()) {
+    validateCalibration.aConfirmer = saisie.value.trim();
+    saisie.classList.add('erreur');
+    msg.classList.add('erreur');
+    ecrire('calibration-message', 'Vérifie : l’objet connu de cette vidéo mesure ' + v.etalonValeurs.map(longueurFr).join(' ou ') +
+      ', tu as écrit ' + longueurFr(r.metres) + '. « Valider » à nouveau pour confirmer.');
+    return;
+  }
+  validateCalibration.aConfirmer = null;
   if (!calibrator.setRealDistance(r.metres)) {
     msg.classList.add('erreur');
     ecrire('calibration-message', 'Les deux bouts sont trop proches : écarte-les.');
@@ -660,9 +750,12 @@ function validateCalibration() {
   data.echelle = calibrator.scaleFactor;
   saisie.classList.remove('erreur');
   msg.classList.remove('erreur');
-  saisie.blur(); // referme le clavier virtuel
   majSaisieCalibration();
-  ecrire('calibration-message', '✅ ' + metresFr(r.metres) + ' pour ' + nombreFr(calibrator.pixelDistance, 1) + ' px : ' + calibrator.texteEchelle() + '.');
+  // Au doigt, on referme le clavier virtuel ; au clavier ou à la souris, le focus va au
+  // bouton « Passer au pointage » (il ne retombe pas sur la page)
+  if (typePointeur === 'tactile') saisie.blur();
+  else document.getElementById('passer-pointage').focus();
+  ecrire('calibration-message', '✅ ' + calibrator.texteLongueur() + ' pour ' + nombreFr(calibrator.pixelDistance, 1) + ' px : ' + calibrator.texteEchelle() + '.');
   annoncer('Échelle validée : ' + calibrator.texteEchelle());
   sauvegarderSeance();
 }
@@ -700,9 +793,9 @@ function majSaisieCalibration(majMessage = true) {
   const deuxPoints = calibrator.state === 'waiting_distance' || calibrator.state === 'calibrated';
   const saisie = document.getElementById('real-distance');
   saisie.disabled = !deuxPoints;
-  if (calibrator.isCalibrated && !saisie.value) saisie.value = calibrator.saisie || metresFr(calibrator.realDistance);
+  if (calibrator.isCalibrated && !saisie.value) saisie.value = calibrator.saisie || calibrator.texteLongueur();
   // Une fois l'échelle validée, « Valider » laisse sa place à « Pointer → »… sauf si la saisie change
-  const aJour = calibrator.isCalibrated && saisie.value.trim() === (calibrator.saisie || metresFr(calibrator.realDistance));
+  const aJour = calibrator.isCalibrated && saisie.value.trim() === (calibrator.saisie || calibrator.texteLongueur());
   const valider = document.getElementById('validate-calibration');
   valider.disabled = !deuxPoints;
   valider.hidden = aJour;
@@ -743,14 +836,35 @@ function sauvegarderSeance() {
   }
 }
 
+// Lit la sauvegarde ; une sauvegarde incohérente est ignorée (et effacée), jamais restaurée
 function lireSeance() {
+  let o = null;
   try {
-    const o = JSON.parse(sessionStorage.getItem(CLE_SEANCE) || 'null');
-    if (!o || typeof o.video !== 'string' || videoFiles.findIndex(v => v.path === o.video) < 0) return null;
-    return o;
+    o = JSON.parse(sessionStorage.getItem(CLE_SEANCE) || 'null');
   } catch (e) {
-    return null;
+    o = null;
   }
+  if (!o) return null;
+  if (seanceValide(o)) return o;
+  try { sessionStorage.removeItem(CLE_SEANCE); } catch (e) { /* rien */ }
+  return null;
+}
+
+function seanceValide(o) {
+  if (typeof o !== 'object' || typeof o.video !== 'string') return false;
+  const v = videoFiles.find(f => f.path === o.video);
+  if (!v) return false;
+  if ([1, 2, 5].indexOf(o.pas) < 0) return false;
+  if (!Data.sauvegardeValide(o.data, v.images)) return false;
+  const c = o.calibrateur;
+  if (!c || typeof c !== 'object') return false;
+  const pointOk = p => p === null || p === undefined || (typeof p === 'object' && Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (!pointOk(c.point1) || !pointOk(c.point2)) return false;
+  if (c.state === 'calibrated') {
+    if (!c.point1 || !c.point2 || !(c.realDistance > 0) || !Number.isFinite(c.realDistance)) return false;
+    if (Math.hypot(c.point2.x - c.point1.x, c.point2.y - c.point1.y) < 1) return false;
+  }
+  return true;
 }
 
 // Au chargement : « Reprendre ton pointage ? » si une séance a été enregistrée
@@ -779,13 +893,12 @@ function restaurerSeance(o) {
   chargerVideo(i);
   imagesParPoint = [1, 2, 5].indexOf(o.pas) >= 0 ? o.pas : 1;
   document.getElementById('choix-pas').value = String(imagesParPoint);
-  data.restaurer(o.data);
+  if (!data.restaurer(o.data, videoFiles[i].images)) return;
   document.getElementById('choix-mobiles').value = String(data.numMobiles);
   calibrator.restaurer(o.calibrateur);
   data.echelle = calibrator.isCalibrated ? calibrator.scaleFactor : null;
-  document.getElementById('real-distance').value = calibrator.isCalibrated ? (calibrator.saisie || metresFr(calibrator.realDistance)) : '';
+  document.getElementById('real-distance').value = calibrator.isCalibrated ? (calibrator.saisie || calibrator.texteLongueur()) : '';
   passerAuMode(o.etat === 'Calibration' || o.etat === 'Graphique' ? o.etat : 'Pointage');
-  if (data.getTotalPointCount() > 0) replierGuideAuPremierPoint();
   annoncer('Pointage repris : ' + data.getTotalPointCount() + ' points.');
   sauvegarderSeance();
 }

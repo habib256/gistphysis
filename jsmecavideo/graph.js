@@ -63,7 +63,7 @@ function axeRond(b, titre) {
         type: 'linear',
         min: b.min,
         max: b.max,
-        ticks: { stepSize: b.pas, includeBounds: false, callback: (v) => nombreFr(v, dec) },
+        ticks: { stepSize: b.pas, includeBounds: false, callback: (v) => nombreLisible(v, dec) },
         title: { display: true, text: titre }
     };
 }
@@ -144,7 +144,11 @@ class Graph {
                 o.textContent = t;
                 this.mobileSelector.appendChild(o);
             });
-            if (options.some(o => o[0] === valeur)) this.mobileSelector.value = valeur;
+            // Passage de 1 à plusieurs mobiles : on montre tous les mobiles
+            const avantPlusieurs = this._plusieurs === true;
+            this._plusieurs = this.data.numMobiles > 1;
+            if (this._plusieurs && !avantPlusieurs) this.mobileSelector.value = '-1';
+            else if (options.some(o => o[0] === valeur)) this.mobileSelector.value = valeur;
         }
         this.champMobile.hidden = this.data.numMobiles === 1;
     }
@@ -173,19 +177,29 @@ class Graph {
         }
     }
 
-    // Aide à la lecture (sous le titre, en HTML : elle se replie sur un écran étroit)
+    // Aide à la lecture (sous le titre, repliable). Quand les durées Δt ne sont pas toutes
+    // égales, l'aide « de plus en plus hautes → accéléré » serait fausse : on ne l'affiche pas.
     getSousTitre() {
+        const egales = this.data.dureesEgales();
         switch (this.graphType) {
             case 'y(x)': return 'Points alignés → trajectoire rectiligne ; sur un cercle → circulaire ; sur une courbe → curviligne. ' +
                 'Même échelle sur les deux axes : la forme n’est pas déformée.';
-            case 'ecarts': return 'Barres presque de même hauteur → vitesse constante → mouvement uniforme ; de plus en plus hautes → accéléré ; ' +
-                'de plus en plus basses → ralenti. De petites différences viennent du pointage.';
+            case 'ecarts': return egales
+                ? 'Durées Δt toutes égales : barres presque de même hauteur → vitesse constante → mouvement uniforme ; de plus en plus hautes → accéléré ; ' +
+                  'de plus en plus basses → ralenti. De petites différences viennent du pointage.'
+                : '';
             case 'vitesse': return 'd = distance entre deux points, Δt = durée entre ces deux points. ' +
                 'Même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.';
             case 'x(t)': case 'y(t)': return 'L’instant t est compté depuis le premier point (t = 0).';
-            case 'tableau': return 'Une ligne par point. d, Δt et v sont mesurés depuis le point précédent ; l’instant t est compté depuis le premier point.';
+            case 'tableau': return 'Une ligne par point. d, Δt et v sont mesurés depuis le point précédent ; l’instant t est compté depuis le premier point. v est calculée avec le d affiché.';
             default: return '';
         }
+    }
+
+    // Avertissement affiché sur le graphique lui-même
+    getAlerte() {
+        if ((this.graphType === 'ecarts' || this.graphType === 'tableau') && !this.data.dureesEgales()) return MESSAGE_DUREES_INEGALES;
+        return '';
     }
 
     pointsNecessaires() {
@@ -214,13 +228,13 @@ class Graph {
     getChartConfig() {
         const mobiles = this.mobilesAffiches();
         const unite = this.uniteAffichee();
-        const u = unitesMesure(unite);
+        const u = unitesMesure();
         if (this.graphType === 'ecarts' || this.graphType === 'vitesse') {
             return this.configBarres(mobiles, unite, u);
         }
 
         let datasets = [];
-        let xLabel = 'instant t (s)', yLabel = '';
+        let xLabel = 'instant t (' + u.temps + ')', yLabel = '';
         let averages = [];
         // Zéro imposé seulement pour le temps et les grandeurs toujours positives
         let zeroX = true, zeroY = false;
@@ -258,10 +272,11 @@ class Graph {
                     break;
                 case 'a(t)':
                     pts = this.data.getAccelerations(m).map(a => ({ x: a.time, y: a.a }));
-                    yLabel = 'accélération a (' + (unite === 'm' ? 'm/s²' : 'px/s²') + ')';
+                    yLabel = 'accélération a (' + u.vitesse + '/' + (data.uniteTemps === 'jour' ? 'jour' : 's') + ')';
                     zeroY = true;
                     break;
             }
+            if (pts.length === 0) continue; // pas de légende pour un mobile sans données
             datasets.push(Object.assign({
                 label: 'Mobile ' + (m + 1),
                 data: pts,
@@ -274,7 +289,7 @@ class Graph {
             if (this.graphType === 'a(t)' && pts.length > 0) {
                 const moy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
                 averages.push({ mobile: m, avg: moy });
-                datasets.push({
+                if (pts.length >= 2) datasets.push({
                     label: mobiles.length > 1 ? 'Moyenne (mobile ' + (m + 1) + ')' : 'Moyenne',
                     data: [{ x: pts[0].x, y: moy }, { x: pts[pts.length - 1].x, y: moy }],
                     borderColor: this.data.getColor(m).hex,
@@ -287,8 +302,8 @@ class Graph {
             }
         }
 
-        const xs = datasets.flatMap(d => d.data.map(p => p.x));
-        const ys = datasets.flatMap(d => d.data.map(p => p.y));
+        const xs = datasets.flatMap(d => d.data.map(p => p.x)).concat(datasets.length ? [] : [0]);
+        const ys = datasets.flatMap(d => d.data.map(p => p.y)).concat(datasets.length ? [] : [0]);
         const bx = bornesRondes(Math.min(...xs), Math.max(...xs), zeroX);
         const by = bornesRondes(Math.min(...ys), Math.max(...ys), zeroY);
 
@@ -302,16 +317,29 @@ class Graph {
         };
     }
 
-    // Graphiques en barres : un intervalle (du point n au point n + 1) par barre
+    // Graphiques en barres : un intervalle par barre. Avec plusieurs mobiles, les barres
+    // sont alignées par images (de l'image a à l'image b), pas par numéro de point.
     configBarres(mobiles, unite, u) {
         const grandeur = this.graphType === 'ecarts' ? 'd' : 'v';
-        let labels = [], datasets = [], resumes = [], max = 0;
-        for (let m of mobiles) {
-            const intervalles = this.data.getIntervalles(m);
-            if (intervalles.length > labels.length) labels = intervalles.map(iv => iv.de + '→' + iv.a);
+        const plusieurs = mobiles.length > 1;
+        const parMobile = mobiles.map(m => this.data.getIntervalles(m));
+        let cles = [];
+        parMobile.forEach(ivs => ivs.forEach(iv => {
+            const k = iv.imageDe + '→' + iv.imageA;
+            if (!cles.some(c => c.k === k)) cles.push({ k: k, de: iv.imageDe, a: iv.imageA, libelle: plusieurs ? k : iv.de + '→' + iv.a });
+        }));
+        cles.sort((x, y) => x.de - y.de || x.a - y.a);
+        const labels = cles.map(c => c.libelle);
+        let datasets = [], resumes = [], max = 0;
+        mobiles.forEach((m, i) => {
+            const intervalles = parMobile[i];
             const c = this.data.getColor(m);
-            const valeurs = intervalles.map(iv => iv[grandeur]);
+            const valeurs = cles.map(cle => {
+                const iv = intervalles.find(x => x.imageDe === cle.de && x.imageA === cle.a);
+                return iv ? iv[grandeur] : null;
+            });
             valeurs.forEach(v => { if (v > max) max = v; });
+            if (intervalles.length === 0) return;
             datasets.push({
                 type: 'bar',
                 label: 'Mobile ' + (m + 1) + ' ' + c.symbole,
@@ -321,22 +349,22 @@ class Graph {
                 borderWidth: 2,
                 order: 2
             });
-            if (valeurs.length > 0) {
-                const moyenne = valeurs.reduce((s, v) => s + v, 0) / valeurs.length;
-                datasets.push({
-                    type: 'line',
-                    label: 'Moyenne' + (mobiles.length > 1 ? ' (mobile ' + (m + 1) + ')' : ''),
-                    data: valeurs.map(() => moyenne),
-                    borderColor: c.hex,
-                    borderDash: [8, 4],
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    fill: false,
-                    order: 1
-                });
-                resumes.push(this.resumeIntervalles(m, intervalles, grandeur, unite, u, mobiles.length > 1));
-            }
-        }
+            const vals = intervalles.map(iv => iv[grandeur]);
+            const moyenne = vals.reduce((s, v) => s + v, 0) / vals.length;
+            datasets.push({
+                type: 'line',
+                label: 'Moyenne' + (plusieurs ? ' (mobile ' + (m + 1) + ')' : ''),
+                data: valeurs.map(v => v === null ? null : moyenne),
+                borderColor: c.hex,
+                borderDash: [8, 4],
+                borderWidth: 2,
+                pointRadius: 0,
+                spanGaps: true,
+                fill: false,
+                order: 1
+            });
+            resumes.push(this.resumeIntervalles(m, intervalles, grandeur, unite, u, plusieurs));
+        });
         this.averages = [];
         this.resume = resumes.join('\n');
         const yLabel = grandeur === 'd' ? 'distance d parcourue (' + u.distance + ')' : 'vitesse v (' + u.vitesse + ')';
@@ -345,13 +373,13 @@ class Graph {
             type: 'bar',
             data: { labels: labels, datasets: datasets },
             options: this.optionsCommunes({
-                x: { type: 'category', title: { display: true, text: 'intervalle : du point n° … au point n° …' } },
+                x: { type: 'category', title: { display: true, text: plusieurs ? 'intervalle : de l’image n° … à l’image n° …' : 'intervalle : du point n° … au point n° …' } },
                 y: axeRond(by, yLabel)
-            }, true)
+            }, true, grandeur === 'd' ? u.decD : u.decV)
         };
     }
 
-    optionsCommunes(scales, legende) {
+    optionsCommunes(scales, legende, decimales) {
         return {
             responsive: true,
             maintainAspectRatio: false,
@@ -363,7 +391,8 @@ class Graph {
                     callbacks: {
                         label: (ctx) => {
                             const y = ctx.parsed.y;
-                            return ctx.dataset.label + ' : ' + nombreFr(y, Math.abs(y) < 10 ? 3 : 1);
+                            const dec = decimales !== undefined ? decimales : unitesMesure().decPos;
+                            return ctx.dataset.label + ' : ' + nombreLisible(y, dec);
                         }
                     }
                 }
@@ -372,32 +401,29 @@ class Graph {
         };
     }
 
+    // Résumé (mêmes décimales que le tableau et le fichier)
     resumeIntervalles(m, intervalles, grandeur, unite, u, plusieurs) {
         const valeurs = intervalles.map(iv => iv[grandeur]);
         const min = Math.min(...valeurs), max = Math.max(...valeurs);
         const moyenne = valeurs.reduce((s, v) => s + v, 0) / valeurs.length;
-        const durees = intervalles.map(iv => iv.duree);
-        const dMin = Math.min(...durees), dMax = Math.max(...durees);
         const prefixe = plusieurs ? 'Mobile ' + (m + 1) + ' : ' : '';
+        const n = nombreLisible;
         let texte;
         if (grandeur === 'd') {
             const dec = u.decD;
             texte = prefixe + valeurs.length + ' écart' + (valeurs.length > 1 ? 's' : '') +
-                ' · de ' + nombreFr(min, dec) + ' à ' + nombreFr(max, dec) + ' ' + u.distance +
-                ' · moyenne ' + nombreFr(moyenne, dec) + ' ' + u.distance +
-                (unite === 'm' ? ' (' + nombreFr(moyenne * 100, 1) + ' cm)' : '');
-            if (dMax - dMin > 0.02 * dMin) {
-                texte += '\nLes durées Δt entre les points ne sont pas toutes égales : compare plutôt les vitesses.';
-            } else {
-                texte += ' · durée Δt entre deux points : ' + nombreFr(dMin, dMin < 0.1 ? 3 : 2) + ' s';
-            }
+                ' · de ' + n(min, dec) + ' à ' + n(max, dec) + ' ' + u.distance +
+                ' · moyenne ' + n(moyenne, dec) + ' ' + u.distance;
+            if (!plusieurs) texte += ' · ' + texteDurees();
         } else {
             const dec = u.decV;
-            texte = prefixe + 'v de ' + nombreFr(min, dec) + ' à ' + nombreFr(max, dec) + ' ' + u.vitesse +
-                ' · moyenne ' + nombreFr(moyenne, dec) + ' ' + u.vitesse;
-            if (unite === 'm') {
+            texte = prefixe + 'v de ' + n(min, dec) + ' à ' + n(max, dec) + ' ' + u.vitesse +
+                ' · moyenne ' + n(moyenne, dec) + ' ' + u.vitesse;
+            if (u.vitesse === 'm/s') {
                 const kmh = moyenne * 3.6;
                 texte += ', soit ' + nombreFr(kmh, kmh < 10 ? 1 : 0) + ' km/h';
+            } else if (u.vitesse === 'km/jour') {
+                texte += ', soit ' + nombreFr(moyenne / 86400, 1) + ' km/s';
             }
         }
         return texte;
@@ -405,7 +431,7 @@ class Graph {
 
     resumeCourbes(unite) {
         if (this.graphType === 'a(t)' && this.averages.length > 0) {
-            const ua = unite === 'm' ? 'm/s²' : 'px/s²';
+            const ua = data.uniteVitesse() + '/' + (data.uniteTemps === 'jour' ? 'jour' : 's');
             if (this.averages.length === 1) return 'Moyenne : ' + nombreFr(this.averages[0].avg, 2) + ' ' + ua;
             return this.averages.map(a => 'Moyenne mobile ' + (a.mobile + 1) + ' : ' + nombreFr(a.avg, 2) + ' ' + ua).join('  |  ');
         }
@@ -421,9 +447,20 @@ class Graph {
         this.updateMobileSelector();
         document.getElementById('graph-titre').textContent = this.getGraphTitle();
         const aide = this.getSousTitre();
-        const p = document.getElementById('graph-aide');
-        p.textContent = aide;
-        p.hidden = !aide;
+        document.getElementById('graph-aide').textContent = aide;
+        const bloc = document.getElementById('graph-aide-bloc');
+        bloc.hidden = !aide;
+        bloc.querySelector('summary').textContent = this.graphType === 'tableau' ? 'Comment lire ce tableau ?' : 'Comment lire ce graphique ?';
+        // Aide dépliée seulement s'il y a de la place (sinon : une ligne « Comment lire ce graphique ? »)
+        if (!this._aideChoisie) bloc.open = document.getElementById('scene').clientHeight >= 520;
+        if (!bloc.dataset.suivi) {
+            bloc.dataset.suivi = '1';
+            bloc.querySelector('summary').addEventListener('click', () => { this._aideChoisie = true; });
+        }
+        const alerte = this.getAlerte();
+        const pa = document.getElementById('graph-alerte');
+        pa.textContent = this.graphType === 'tableau' ? '' : alerte;
+        pa.hidden = !alerte || this.graphType === 'tableau';
 
         const tableau = this.graphType === 'tableau';
         document.getElementById('graph-cadre').hidden = tableau;
@@ -469,7 +506,7 @@ class Graph {
             [axes.x, axes.y].forEach(a => {
                 a.ticks.stepSize = pas;
                 a.ticks.includeBounds = false;
-                a.ticks.callback = (v) => nombreFr(v, dec);
+                a.ticks.callback = (v) => nombreLisible(v, dec);
             });
             chart.update('none');
         }

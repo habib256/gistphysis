@@ -30,7 +30,10 @@ let dernierPointageSouris = -Infinity;
 // ---------------------------------------------------------------------------
 
 let tailleAffichee = { w: 0, h: 0, d: 0 };
+let sceneMesuree = { w: 0, h: 0 };
 let ajustementEnAttente = false;
+let tropPetit = false;              // fenêtre trop petite pour pointer
+const IMAGE_MINI = { w: 200, h: 130 };
 
 function demanderAjustementTaille() {
   if (ajustementEnAttente) return;
@@ -46,27 +49,79 @@ function dimsAffichage() {
   return (typeof dimensionsSource === 'function' && dimensionsSource()) || { w: 4, h: 3 };
 }
 
+// Disposition d'après la forme et la taille de la fenêtre (ou du cadre) :
+// paysage (largeur ≥ 1,1 × hauteur) → panneau latéral ; sinon barres empilées.
+function appliquerDisposition() {
+  const W = window.innerWidth, H = window.innerHeight;
+  const lat = W >= 1.1 * H && W >= 460;
+  const panneau = Math.round(Math.max(210, Math.min(340, W * (H < 520 ? 0.3 : 0.27))));
+  const largeurScene = lat ? W - panneau : W;
+  const b = document.body;
+  b.classList.toggle('lat', lat);
+  b.classList.toggle('emp', !lat);
+  b.classList.toggle('etroit', largeurScene < 600);
+  b.classList.toggle('tres-etroit', largeurScene < 400);
+  b.classList.toggle('bas', H < 520);
+  document.documentElement.style.setProperty('--panneau', panneau + 'px');
+  document.documentElement.classList.toggle('defile', !lat && typeof etat !== 'undefined' && etat === 'Graphique');
+}
+
+// Faut-il replier le guide pour laisser la place à l'image ? (jamais s'il a été rouvert)
+function guideGenant(w, h) {
+  if (typeof guide === 'undefined' || !guide.ouvert || guide.ouvertParEleve) return false;
+  const b = document.body;
+  if (b.classList.contains('lat')) return b.classList.contains('bas'); // téléphone couché
+  return w * h < 0.4 * window.innerWidth * window.innerHeight || h < 0.4 * window.innerHeight;
+}
+
 function ajusterTaille() {
+  appliquerDisposition();
   const scene = document.getElementById('scene');
   const conteneur = document.getElementById('canvas-container');
   if (!scene || !conteneur || typeof resizeCanvas !== 'function') return;
   const W = scene.clientWidth, H = scene.clientHeight;
-  if (W < 20 || H < 20) return;
   const s = dimsAffichage();
   const k = Math.min(W / s.w, H / s.h);
-  const w = Math.max(1, Math.floor(s.w * k));
-  const h = Math.max(1, Math.floor(s.h * k));
-  let d = Math.min(window.devicePixelRatio || 1, DENSITE_MAX);
-  if (w * h * d * d > PIXELS_MAX) d = Math.sqrt(PIXELS_MAX / (w * h));
-  // Clavier virtuel ouvert pour écrire la longueur d'étalonnage : l'image ne rapetisse pas
-  const saisie = document.getElementById('real-distance');
-  if (document.activeElement === saisie && tailleAffichee.w > 0 && w < tailleAffichee.w) {
-    if (!saisie.dataset.surveille) {
-      saisie.dataset.surveille = '1';
-      saisie.addEventListener('blur', demanderAjustementTaille);
-    }
+  let w = Math.max(1, Math.floor(s.w * k));
+  let h = Math.max(1, Math.floor(s.h * k));
+
+  // Place qui manque : on replie le guide (au chargement, au changement de mode ou de
+  // taille de fenêtre — jamais pendant le pointage, l'image ne doit pas bouger entre deux points)
+  if (typeof modePointageActif === 'function' && modePointageActif() && guideGenant(w, h)) {
+    guide.ouvert = false;
+    majGuide(true);
+    demanderAjustementTaille();
     return;
   }
+
+  // Trop petit pour pointer : on le dit
+  const petit = typeof modePointageActif === 'function' && modePointageActif() && (w < IMAGE_MINI.w || h < IMAGE_MINI.h);
+  if (petit !== tropPetit) {
+    tropPetit = petit;
+    document.getElementById('trop-petit').hidden = !petit;
+    conteneur.style.visibility = petit ? 'hidden' : '';
+    if (petit) annulerToucher();
+  }
+
+  // Clavier virtuel ouvert pour écrire la longueur : seule la hauteur diminue ; l'image garde
+  // sa taille (calée en haut, centrée en largeur). Une rotation (largeur qui change) redimensionne.
+  const saisie = document.getElementById('real-distance');
+  const clavierVirtuel = document.activeElement === saisie && tailleAffichee.w > 0 &&
+    W === sceneMesuree.w && H < sceneMesuree.h && h < tailleAffichee.h;
+  if (!saisie.dataset.surveille) {
+    saisie.dataset.surveille = '1';
+    saisie.addEventListener('blur', demanderAjustementTaille);
+  }
+  if (clavierVirtuel) {
+    conteneur.style.left = Math.floor((W - tailleAffichee.w) / 2) + 'px';
+    conteneur.style.top = '0px';
+    return;
+  }
+  sceneMesuree = { w: W, h: H };
+  if (W < 20 || H < 20) return;
+
+  let d = Math.min(window.devicePixelRatio || 1, DENSITE_MAX);
+  if (w * h * d * d > PIXELS_MAX) d = Math.sqrt(PIXELS_MAX / (w * h));
   conteneur.style.left = Math.floor((W - w) / 2) + 'px';
   conteneur.style.top = Math.floor((H - h) / 2) + 'px';
   if (w === tailleAffichee.w && h === tailleAffichee.h && d === tailleAffichee.d) return;
@@ -78,7 +133,7 @@ function ajusterTaille() {
   // Rotation ou redimensionnement pendant un geste : l'endroit visé n'est plus sous le doigt
   if (avait && gesteEnCours()) {
     annulerToucher();
-    afficherMessageTemporaire('↻ L’écran a changé de taille : pointage annulé. Recommence.', 4000);
+    afficherMessageTemporaire('↻ L’écran a changé de taille : geste annulé. Recommence.', 2500);
   }
   if (typeof isLooping === 'function' && !isLooping()) redraw();
 }
@@ -326,7 +381,11 @@ function installerRaccourcis() {
     const balise = cible && cible.tagName;
     if (balise === 'INPUT' || balise === 'SELECT' || balise === 'TEXTAREA' || (cible && cible.isContentEditable)) return;
     if (!document.getElementById('confirmation').hidden) {
-      if (e.key === 'Escape') { e.preventDefault(); document.getElementById('confirmation-non').click(); }
+      // Échap ne détruit jamais rien : il ne vaut « non » que si « non » garde le travail
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (echapConfirmation) echapConfirmation();
+      }
       return;
     }
     if (e.altKey) return;
@@ -395,9 +454,14 @@ function dessinerLoupe(x, y, couleurReticule) {
   const ecart = pointeurTactile.actif ? LOUPE_ECART : 18;
   let cx = x, cy = y - R - ecart;
   if (cy - R < 2) {
-    // Trop près du haut : loupe sur le côté, vers le centre de l'image
+    // Trop près du haut : loupe sur le côté, vers le centre de l'image. Hystérésis : elle ne
+    // change de côté que si le viseur dépasse nettement le milieu (pas de saut de gauche à droite).
+    const milieu = width / 2, marge = Math.min(40, width / 8);
+    if (x < milieu - marge) dessinerLoupe.cote = 1;
+    else if (x > milieu + marge) dessinerLoupe.cote = -1;
+    else if (!dessinerLoupe.cote) dessinerLoupe.cote = x < milieu ? 1 : -1;
     cy = y;
-    cx = x < width / 2 ? x + R + ecart : x - R - ecart;
+    cx = x + dessinerLoupe.cote * (R + ecart);
   }
   cx = constrain(cx, R + 2, width - R - 2);
   cy = constrain(cy, R + 2, height - R - 2);

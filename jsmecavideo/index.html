@@ -34,6 +34,7 @@
             --bord: #8a97a3;
             --bleu: #1f5f8b;
             --focus: #ffbf47;
+            --panneau: 300px;
         }
 
         * {
@@ -92,10 +93,15 @@
         }
 
         /* ------------------------------------------------------------------
-           Mise en page : toute la fenêtre (ou le cadre du site), jamais de
-           défilement de la page. La zone vidéo (#scene) prend toute la place
-           laissée par les barres ; interface.js y loge la plus grande image
-           aux proportions de la vidéo.
+           Mise en page : toute la fenêtre (ou le cadre du site). interface.js choisit la
+           disposition d'après la FORME et la taille de la fenêtre (classes du body) :
+           - body.lat : paysage (y compris téléphone couché) : panneau latéral, la vidéo
+             prend toute la hauteur ;
+           - body.emp : portrait : barres empilées au-dessus de la vidéo ;
+           - body.etroit : zone de la vidéo de moins de 600 px de large (libellés courts) ;
+           - body.bas : fenêtre de moins de 520 px de haut (tout est plus compact).
+           Les hauteurs des textes au-dessus de l'image sont réservées : l'image ne change
+           jamais de taille ni de place pendant un geste ni entre deux points.
            ------------------------------------------------------------------ */
         #app {
             height: 100vh;
@@ -128,19 +134,29 @@
             grid-area: outils;
         }
 
-        /* Paysage assez large : commandes, consignes et guide dans un panneau latéral,
-           la vidéo prend toute la hauteur */
-        @media (min-width: 900px) and (min-aspect-ratio: 23/20) {
-            #app {
-                grid-template-columns: clamp(250px, 26vw, 340px) minmax(0, 1fr);
-                grid-template-rows: minmax(0, 1fr) auto;
-                grid-template-areas: "panneau scene" "panneau outils";
-            }
+        body.lat #app {
+            grid-template-columns: var(--panneau) minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr) auto;
+            grid-template-areas: "panneau scene" "panneau outils";
+        }
 
-            #panneau {
-                overflow-y: auto;
-                border-right: 1px solid #c9d1d8;
-            }
+        body.lat #panneau {
+            overflow-y: auto;
+            border-right: 1px solid #c9d1d8;
+        }
+
+        /* Portrait, étape Graphiques : la page peut défiler pour garder un graphique lisible */
+        html.defile,
+        html.defile body {
+            height: auto;
+            overflow-y: auto;
+        }
+
+        body.emp.mode-graphique #app {
+            height: auto;
+            min-height: 100vh;
+            min-height: 100dvh;
+            grid-template-rows: auto minmax(400px, 1fr) auto;
         }
 
         /* ---------------- Menus ---------------- */
@@ -149,6 +165,10 @@
             grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
             gap: 4px 6px;
             padding: 6px;
+        }
+
+        body.lat #menu {
+            grid-template-columns: minmax(0, 1fr);
         }
 
         .champ {
@@ -200,6 +220,10 @@
             width: auto;
         }
 
+        #choix-mobiles {
+            min-width: 54px;
+        }
+
         .bouton {
             min-height: 44px;
             padding: 4px 12px;
@@ -234,32 +258,56 @@
             background: #fef9e7;
             border-color: #9a7d0a;
             color: #5d4d07;
+            white-space: nowrap;
         }
 
-        /* Panneau latéral : un champ par ligne */
-        @media (min-width: 900px) and (min-aspect-ratio: 23/20) {
-            #menu {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            #bouton-guide,
-            #bouton-plein-ecran {
-                flex: 1 1 auto;
-                margin-left: 0;
-                padding: 4px 8px;
-                white-space: nowrap;
-            }
+        body.lat #bouton-guide,
+        body.lat #bouton-plein-ecran {
+            flex: 1 1 auto;
+            margin-left: 0;
+            padding: 4px 8px;
+            white-space: nowrap;
         }
 
-        /* Écran étroit : pas de légende pour « Étape » et « Vidéo » (évident), place à l'image */
-        @media (max-width: 599px) {
-            #menu .champ>.legende {
-                display: none;
-            }
+        /* Étroit ou peu haut : pas de légende pour « Étape » et « Vidéo » (évident) */
+        body.emp.etroit #menu .champ>.legende,
+        body.bas #menu .champ>.legende {
+            display: none;
+        }
 
-            #menu {
-                grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-            }
+        body.emp.etroit #menu {
+            grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+            padding: 4px 6px;
+        }
+
+        body.emp.etroit #reglages {
+            gap: 4px 6px;
+        }
+
+        body.emp.etroit .champ-ligne .legende {
+            font-size: 12.5px;
+        }
+
+        body.emp.etroit #bouton-guide {
+            padding: 4px 8px;
+        }
+
+        #bouton-guide {
+            min-width: 44px;
+        }
+
+        /* Portrait étroit ou peu haut, pendant l'étalonnage : les réglages du pointage et la
+           ligne d'état laissent la place à la saisie et à l'image */
+        body.emp.mode-etalonnage.etroit #reglages,
+        body.emp.mode-etalonnage.bas #reglages,
+        body.emp.mode-etalonnage.etroit #frame-info,
+        body.emp.mode-etalonnage.bas #frame-info {
+            display: none;
+        }
+
+        body.etroit .fleche,
+        body.lat .fleche {
+            display: none;
         }
 
         /* ---------------- Consigne et état ---------------- */
@@ -269,28 +317,10 @@
             color: #f4f7f9;
         }
 
-        /* Hauteur réservée (2 lignes, 3 sur écran étroit) : la consigne change pendant le
-           pointage, l'image ne doit pas bouger sous le doigt */
         #instructions {
-            min-height: 40px;
             font-size: 16px;
             line-height: 20px;
             font-weight: 600;
-        }
-
-        @media (max-width: 599px) {
-            #instructions {
-                font-size: 15px;
-            }
-
-            #frame-info {
-                font-size: 13px;
-                line-height: 16px;
-            }
-
-            #bouton-guide {
-                padding: 4px 8px;
-            }
         }
 
         #frame-info {
@@ -301,9 +331,41 @@
             font-variant-numeric: tabular-nums;
         }
 
-        #bouton-voir-graphiques {
-            margin-top: 4px;
-            min-height: 40px;
+        /* Portrait : hauteurs réservées (le texte change pendant le pointage) */
+        body.emp #instructions {
+            height: 40px;
+            overflow: hidden;
+        }
+
+        body.emp #frame-info {
+            height: 18px;
+            overflow: hidden;
+        }
+
+        body.emp.etroit #instructions {
+            height: 38px;
+            font-size: 15px;
+            line-height: 19px;
+        }
+
+        /* Très étroit : le bouton Guide se réduit à son icône */
+        body.tres-etroit .guide-mot {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+        }
+
+        body.emp.etroit #frame-info {
+            height: 32px;
+            font-size: 13px;
+            line-height: 16px;
+        }
+
+        body.lat.bas #instructions {
+            font-size: 15px;
+            line-height: 19px;
         }
 
         /* ---------------- Guide ---------------- */
@@ -326,10 +388,10 @@
 
         .guide-etape {
             width: 100%;
-            min-height: 40px;
+            min-height: 44px;
             padding: 2px 3px;
             border: 1px solid #b7950b;
-            border-radius: 20px;
+            border-radius: 22px;
             background: #fff;
             color: #4d4006;
             font-size: 14px;
@@ -361,31 +423,27 @@
             user-select: text;
         }
 
-        @media (max-width: 599px) {
-            .guide-titre {
-                display: none;
-            }
+        body.emp.etroit .guide-titre {
+            display: none;
         }
 
-        @media (min-width: 900px) and (min-aspect-ratio: 23/20) {
-            /* Panneau latéral : pastilles sur deux lignes si besoin, texte en entier */
-            #guide-etapes {
-                flex-wrap: wrap;
-            }
+        /* Panneau latéral : pastilles sur plusieurs lignes, texte en entier */
+        body.lat #guide-etapes {
+            flex-wrap: wrap;
+        }
 
-            #guide-etapes li {
-                flex: 1 1 auto;
-            }
+        body.lat #guide-etapes li {
+            flex: 1 1 auto;
+        }
 
-            .guide-etape {
-                padding: 2px 8px;
-            }
+        body.lat .guide-etape {
+            padding: 2px 8px;
+        }
 
-            #guide-texte {
-                height: auto;
-                min-height: 95px;
-                overflow: visible;
-            }
+        body.lat #guide-texte {
+            height: auto;
+            min-height: 0;
+            overflow: visible;
         }
 
         /* ---------------- Étalonnage ---------------- */
@@ -442,40 +500,53 @@
             border-color: #f4d03f;
         }
 
-        @media (max-width: 599px) {
-            #calibration-input label {
-                position: absolute;
-                width: 1px;
-                height: 1px;
-                overflow: hidden;
-                clip: rect(0 0 0 0);
-            }
+        body.etroit #calibration-input label,
+        body.lat #calibration-input label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+        }
 
-            #real-distance {
-                flex: 1 1 90px;
-                width: 90px;
-            }
+        body.etroit #real-distance,
+        body.lat #real-distance {
+            flex: 1 1 90px;
+            width: 90px;
+        }
 
-            #calibration-input {
-                gap: 4px 6px;
-                padding: 5px 6px;
-            }
+        body.etroit #calibration-input,
+        body.lat #calibration-input {
+            gap: 4px 6px;
+            padding: 5px 6px;
+        }
+
+        body.tres-etroit #real-distance {
+            flex: 1 1 64px;
+            width: 64px;
+            min-width: 0;
+            font-size: 16px;
+        }
+
+        body.tres-etroit #calibration-input .bouton {
+            padding: 4px 8px;
         }
 
         #calibration-message {
             flex: 1 1 100%;
             font-size: 15px;
             line-height: 19px;
-            min-height: 19px;
             color: #e8f6ee;
         }
 
-        /* Disposition empilée : hauteur fixe (2 lignes), l'image ne saute pas quand le texte change */
-        @media not all and (min-width: 900px) and (min-aspect-ratio: 23/20) {
-            #calibration-message {
-                height: 38px;
-                overflow-y: auto;
-            }
+        /* Portrait : hauteur fixe, l'image ne saute pas quand le texte change */
+        body.emp #calibration-message {
+            height: 38px;
+            overflow-y: auto;
+        }
+
+        body.emp.etroit #calibration-message {
+            height: 57px;
         }
 
         #calibration-message.erreur {
@@ -496,7 +567,7 @@
         }
 
         #choix-graphique .champ {
-            flex: 1 1 220px;
+            flex: 1 1 200px;
         }
 
         #acceleration-info {
@@ -519,6 +590,7 @@
             flex-direction: column;
             background: #fff;
             padding: 6px 8px 4px;
+            overflow-y: auto;
         }
 
         #graph-titre {
@@ -527,27 +599,43 @@
             text-align: center;
         }
 
-        #graph-aide {
+        #graph-aide-bloc {
             font-size: 14.5px;
             line-height: 19px;
             color: var(--texte-doux);
             text-align: center;
         }
 
-        #graph-cadre {
-            position: relative;
-            flex: 1 1 auto;
-            min-height: 0;
+        #graph-aide-bloc summary {
+            cursor: pointer;
+            min-height: 32px;
+            line-height: 32px;
+            font-weight: 600;
+            color: var(--bleu);
         }
 
-        #graph-cadre[hidden],
-        #tableau-zone[hidden] {
-            display: none;
+        #graph-alerte,
+        .alerte-durees {
+            margin: 4px 0;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: #fdf2e9;
+            border: 2px solid #a04000;
+            color: #6e2c00;
+            font-weight: 600;
+            font-size: 15px;
+            line-height: 19px;
+        }
+
+        #graph-cadre {
+            position: relative;
+            flex: 1 0 220px;
+            min-height: 220px;
         }
 
         #tableau-zone {
-            flex: 1 1 auto;
-            min-height: 0;
+            flex: 1 0 220px;
+            min-height: 220px;
             overflow: auto;
             margin-top: 4px;
         }
@@ -580,6 +668,15 @@
             background: #f3f6f8;
         }
 
+        body.etroit #tableau-mesures {
+            font-size: 15px;
+        }
+
+        body.etroit #tableau-mesures th,
+        body.etroit #tableau-mesures td {
+            padding: 3px 6px;
+        }
+
         /* ---------------- Image ---------------- */
         #canvas-container {
             position: absolute;
@@ -602,14 +699,39 @@
             box-shadow: none;
         }
 
+        /* Fenêtre trop petite pour pointer : on le dit au lieu d'afficher une image minuscule */
+        #trop-petit {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            color: #fff;
+            font-size: 16px;
+            line-height: 21px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        #bouton-voir-graphiques {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            z-index: 4;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
         /* Demande de confirmation (au-dessus de l'image : la mise en page ne bouge pas) */
         #confirmation {
             position: absolute;
             left: 50%;
-            top: 10px;
+            top: 8px;
             transform: translateX(-50%);
             width: min(520px, calc(100% - 16px));
-            padding: 12px 14px;
+            max-height: calc(100% - 16px);
+            overflow-y: auto;
+            padding: 10px 12px;
             background: #fff;
             color: var(--texte);
             border: 2px solid #a93226;
@@ -621,7 +743,7 @@
         #confirmation p {
             font-size: 16px;
             line-height: 21px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         #confirmation .boutons {
@@ -671,29 +793,23 @@
             cursor: default;
         }
 
-        @media (max-width: 599px) {
-            .bouton-icone {
-                width: 44px;
-            }
-
-            #barre-outils,
-            #controls {
-                gap: 4px;
-            }
+        body.etroit .bouton-icone {
+            width: 44px;
         }
 
-        /* Écran étroit : pas de bouton « Plein écran » (pas la place sur la ligne des réglages) */
-        @media (max-width: 419px) {
-            #bouton-plein-ecran {
-                display: none !important;
-            }
+        body.etroit #barre-outils,
+        body.etroit #controls {
+            gap: 4px;
+        }
+
+        /* Pas de place pour « Plein écran » sur un écran étroit en portrait */
+        body.emp.etroit #bouton-plein-ecran {
+            display: none !important;
         }
 
         /* Très étroit : le curseur de temps garde de la place (début : touche ou curseur) */
-        @media (max-width: 399px) {
-            .bouton-debut {
-                display: none;
-            }
+        body.tres-etroit .bouton-debut {
+            display: none;
         }
 
         /* Curseur de temps : une position par image ; poignée de 44 px pour le doigt */
@@ -754,26 +870,20 @@
             opacity: 1;
         }
 
-        .libelle-long {
-            display: inline;
-        }
-
         .libelle-court {
             display: none;
         }
 
-        @media (max-width: 599px) {
-            .libelle-long {
-                display: none;
-            }
+        body.etroit .libelle-long {
+            display: none;
+        }
 
-            .libelle-court {
-                display: inline;
-            }
+        body.etroit .libelle-court {
+            display: inline;
+        }
 
-            #bouton-annuler {
-                padding: 4px 8px;
-            }
+        body.etroit #bouton-annuler {
+            padding: 4px 8px;
         }
 
         #bouton-export {
@@ -781,6 +891,20 @@
             background: #145a32;
             border-color: #145a32;
             color: #fff;
+        }
+
+        /* Peu de hauteur : tout est plus serré */
+        body.bas #menu {
+            padding: 4px 6px;
+            gap: 4px;
+        }
+
+        body.bas #info-bar {
+            padding: 3px 8px 4px;
+        }
+
+        body.bas #barre-outils {
+            padding: 3px 6px;
         }
     </style>
 </head>
@@ -824,7 +948,6 @@
             <div id="info-bar">
                 <p id="instructions">Chargement de la vidéo…</p>
                 <p id="frame-info">Image 0</p>
-                <button type="button" id="bouton-voir-graphiques" class="bouton" hidden>📈 Voir les graphiques</button>
             </div>
             <div id="calibration-input" hidden>
                 <label for="real-distance">Longueur réelle :</label>
@@ -845,9 +968,14 @@
         </div>
         <div id="scene">
             <div id="canvas-container"></div>
+            <p id="trop-petit" hidden>📱 L’image serait trop petite pour pointer avec précision. Tourne ton écran ou agrandis la fenêtre.</p>
+            <button type="button" id="bouton-voir-graphiques" class="bouton bouton-principal" hidden>📈 Voir les graphiques</button>
             <div id="graphique-zone" hidden>
                 <h2 id="graph-titre"></h2>
-                <p id="graph-aide"></p>
+                <details id="graph-aide-bloc"><summary>Comment lire ce graphique ?</summary>
+                    <p id="graph-aide"></p>
+                </details>
+                <p id="graph-alerte" role="alert" hidden></p>
                 <div id="graph-cadre"><canvas id="graphique" role="img" aria-label="Graphique"></canvas></div>
                 <div id="tableau-zone" hidden tabindex="0" aria-label="Tableau des mesures"></div>
                 <div id="acceleration-info" role="status" hidden></div>

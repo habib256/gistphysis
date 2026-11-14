@@ -3,14 +3,18 @@
 // Le guide accompagne l'élève : choisir la vidéo (et le référentiel) → étalonner →
 // pointer → observer la trajectoire → mesurer et conclure. L'étape affichée suit
 // automatiquement ce que fait l'élève ; toucher une étape y conduit (2 → Étalonner,
-// 3 → Pointer, 4 et 5 → Graphiques). Sur un écran étroit, le guide se replie au premier
-// point pour laisser la place à l'image ; le bouton « 📋 Guide » le rouvre.
+// 3 → Pointer, 4 et 5 → Graphiques). Quand la place manque, le guide se replie au
+// chargement ou au changement de mode (jamais pendant le pointage) ; « 📋 Guide » le rouvre.
 
 const ETAPES_GUIDE = [
   {
     titre: 'Vidéo',
-    texte: () => 'Choisis une vidéo (menu « Vidéo », rubrique « Pour commencer »). La caméra ne bouge pas : ' +
-      'on décrit le mouvement par rapport au sol, c’est le référentiel.'
+    texte: () => {
+      const v = typeof videoCourante === 'function' ? videoCourante() : null;
+      const ref = v ? (v.referentiel || REFERENTIEL_DEFAUT)
+        : 'Avec ta caméra : garde-la immobile, le mouvement sera décrit par rapport à elle.';
+      return 'Choisis une vidéo (menu « Vidéo », rubrique « Pour commencer »). ' + ref + ' C’est le référentiel.';
+    }
   },
   {
     titre: 'Étalonner',
@@ -24,13 +28,18 @@ const ETAPES_GUIDE = [
   },
   {
     titre: 'Observer',
-    texte: () => 'Les marques forment une chronophotographie : les positions du mobile à intervalles de temps égaux. ' +
+    texte: () => (data.dureesEgales()
+      ? 'Les marques forment une chronophotographie : les positions du mobile à intervalles de temps égaux. '
+      : 'Attention : tes points ne sont pas tous séparés par la même durée Δt (pas changé, point inséré…). ') +
       'Alignées → trajectoire rectiligne ; sur un cercle → circulaire ; sur une courbe → curviligne. Sont-elles régulièrement espacées ?'
   },
   {
     titre: 'Conclure',
-    texte: () => '« 📈 Graphiques » → « Écart entre deux positions » : barres de même hauteur → vitesse constante, mouvement uniforme ; ' +
-      'de plus en plus hautes → accéléré ; de plus en plus basses → ralenti. « Vitesse » donne v = d / Δt en m/s.'
+    texte: () => data.dureesEgales()
+      ? '« 📈 Graphiques » → « Écart entre deux positions » : barres de même hauteur → vitesse constante, mouvement uniforme ; ' +
+        'de plus en plus hautes → accéléré ; de plus en plus basses → ralenti. « Vitesse » donne v = d / Δt.'
+      : 'Tes durées Δt ne sont pas toutes égales : les écarts d ne se comparent pas. « 📈 Graphiques » → « Vitesse sur chaque intervalle » : ' +
+        'même hauteur → uniforme ; de plus en plus haut → accéléré ; de plus en plus bas → ralenti.'
   }
 ];
 
@@ -39,7 +48,7 @@ let guide = {
   etape: 1,            // étape affichée (1 à 5)
   derniereAuto: null,  // dernière étape proposée automatiquement
   texteAffiche: '',
-  repliAuto: false     // déjà replié automatiquement une fois
+  ouvertParEleve: false // rouvert par l'élève : on ne le replie plus tout seul
 };
 
 // « 1 image (0,04 s) » ou « 5 images (0,2 s) » selon la vidéo et le réglage « Images pointées »
@@ -70,6 +79,7 @@ function dispositionEmpilee() {
 function installerGuide() {
   document.getElementById('bouton-guide').addEventListener('click', () => {
     guide.ouvert = !guide.ouvert;
+    guide.ouvertParEleve = guide.ouvert;
     majGuide(true);
   });
 
@@ -104,14 +114,6 @@ function allerEtape(n) {
   majGuide(true);
 }
 
-// Premier point posé : sur écran étroit, on replie le guide (une seule fois)
-function replierGuideAuPremierPoint() {
-  if (guide.repliAuto || !guide.ouvert || !dispositionEmpilee()) return;
-  guide.repliAuto = true;
-  guide.ouvert = false;
-  majGuide(true);
-}
-
 // Met à jour le guide (appelé souvent : ne touche au DOM que si quelque chose change)
 function majGuide(force = false) {
   const auto = etapeAutomatique();
@@ -126,8 +128,8 @@ function majGuide(force = false) {
   const panneau = document.getElementById('guide');
   panneau.hidden = !guide.ouvert;
   const bouton = document.getElementById('bouton-guide');
-  const libelle = guide.ouvert ? '📋 Guide ▴' : '📋 Guide ▾';
-  if (bouton.textContent !== libelle) bouton.textContent = libelle;
+  const libelle = '📋<span class="guide-mot"> Guide</span><span class="fleche"> ' + (guide.ouvert ? '▴' : '▾') + '</span>';
+  if (bouton.innerHTML !== libelle) bouton.innerHTML = libelle;
   bouton.setAttribute('aria-expanded', guide.ouvert ? 'true' : 'false');
   bouton.title = guide.ouvert ? 'Masquer le guide de l’activité' : 'Afficher le guide de l’activité';
 

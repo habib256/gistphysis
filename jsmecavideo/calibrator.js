@@ -3,22 +3,40 @@
 // Les deux points sont gardés en pixels vidéo (repère de l'image, y vers le bas) :
 // l'échelle (mètres par pixel vidéo) ne dépend pas de la taille d'affichage.
 
-// Lit une longueur saisie : « 80 cm », « 0,8 », « 0.8 m », « 800 mm », « 1,85m ».
-// Sans unité, ce sont des mètres. Renvoie {metres, valeur, unite} ou {erreur}.
+// Lit une longueur saisie : « 80 cm », « 0,8 », « 0.8 m », « 800 mm », « 1,85m »,
+// « 200 000 000 km ». Sans unité, ce sont des mètres, mais seulement jusqu'à 5 : au-delà
+// (« 185 », « 80 »), on demande l'unité au lieu de deviner. Renvoie {metres…} ou {erreur}.
+const SANS_UNITE_MAX = 5;
 function lireLongueur(texte) {
-    let s = String(texte || '').trim().toLowerCase().replace(/\s+/g, '');
+    let s = String(texte || '').trim().toLowerCase().replace(/[\s\u202f\u00a0]+/g, '');
     if (!s) return { erreur: 'Écris la longueur réelle, par exemple « 80 cm » ou « 0,8 m ».' };
-    let m = /^(\d+(?:[.,]\d*)?|[.,]\d+)(mm|cm|dm|m|mètres?|metres?|centimètres?|centimetres?|millimètres?|millimetres?)?$/.exec(s);
+    let m = /^(\d+(?:[.,]\d*)?|[.,]\d+)(mm|cm|dm|m|km|mètres?|metres?|centimètres?|centimetres?|millimètres?|millimetres?|kilomètres?|kilometres?)?$/.exec(s);
     if (!m) return { erreur: 'Je ne comprends pas « ' + String(texte).trim() + ' » : écris un nombre suivi de m, cm ou mm (ex. : 80 cm).' };
     let valeur = parseFloat(m[1].replace(',', '.'));
     let unite = m[2] || 'm';
     if (/^cent/.test(unite)) unite = 'cm';
     else if (/^mil/.test(unite)) unite = 'mm';
+    else if (/^kilo/.test(unite)) unite = 'km';
     else if (/^m[eè]t/.test(unite)) unite = 'm';
-    let facteur = { mm: 0.001, cm: 0.01, dm: 0.1, m: 1 }[unite];
+    let facteur = { mm: 0.001, cm: 0.01, dm: 0.1, m: 1, km: 1000 }[unite];
     let metres = valeur * facteur;
     if (!(metres > 0)) return { erreur: 'La longueur doit être plus grande que zéro.' };
+    if (!m[2] && valeur > SANS_UNITE_MAX) {
+        return { erreur: 'Précise l’unité : « ' + m[1] + ' cm » ou « ' + m[1] + ' m » ?', uniteManquante: true };
+    }
     return { metres: metres, valeur: valeur, unite: unite, sansUnite: !m[2] };
+}
+
+// Nombre avec 3 chiffres significatifs (au moins), espaces entre les milliers
+function nombreSignificatif(x, chiffres = 3) {
+    const dec = Math.max(0, chiffres - 1 - Math.floor(Math.log10(Math.abs(x) || 1)));
+    return nombreLisible(x, Math.min(dec, 6));
+}
+
+// Longueur écrite dans l'unité d'affichage (« 0,80 m », « 200 000 000 km »)
+function longueurFr(metres) {
+    if (data && data.uniteLongueur === 'km') return nombreLisible(metres / 1000, 0) + ' km';
+    return metresFr(metres);
 }
 
 // « 0,80 m » (ou « 0,005 m ») : écriture en mètres sans zéros inutiles, au moins 2 décimales
@@ -91,9 +109,15 @@ class Calibrator {
         return false;
     }
 
-    // Texte de l'échelle : « 1 px = 1,44 mm »
+    // Texte de l'échelle, le même partout : « 1 px = 3,01 mm » (3 chiffres significatifs)
     texteEchelle() {
-        return this.scaleFactor ? '1 px = ' + nombreFr(this.scaleFactor * 1000, 2) + ' mm' : '';
+        if (!this.scaleFactor) return '';
+        if (data && data.uniteLongueur === 'km') return '1 px = ' + nombreSignificatif(this.scaleFactor / 1000) + ' km';
+        return '1 px = ' + nombreSignificatif(this.scaleFactor * 1000) + ' mm';
+    }
+
+    texteLongueur() {
+        return this.realDistance ? longueurFr(this.realDistance) : '';
     }
 
     // Consigne d'action selon l'état (pointeur : 'tactile' ou 'souris')
@@ -101,13 +125,13 @@ class Calibrator {
         let geste = pointeur === 'tactile' ? 'Touche' : 'Clique sur';
         switch (this.state) {
             case 'waiting_point1':
-                return '📏 ' + geste + ' une extrémité d’un objet de longueur connue (une règle dans l’image).';
+                return '📏 ' + geste + ' un bout d’un objet de longueur connue (une règle…).';
             case 'waiting_point2':
-                return '📏 ' + geste + ' l’autre extrémité de cet objet.';
+                return '📏 ' + geste + ' l’autre bout de cet objet.';
             case 'waiting_distance':
-                return '📏 Écris la longueur réelle entre les deux points (ex. : 80 cm), puis « Valider ».';
+                return '📏 Écris la longueur réelle (ex. : 80 cm), puis « Valider ».';
             case 'calibrated':
-                return '✅ Échelle validée : ' + this.texteEchelle() + '. Tu peux passer au pointage.';
+                return '✅ Échelle validée : ' + this.texteEchelle() + '. Passe au pointage.';
             default:
                 return '';
         }
@@ -141,7 +165,7 @@ class Calibrator {
             line(a.x, a.y, b.x, b.y);
             let mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
             let etiquette = nombreFr(this.pixelDistance, 1) + ' px';
-            if (this.isCalibrated) etiquette += ' = ' + metresFr(this.realDistance);
+            if (this.isCalibrated) etiquette += ' = ' + this.texteLongueur();
             textSize(15);
             textStyle(BOLD);
             textAlign(CENTER, BOTTOM);
