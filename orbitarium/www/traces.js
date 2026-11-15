@@ -71,6 +71,12 @@ function initTraceCheckboxes() {
 
     const traceCheckboxes = document.querySelectorAll(".trace-grid input[type=checkbox]");
     traceCheckboxes.forEach(checkbox => {
+        // Pastille de la case : couleur de la trace de cet astre, à la même source que drawTraces.
+        const pastille = checkbox.parentElement && checkbox.parentElement.querySelector(".pastille");
+        if (pastille && traceMapping[checkbox.id]) {
+            pastille.style.backgroundColor = getBodyColor(traceMapping[checkbox.id]);
+            pastille.classList.add("coloree");
+        }
         checkbox.addEventListener("change", () => {
             if (!checkbox.checked) {
                 const body = traceMapping[checkbox.id];

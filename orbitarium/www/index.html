@@ -115,6 +115,56 @@
             accent-color: #ffd54a;
         }
 
+        /* Pastilles de couleur des astres (15/11/2026). Dessinées en CSS : les pastilles en émoji
+           (Unicode 12 pour les jaune, orange, marron et la planète à anneau) s'affichaient en carré gris
+           sur les tablettes Android 8.1, et les autres n'avaient pas la couleur du dessin. La couleur est posée
+           en JavaScript à partir de getBodyColor (traces.js), la fonction qui colore les traces : c'est
+           exactement celle du tracé. Contour clair et fin : les panneaux sont sombres, une couleur foncée
+           resterait ainsi visible. */
+        .pastille {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            flex: none;
+            box-sizing: border-box;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            background-color: transparent;
+            /* Invisible tant que sa couleur n'est pas posée (scripts d'une version plus ancienne,
+               gardés en cache) : jamais de cercle vide trompeur. La place reste réservée. */
+            visibility: hidden;
+        }
+        .pastille.coloree {
+            visibility: visible;
+        }
+        .pastille[hidden] {
+            display: none;
+        }
+        /* Menu « Centrer sur » : un <option> n'accepte que du texte, la pastille est donc posée
+           dans le sélecteur, à gauche du nom de l'astre choisi ; elle ne capte pas le toucher. */
+        .choix-astre {
+            position: relative;
+            /* Contexte de formatage propre : les marges du sélecteur restent les mêmes qu'avant. */
+            display: flow-root;
+        }
+        .choix-astre select {
+            display: block;
+            padding-left: 44px;
+            /* Pas d'animation de la marge (la pastille recouvrirait un instant la première lettre). */
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+        /* Vue libre : pas de pastille, le texte reprend sa place habituelle. */
+        .choix-astre.sans-pastille select {
+            padding-left: 20px;
+        }
+        .choix-astre .pastille {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            margin-top: -8px;
+            pointer-events: none;
+        }
+
         /* Boutons du temps sur une seule ligne, chacun à moitié de la largeur. */
         #timeControls button {
             flex: 1;
@@ -314,6 +364,15 @@
             label {
                 font-size: 14px;
             }
+            .choix-astre select {
+                padding-left: 40px;
+            }
+            .choix-astre.sans-pastille select {
+                padding-left: 16px;
+            }
+            .choix-astre .pastille {
+                left: 16px;
+            }
             
             .control-panel {
                 padding: 10px;
@@ -427,30 +486,34 @@
     <!-- Menu principal -->
     <div id="menu" class="control-panel" style="position: absolute; top: 10px; left: 10px; z-index: 100; width: 250px; max-width: calc(100vw - 50px);">
         <label for="planetSelect">🎯 Centrer sur :</label>
+        <div class="choix-astre">
+        <!-- Pastille de l'astre choisi (couleur de son tracé), décorative : le nom suit dans le sélecteur. -->
+        <span id="pastilleMenu" class="pastille" aria-hidden="true"></span>
         <select id="planetSelect">
             <!-- Affiché quand la vue a été déplacée au doigt ou à la souris -->
             <option value="libre" disabled hidden>🖐️ Vue libre</option>
-            <option value="soleil">☀️ Soleil</option>
+            <option value="soleil">Soleil</option>
             <optgroup label="Planètes telluriques (rocheuses)">
-                <option value="Mercure">⚪ Mercure</option>
-                <option value="Vénus">🟡 Vénus</option>
-                <option value="Terre">🌍 Terre</option>
-                <option value="Mars">🔴 Mars</option>
+                <option value="Mercure">Mercure</option>
+                <option value="Vénus">Vénus</option>
+                <option value="Terre">Terre</option>
+                <option value="Mars">Mars</option>
             </optgroup>
             <optgroup label="Planètes gazeuses (géantes)">
-                <option value="Jupiter">🟠 Jupiter</option>
-                <option value="Saturne">🪐 Saturne</option>
-                <option value="Uranus">🔵 Uranus</option>
-                <option value="Neptune">🔵 Neptune</option>
+                <option value="Jupiter">Jupiter</option>
+                <option value="Saturne">Saturne</option>
+                <option value="Uranus">Uranus</option>
+                <option value="Neptune">Neptune</option>
             </optgroup>
             <optgroup label="Planètes naines">
-                <option value="Cérès">🟤 Cérès</option>
-                <option value="Pluton">🟤 Pluton</option>
+                <option value="Cérès">Cérès</option>
+                <option value="Pluton">Pluton</option>
             </optgroup>
             <optgroup label="Comète">
-                <option value="Comète HALLEY">☄️ Comète de Halley</option>
+                <option value="Comète HALLEY">Comète de Halley</option>
             </optgroup>
         </select>
+        </div>
         
         <!-- Contrôles du temps -->
         <div id="timeControls" style="margin-top: 10px; display: flex; gap: 10px;">
@@ -532,18 +595,18 @@
                 <div>
                     <h3 style="margin: 0 0 5px 0; font-size: 16px;">✏️ Traces</h3>
                     <div class="trace-grid">
-                        <label class="trace-item"><input type="checkbox" id="traceSoleil">☀️ Soleil</label>
-                        <label class="trace-item"><input type="checkbox" id="traceLune">🌙 Lune</label>
-                        <label class="trace-item"><input type="checkbox" id="traceHalley">☄️ Halley</label>
-                        <label class="trace-item"><input type="checkbox" id="traceMercure">⚪ Mercure</label>
-                        <label class="trace-item"><input type="checkbox" id="traceVenus">🟡 Vénus</label>
-                        <label class="trace-item"><input type="checkbox" id="traceTerre">🌍 Terre</label>
-                        <label class="trace-item"><input type="checkbox" id="traceMars">🔴 Mars</label>
-                        <label class="trace-item"><input type="checkbox" id="traceJupiter">🟠 Jupiter</label>
-                        <label class="trace-item"><input type="checkbox" id="traceSaturne">🪐 Saturne</label>
-                        <label class="trace-item"><input type="checkbox" id="traceUranus">🔵 Uranus</label>
-                        <label class="trace-item"><input type="checkbox" id="traceNeptune">🔵 Neptune</label>
-                        <label class="trace-item"><input type="checkbox" id="tracePluton">🟤 Pluton</label>
+                        <label class="trace-item"><input type="checkbox" id="traceSoleil"><span class="pastille" aria-hidden="true"></span>Soleil</label>
+                        <label class="trace-item"><input type="checkbox" id="traceLune"><span class="pastille" aria-hidden="true"></span>Lune</label>
+                        <label class="trace-item"><input type="checkbox" id="traceHalley"><span class="pastille" aria-hidden="true"></span>Halley</label>
+                        <label class="trace-item"><input type="checkbox" id="traceMercure"><span class="pastille" aria-hidden="true"></span>Mercure</label>
+                        <label class="trace-item"><input type="checkbox" id="traceVenus"><span class="pastille" aria-hidden="true"></span>Vénus</label>
+                        <label class="trace-item"><input type="checkbox" id="traceTerre"><span class="pastille" aria-hidden="true"></span>Terre</label>
+                        <label class="trace-item"><input type="checkbox" id="traceMars"><span class="pastille" aria-hidden="true"></span>Mars</label>
+                        <label class="trace-item"><input type="checkbox" id="traceJupiter"><span class="pastille" aria-hidden="true"></span>Jupiter</label>
+                        <label class="trace-item"><input type="checkbox" id="traceSaturne"><span class="pastille" aria-hidden="true"></span>Saturne</label>
+                        <label class="trace-item"><input type="checkbox" id="traceUranus"><span class="pastille" aria-hidden="true"></span>Uranus</label>
+                        <label class="trace-item"><input type="checkbox" id="traceNeptune"><span class="pastille" aria-hidden="true"></span>Neptune</label>
+                        <label class="trace-item"><input type="checkbox" id="tracePluton"><span class="pastille" aria-hidden="true"></span>Pluton</label>
                     </div>
                 </div>
                 <!-- Section Commandes (repliée pour ne pas masquer le système) -->

@@ -37,6 +37,25 @@ function synchroniserMenu(valeur) {
     if (!planetSelect) return;
     const option = [...planetSelect.options].find(o => o.value === valeur);
     planetSelect.value = option ? valeur : "libre";
+    mettreAJourPastilleMenu();
+}
+
+// Pastille du menu « Centrer sur » : couleur de l'astre choisi, prise à la même source que le dessin
+// de ses traces (getBodyColor, traces.js). Un <option> n'accepte que du texte (pas de pastille dessinée
+// dans la liste) : la pastille, à gauche dans le sélecteur, reflète l'astre choisi. Aucune en vue libre.
+function mettreAJourPastilleMenu() {
+    const planetSelect = document.getElementById("planetSelect");
+    const pastille = document.getElementById("pastilleMenu");
+    if (!planetSelect || !pastille) return;
+    const valeur = planetSelect.value;
+    const sansPastille = !valeur || valeur === "libre";
+    pastille.hidden = sansPastille;
+    if (pastille.parentElement) pastille.parentElement.classList.toggle("sans-pastille", sansPastille);
+    if (sansPastille) return;
+    const comete = planets.find(p => p.isComet);
+    const astre = valeur.toLowerCase().includes("halley") && comete ? comete.name : valeur;
+    pastille.style.backgroundColor = getBodyColor(astre);
+    pastille.classList.add("coloree");
 }
 
 function valeurMenuPour(planet) {
@@ -357,7 +376,9 @@ function initControls() {
     const planetSelect = document.getElementById("planetSelect");
     if (planetSelect) {
         planetSelect.value = "soleil";
+        mettreAJourPastilleMenu();
         planetSelect.addEventListener("change", function() {
+            mettreAJourPastilleMenu();
             const selectedName = this.value.toLowerCase();
             // Vous pouvez vider les traces ici via traces.js si nécessaire
             clearAllTraces();
