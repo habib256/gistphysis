@@ -28,7 +28,7 @@ const planets = [
           { name: "Deimos", orbit: 45.00, radius: 3.00, period: 1.263, speed: (2 * Math.PI / 1.263) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#dddddd' }
       ]
     },
-    { name: "Cérès", orbit: 1375.00, ua: 2.77, dwarf: true, radius: 7.00, period: 1680.00, speed: (2 * Math.PI / 1680.00) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ccaa66', hideOrbit: true },
+    { name: "Cérès", orbit: 1375.00, ua: 2.77, dwarf: true, radius: 7.00, period: 1680.00, speed: (2 * Math.PI / 1680.00) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#c8ac5c', hideOrbit: true },
     { name: "Jupiter", orbit: 1650.00, ua: 5.204, radius: 24.00, period: 4332.82, speed: (2 * Math.PI / 4332.82) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ffaa00',
       satellites: [
           { name: "Io",       orbit: 50.00,  radius: 3.75, period: 1.769, speed: (2 * Math.PI / 1.769) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ffcc99' },
@@ -37,7 +37,7 @@ const planets = [
           { name: "Callisto", orbit: 105.00, radius: 4.20, period: 16.689, speed: (2 * Math.PI / 16.689) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ccffcc' }
       ]
     },
-    { name: "Saturne", orbit: 2200.00, ua: 9.572, radius: 21.00, period: 10759, speed: (2 * Math.PI / 10759) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#ffdd00',
+    { name: "Saturne", orbit: 2200.00, ua: 9.572, radius: 21.00, period: 10759, speed: (2 * Math.PI / 10759) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#d4a26c', // beige : couleur du dessin, de la trace et de la pastille
       satellites: [
           { name: "Mimas",    orbit: 40.00,  radius: 2.00, period: 0.942, speed: (2 * Math.PI / 0.942) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#dddddd' },
           { name: "Encelade", orbit: 50.00,  radius: 2.25, period: 1.370, speed: (2 * Math.PI / 1.370) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#66ffff' },
@@ -62,7 +62,7 @@ const planets = [
           { name: "Triton", orbit: 50.00,  radius: 3.50, period: 5.877, speed: -(2 * Math.PI / 5.877) * satelliteOrbitSpeedScale /* rétrograde */, angle: Math.random() * Math.PI * 2, color: '#cccccc' }
       ]
     },
-    { name: "Pluton", orbit: 3600.00, dwarf: true, ua: 39.48, radius: 8.00, period: 90560, speed: (2 * Math.PI / 90560) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#bb9977',
+    { name: "Pluton", orbit: 3600.00, dwarf: true, ua: 39.48, radius: 8.00, period: 90560, speed: (2 * Math.PI / 90560) * orbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#b0947c',
       satellites: [
           { name: "Charon", orbit: 30.00, radius: 2.50, period: 6.387, speed: (2 * Math.PI / 6.387) * satelliteOrbitSpeedScale, angle: Math.random() * Math.PI * 2, color: '#aaaaaa' }
       ]
@@ -84,7 +84,7 @@ const planets = [
       angle: (3 * Math.PI/2) + Math.random() * (Math.PI/2),
       speed: (2 * Math.PI / 27759) * orbitSpeedScale,
       radius: 6.00,
-      color: '#cccccc'
+      color: '#99ffee' // cyan pâle : couleur propre (la Lune est #cccccc, Mercure #aaa)
     }
 ];
 

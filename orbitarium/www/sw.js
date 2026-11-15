@@ -3,7 +3,9 @@
 // hors ligne, on sert la copie mise en cache lors de la dernière visite.
 // v5 (15/11/2026) : pastilles de couleur dessinées en CSS à la place des émojis ; fichiers mis en cache
 // sans passer par le cache HTTP du navigateur.
-const CACHE = 'orbitarium-v5';
+// v6 (15/11/2026) : couleurs propres pour la comète de Halley (cyan pâle) et Saturne (beige de son dessin),
+// Pluton et Cérès légèrement retouchées pour rester distinctes de Saturne.
+const CACHE = 'orbitarium-v6';
 const APP_SHELL = [
   './',
   './index.html',

@@ -170,12 +170,12 @@ function drawFrame() {
             ctx.beginPath();
             ctx.ellipse(0, 0, outerRadiusX, outerRadiusY, 0, 0, Math.PI * 2);
             ctx.lineWidth = planet.radius * zoom * 0.3;
-            ctx.strokeStyle = "#d4a26c";
+            ctx.strokeStyle = planet.color; // planets.js : même couleur que la trace et la pastille
             ctx.stroke();
             ctx.restore();
             
             ctx.beginPath();
-            ctx.fillStyle = "#d4a26c";
+            ctx.fillStyle = planet.color;
             ctx.arc(pos.x, pos.y, planet.radius * zoom, 0, Math.PI * 2);
             ctx.fill();
         } else {
