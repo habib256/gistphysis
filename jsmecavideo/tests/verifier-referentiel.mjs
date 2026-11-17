@@ -10,7 +10,8 @@
 //      points et alerte « durées Δt inégales » quand des images manquent ; cohérence graphique
 //      (données, barres, infobulles, résumé) / tableau / fichier CSV ; titres, axes, en-têtes ;
 //   2. référentiel par défaut inchangé : mêmes graphiques, tableau et fichier que la version
-//      d'avant (HEAD, extraite par git), avec 1 et 2 mobiles, et après un aller-retour du menu ;
+//      d'avant le choix du référentiel (commit 20bff5a~1, extraite par git), avec 1 et 2 mobiles,
+//      et après un aller-retour du menu ;
 //   3. cas limites : aucun instant commun, pas assez de points communs, « Tous les mobiles »,
 //      mobile affiché = référence, nombre de mobiles changé, nouvelle vidéo, menu caché à 1 mobile ;
 //   4. reprise après rechargement (sessionStorage), sauvegardes incohérentes refusées, ancienne
@@ -261,16 +262,18 @@ try {
   }
 
   // ------------------------------------------------------------------ 2. Défaut inchangé
-  if (partie(2, 'Référentiel par défaut : mêmes graphiques, tableau et fichier que la version d’avant (HEAD)')) {
+  // Version d'avant le choix du référentiel (et non HEAD : une fois ce travail commité, HEAD le contient)
+  const AVANT = '20bff5a~1';
+  if (partie(2, 'Référentiel par défaut : mêmes graphiques, tableau et fichier que la version d’avant (' + AVANT + ')')) {
     let avant = null;
     try {
       avant = mkdtempSync(path.join(tmpdir(), 'jsmeca-avant-'));
       const depot = execFileSync('git', ['-C', RACINE, 'rev-parse', '--show-toplevel']).toString().trim();
-      const tar = execFileSync('git', ['-C', depot, 'archive', '--format=tar', 'HEAD:jsmecavideo'], {maxBuffer: 1 << 28});
+      const tar = execFileSync('git', ['-C', depot, 'archive', '--format=tar', AVANT + ':jsmecavideo'], {maxBuffer: 1 << 28});
       execFileSync('tar', ['-x', '-C', avant], {input: tar});
     } catch (e) { avant = null; }
     if (!avant) {
-      verifier('version d’avant extraite par git (HEAD)', false, 'git indisponible : comparaison NON faite');
+      verifier('version d’avant extraite par git (' + AVANT + ')', false, 'git indisponible : comparaison NON faite');
     } else {
       const srvA = await servir(avant);
       for (const n of [1, 2]) {
@@ -303,7 +306,7 @@ try {
             else if (va !== vb) differences.push(t + '.' + champ);
           }
         }
-        verifier(`${n} mobile${n > 1 ? 's' : ''}, image de la vidéo : titres, aides, alertes, résumés, données et axes des 9 graphiques, infobulles, tableau et fichier identiques à HEAD (seul ajout : l’indication en fin d’aide de la trajectoire)`,
+        verifier(`${n} mobile${n > 1 ? 's' : ''}, image de la vidéo : titres, aides, alertes, résumés, données et axes des 9 graphiques, infobulles, tableau et fichier identiques à ${AVANT} (seul ajout : l’indication en fin d’aide de la trajectoire)`,
           differences.length === 0, {differences, aideAjoutee: EB['y(x)'].aide.slice(EA['y(x)'].aide.length)});
         if (n > 1) verifier('2 mobiles : après un aller-retour du menu (mobile 1 puis image), tout est de nouveau identique', JSON.stringify(EC) === JSON.stringify(EB));
         else verifier('1 mobile : menu « Mouvement par rapport à » caché', menuCache);
