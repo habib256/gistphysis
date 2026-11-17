@@ -284,6 +284,7 @@ function retirerLecteurs() {
 // Nouvelle source : points et étalonnage effacés (ils dépendent de l'image)
 function nouvelleSource() {
   data.clearAllPoints();
+  data.referentiel = -1; // nouvelle vidéo : mesures de nouveau dans l'image
   oublierEtalonnage();
   annulerToucher();
   clavier.actif = false;

@@ -5,6 +5,10 @@
 // positions, vitesse v = d / Δt sur chaque intervalle), trajectoire à la même échelle sur les
 // deux axes (un cercle reste un cercle). Chaque mobile a sa couleur ET sa forme (× + ○ □).
 // Sans étalonnage, les valeurs sont en pixels : les axes l'indiquent et un message le dit.
+// Référentiel : par défaut, les positions sont mesurées dans l'image ; avec au moins deux
+// mobiles, l'élève peut choisir un mobile comme référence (« Mouvement par rapport à »). Les
+// mesures des autres mobiles sont alors données par rapport à lui (data.getPositions) ; titres,
+// axes, tableau et fichier le disent. L'app ne conclut pas à la place de l'élève.
 
 const GROUPE_LYCEE = 'Pour aller plus loin (lycée)';
 const TYPES_GRAPHIQUES = [
@@ -140,6 +144,57 @@ class Graph {
         this.mobileSelector.id = 'choix-mobile-graphique';
         this.champMobile = champ('Mobile', this.mobileSelector);
         this.mobileSelector.addEventListener('change', () => this.updateChart());
+
+        // Référentiel : l'image (défaut) ou un des mobiles pointés (au moins 2 mobiles)
+        this.refSelector = document.createElement('select');
+        this.refSelector.id = 'choix-referentiel';
+        this.champRef = champ('Mouvement par rapport à', this.refSelector);
+        this.champRef.classList.add('champ-ref');
+        this.champRef.title = 'Le référentiel : l’objet par rapport auquel on décrit le mouvement des autres.';
+        this.champRef.hidden = true;
+        this.refSelector.addEventListener('change', () => {
+            const r = parseInt(this.refSelector.value, 10);
+            this.data.referentiel = isNaN(r) ? -1 : r;
+            // Le mobile affiché ne peut pas être la référence : on montre alors les autres
+            if (this.data.refActif() >= 0 && parseInt(this.mobileSelector.value, 10) === this.data.refActif()) this.mobileSelector.value = '-1';
+            this.updateChart();
+            if (typeof majGuide === 'function') majGuide();
+            if (typeof sauvegarderSeance === 'function') sauvegarderSeance();
+        });
+    }
+
+    // Mobile de référence (-1 : l'image de la vidéo)
+    ref() { return this.data.refActif(); }
+
+    // « mobile 1 × » (le mobile de référence)
+    nomRef() {
+        const r = this.ref();
+        return 'mobile ' + (r + 1) + ' ' + this.data.getColor(r).symbole;
+    }
+
+    // Titre d'axe : une deuxième ligne dit par rapport à quoi (rien par défaut)
+    titreAxe(texte) {
+        return this.ref() >= 0 ? [texte, 'par rapport au ' + this.nomRef()] : texte;
+    }
+
+    // Menu « Mouvement par rapport à » : l'image (de la vidéo ou de la caméra), puis chaque mobile
+    updateRefSelector() {
+        const n = this.data.numMobiles;
+        const image = typeof source !== 'undefined' && source === 'webcam' ? 'l’image de la caméra' : 'l’image de la vidéo';
+        const options = [['-1', image]].concat(n > 1 ? [...Array(n).keys()].map(i => [String(i), 'Mobile ' + (i + 1) + ' ' + this.data.getColor(i).symbole]) : []);
+        const signature = options.map(o => o.join(':')).join('|');
+        if (this._signatureRef !== signature) {
+            this._signatureRef = signature;
+            this.refSelector.innerHTML = '';
+            options.forEach(([v, t]) => {
+                const o = document.createElement('option');
+                o.value = v;
+                o.textContent = t;
+                this.refSelector.appendChild(o);
+            });
+        }
+        this.refSelector.value = String(this.ref());
+        this.champRef.hidden = n < 2;
     }
 
     choisirType(type) {
@@ -150,7 +205,8 @@ class Graph {
     updateMobileSelector() {
         const valeur = this.mobileSelector.value;
         const options = this.data.numMobiles === 1 ? [['0', 'Mobile 1']]
-            : [['-1', 'Tous les mobiles']].concat([...Array(this.data.numMobiles).keys()].map(i => [String(i), 'Mobile ' + (i + 1) + ' ' + this.data.getColor(i).symbole]));
+            : [['-1', 'Tous les mobiles']].concat([...Array(this.data.numMobiles).keys()].map(i => [String(i), 'Mobile ' + (i + 1) + ' ' + this.data.getColor(i).symbole +
+                (i === this.ref() ? ' (référence)' : '')]));
         const signature = options.map(o => o.join(':')).join('|');
         if (this._signatureMobiles !== signature) {
             this._signatureMobiles = signature;
@@ -170,15 +226,22 @@ class Graph {
         this.champMobile.hidden = this.data.numMobiles === 1;
     }
 
+    // Mobiles dont on trace les mesures. Avec un mobile de référence, il n'a pas de courbe
+    // (il est l'origine) : « Tous les mobiles » donne les autres ; lui seul ne donne rien.
     mobilesAffiches() {
         let m = parseInt(this.mobileSelector.value, 10);
         if (isNaN(m) || m >= this.data.numMobiles) m = this.data.numMobiles > 1 ? -1 : 0;
-        return m === -1 ? [...Array(this.data.numMobiles).keys()] : [m];
+        const r = this.ref();
+        return (m === -1 ? [...Array(this.data.numMobiles).keys()] : [m]).filter(i => i !== r);
     }
 
     uniteAffichee() { return this.data.getUnite(); }
 
     getGraphTitle() {
+        return this.titreType() + (this.ref() >= 0 ? ' — par rapport au ' + this.nomRef() : '');
+    }
+
+    titreType() {
         switch (this.graphType) {
             case 'y(x)': return 'Trajectoire : positions successives du mobile';
             case 'ecarts': return 'Distance d parcourue entre deux points successifs';
@@ -197,10 +260,30 @@ class Graph {
     // Aide à la lecture (sous le titre, repliable). Quand les durées Δt ne sont pas toutes
     // égales, l'aide « de plus en plus hautes → accéléré » serait fausse : on ne l'affiche pas.
     getSousTitre() {
+        const aide = this.aideType();
+        if (this.ref() < 0) return aide;
+        // Référentiel d'un mobile : ce que veulent dire les nombres, sans conclure
+        const r = this.nomRef();
+        return 'Mesures par rapport au ' + r + ' : il est l’origine (0 ; 0) et n’a pas de ' +
+            (this.graphType === 'tableau' ? 'ligne' : this.graphType === 'ecarts' || this.graphType === 'vitesse' ? 'barre' : 'courbe') + '. ' +
+            'Les axes x et y gardent les directions de l’image (le repère suit le ' + r + ' sans tourner). ' +
+            'Seules comptent les images où les deux mobiles sont pointés.' + this.aideInstantRef(r) +
+            (aide && this.graphType !== 'x(t)' && this.graphType !== 'y(t)' ? ' ' + aide : '');
+    }
+
+    // Graphiques et tableau qui portent l'instant t : t reste compté depuis le tout premier point
+    // (même définition partout) ; les mesures relatives peuvent donc commencer après t = 0
+    aideInstantRef(r) {
+        if (['y(x)', 'ecarts', 'vitesse'].indexOf(this.graphType) >= 0) return '';
+        return ' L’instant t est compté depuis le tout premier point pointé, tous mobiles confondus (t = 0) : ' +
+            'les mesures par rapport au ' + r + ' peuvent donc commencer après t = 0.';
+    }
+
+    aideType() {
         const egales = this.data.dureesEgales();
         switch (this.graphType) {
             case 'y(x)': return 'Points alignés → trajectoire rectiligne ; sur un cercle → circulaire ; sur une courbe → curviligne. ' +
-                'Même échelle sur les deux axes : la forme n’est pas déformée.';
+                'Même échelle sur les deux axes : la forme n’est pas déformée.' + this.indiceReferentiel();
             case 'ecarts': return egales
                 ? 'Durées Δt toutes égales : barres presque de même hauteur → vitesse constante → mouvement uniforme ; de plus en plus hautes → accéléré ; ' +
                   'de plus en plus basses → ralenti. De petites différences viennent du pointage.'
@@ -211,6 +294,14 @@ class Graph {
             case 'tableau': return 'Une ligne par point. d, Δt et v sont mesurés depuis le point précédent ; l’instant t est compté depuis le premier point. v est calculée avec les valeurs exactes puis arrondie : refaire d / Δt avec les valeurs affichées peut différer d’une unité sur le dernier chiffre.';
             default: return '';
         }
+    }
+
+    // Faire découvrir le choix du référentiel (sans rien conclure)
+    indiceReferentiel() {
+        if (this.ref() >= 0) return '';
+        if (this.data.numMobiles === 1) return ' Pour décrire le mouvement par rapport à un autre objet, pointe aussi cet objet ' +
+            '(« Mobiles » : 2, avant de pointer), puis choisis-le dans « Mouvement par rapport à ».';
+        return ' Pour décrire le mouvement par rapport à un des mobiles, choisis-le dans « Mouvement par rapport à ».';
     }
 
     // Avertissement affiché sur le graphique lui-même
@@ -262,34 +353,34 @@ class Graph {
             switch (this.graphType) {
                 case 'y(x)':
                     pts = points.map(p => ({ x: p.x, y: p.y }));
-                    xLabel = 'position horizontale x (' + u.distance + ')';
-                    yLabel = 'position verticale y (' + u.distance + ')';
+                    xLabel = this.titreAxe('position horizontale x (' + u.distance + ')');
+                    yLabel = this.titreAxe('position verticale y (' + u.distance + ')');
                     zeroX = false;
                     break;
                 case 'x(t)':
                     pts = points.map(p => ({ x: p.time, y: p.x }));
-                    yLabel = 'position x (' + u.distance + ')';
+                    yLabel = this.titreAxe('position x (' + u.distance + ')');
                     break;
                 case 'y(t)':
                     pts = points.map(p => ({ x: p.time, y: p.y }));
-                    yLabel = 'position y (' + u.distance + ')';
+                    yLabel = this.titreAxe('position y (' + u.distance + ')');
                     break;
                 case 'v(t)':
                     pts = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.v }));
-                    yLabel = 'vitesse v (' + u.vitesse + ')';
+                    yLabel = this.titreAxe('vitesse v (' + u.vitesse + ')');
                     zeroY = true;
                     break;
                 case 'vx(t)':
                     pts = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.vx }));
-                    yLabel = 'vitesse horizontale vx (' + u.vitesse + ')';
+                    yLabel = this.titreAxe('vitesse horizontale vx (' + u.vitesse + ')');
                     break;
                 case 'vy(t)':
                     pts = this.data.getVelocities(m).map(v => ({ x: v.time, y: v.vy }));
-                    yLabel = 'vitesse verticale vy (' + u.vitesse + ')';
+                    yLabel = this.titreAxe('vitesse verticale vy (' + u.vitesse + ')');
                     break;
                 case 'a(t)':
                     pts = this.data.getAccelerations(m).map(a => ({ x: a.time, y: a.a }));
-                    yLabel = 'accélération a (' + uniteAcceleration() + ')';
+                    yLabel = this.titreAxe('accélération a (' + uniteAcceleration() + ')');
                     zeroY = true;
                     break;
             }
@@ -317,6 +408,17 @@ class Graph {
                     tension: 0
                 });
             }
+        }
+
+        // Trajectoire par rapport à un mobile : il est l'origine (0 ; 0), marquée avec sa forme
+        if (this.graphType === 'y(x)' && this.ref() >= 0) {
+            const r = this.ref();
+            datasets.push(Object.assign({
+                label: 'Mobile ' + (r + 1) + ' ' + this.data.getColor(r).symbole + ' (référence) : origine (0 ; 0)',
+                data: [{ x: 0, y: 0 }],
+                showLine: false,
+                origine: true
+            }, this.styleDataset(r), { pointRadius: 9, pointHoverRadius: 11, pointBorderWidth: 3 }));
         }
 
         const xs = datasets.flatMap(d => d.data.map(p => p.x)).concat(datasets.length ? [] : [0]);
@@ -384,7 +486,7 @@ class Graph {
         });
         this.averages = [];
         this.resume = resumes.join('\n');
-        const yLabel = grandeur === 'd' ? 'distance d (' + u.distance + ')' : 'vitesse v (' + u.vitesse + ')';
+        const yLabel = this.titreAxe(grandeur === 'd' ? 'distance d (' + u.distance + ')' : 'vitesse v (' + u.vitesse + ')');
         const by = bornesRondes(0, max, true); // barres partant de zéro : on compare honnêtement les hauteurs
         return {
             type: 'bar',
@@ -437,6 +539,7 @@ class Graph {
                     callbacks: {
                         label: (ctx) => {
                             const y = fy(ctx.parsed.y);
+                            if (ctx.dataset.origine) return ctx.dataset.label; // la référence : rien d'autre à dire
                             if (gx === 'pos') return ctx.dataset.label + ' : x = ' + fx(ctx.parsed.x) + ' ; y = ' + y;
                             if (gx) return ctx.dataset.label + ' : ' + y + ' à t = ' + fx(ctx.parsed.x);
                             return ctx.dataset.label + ' : ' + y;
@@ -479,7 +582,7 @@ class Graph {
     resumeCourbes(unite) {
         if (this.graphType === 'a(t)' && this.averages.length > 0) {
             const ua = uniteAcceleration();
-            if (this.averages.length === 1) return 'Moyenne : ' + nombreSignificatif(this.averages[0].avg) + ' ' + ua;
+            if (this.averages.length === 1 && this.mobilesAffiches().length === 1) return 'Moyenne : ' + nombreSignificatif(this.averages[0].avg) + ' ' + ua;
             return this.averages.map(a => 'Moyenne mobile ' + (a.mobile + 1) + ' : ' + nombreSignificatif(a.avg) + ' ' + ua).join('  |  ');
         }
         return '';
@@ -491,6 +594,7 @@ class Graph {
             this.chart.destroy();
             this.chart = null;
         }
+        this.updateRefSelector();
         this.updateMobileSelector();
         document.getElementById('graph-titre').textContent = this.getGraphTitle();
         const aide = this.getSousTitre();
@@ -567,7 +671,9 @@ class Graph {
         const mobiles = this.mobilesAffiches();
         const maxPoints = Math.max(0, ...mobiles.map(m => this.data.getPointCount(m)));
         let lignes = [];
-        if (maxPoints < this.pointsNecessaires()) {
+        if (this.ref() >= 0) {
+            lignes = this.lignesReferentiel(mobiles);
+        } else if (maxPoints < this.pointsNecessaires()) {
             const n = this.pointsNecessaires();
             lignes.push('Pas encore assez de points pour ce graphique : étape « 🎯 Pointer », pointe au moins ' +
                 n + ' position' + (n > 1 ? 's' : '') + ' du mobile.');
@@ -578,6 +684,46 @@ class Graph {
         const texte = lignes.join('\n');
         if (info.textContent !== texte) info.textContent = texte;
         info.hidden = !texte;
+    }
+
+    // Texte sous le graphique quand un mobile est la référence : cas où rien ne peut être tracé
+    lignesReferentiel(mobiles) {
+        const r = this.ref(), nomR = this.nomRef(), n = this.pointsNecessaires();
+        const nom = m => 'mobile ' + (m + 1) + ' ' + this.data.getColor(m).symbole;
+        if (mobiles.length === 0) {
+            return ['Le ' + nomR + ' est la référence : par rapport à lui-même, il est toujours à l’origine (0 ; 0). ' +
+                'Choisis un autre mobile dans « Mobile ».'];
+        }
+        let lignes = [];
+        const communs = mobiles.map(m => this.data.getPositions(m).length);
+        // Mobiles pointés, mais jamais sur la même image que la référence
+        mobiles.forEach((m, i) => {
+            if (communs[i] === 0 && this.data.getPointCount(m) > 0 && this.data.getPointCount(r) > 0) {
+                const mot = nom(m);
+                lignes.push(mot.charAt(0).toUpperCase() + mot.slice(1) + ' : jamais pointé sur la même image que le ' + nomR +
+                    ', donc aucune mesure par rapport à lui. Pointe les deux mobiles sur les mêmes images (étape « 🎯 Pointer »).');
+            }
+        });
+        if (Math.max(0, ...communs) < n) {
+            if (lignes.length < mobiles.length) {
+                lignes.push('Pas encore assez de points pour ce graphique : il faut au moins ' + n + ' image' + (n > 1 ? 's' : '') + ' où ' +
+                    (mobiles.length === 1 ? 'le ' + nom(mobiles[0]) : 'un mobile') + ' et le ' + nomR +
+                    ' sont pointés tous les deux (étape « 🎯 Pointer »).');
+            }
+            return lignes;
+        }
+        // D'autres mobiles sont tracés ; celui-ci n'a pas assez d'images communes : on le dit
+        mobiles.forEach((m, i) => {
+            if (communs[i] > 0 && communs[i] < n) {
+                const mot = nom(m);
+                lignes.push(mot.charAt(0).toUpperCase() + mot.slice(1) + ' : pointé en même temps que le ' + nomR + ' sur ' +
+                    (communs[i] === 1 ? '1 seule image' : communs[i] + ' images seulement') + ' ; il en faut au moins ' + n +
+                    ' pour ce graphique, donc il n’est pas tracé.');
+            }
+        });
+        if (this.resume) lignes.push(this.resume);
+        if (this.uniteAffichee() === 'px') lignes.push(MESSAGE_SANS_ETALONNAGE);
+        return lignes;
     }
 
     destroy() {

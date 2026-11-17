@@ -37,7 +37,15 @@ class Data {
         this.uniteLongueur = 'm';// unité d'affichage après étalonnage : 'm' ou 'km'
         this.echelle = null;     // mètres par pixel vidéo (null = pas d'étalonnage)
         this.historique = [];    // actions annulables : {m, image, ancien}
+        this.referentiel = -1;   // -1 : mesures dans l'image ; m ≥ 0 : par rapport au mobile m
         this.colors = MOBILES_STYLE;
+    }
+
+    // Référentiel en vigueur : -1 (l'image de la vidéo) ou numéro du mobile de référence.
+    // Un mobile n'est référence que s'il existe et s'il y a au moins un autre mobile.
+    refActif() {
+        const r = this.referentiel;
+        return Number.isInteger(r) && r >= 0 && r < this.numMobiles && this.numMobiles > 1 ? r : -1;
     }
 
     // Cadence et unités de la source (appelé à chaque changement de vidéo)
@@ -92,6 +100,7 @@ class Data {
 
     setNumMobiles(num) {
         this.numMobiles = Math.max(1, Math.min(num, 4));
+        if (this.refActif() < 0) this.referentiel = -1; // mobile de référence disparu
         this.clearAllPoints();
     }
 
@@ -192,21 +201,36 @@ class Data {
     // Unité des positions : « m » (ou « km ») si une échelle est validée, sinon « px »
     getUnite() { return this.echelle ? this.uniteLongueur : 'px'; }
 
-    // Positions d'un mobile dans l'unité courante
-    getPositions(m = 0) {
+    // Positions d'un mobile dans l'unité courante.
+    // Référentiel d'un mobile R (ref ≥ 0) : position(m, image k) − position(R, image k),
+    // seulement aux images où m et R sont tous deux pointés (pas d'interpolation). C'est une
+    // translation : les axes gardent les directions de l'image. R lui-même n'a pas de position
+    // (il est l'origine). « numero » reste le numéro du point de m sur l'image.
+    getPositions(m = 0, ref = this.refActif()) {
         let f = this.echelle ? this.echelle / this.facteurLongueur() : 1;
-        return this.getPointsForMobile(m).map((p, i) => ({
-            numero: i + 1,
-            image: p.image,
-            time: p.time,
-            x: p.xpx * f,
-            y: p.ypx * f
-        }));
+        const points = this.getPointsForMobile(m);
+        if (ref < 0) {
+            return points.map((p, i) => ({
+                numero: i + 1,
+                image: p.image,
+                time: p.time,
+                x: p.xpx * f,
+                y: p.ypx * f
+            }));
+        }
+        if (m === ref) return [];
+        let positions = [];
+        points.forEach((p, i) => {
+            const o = this.pointA(ref, p.image);
+            if (!o) return;
+            positions.push({ numero: i + 1, image: p.image, time: p.time, x: (p.xpx - o.xpx) * f, y: (p.ypx - o.ypx) * f });
+        });
+        return positions;
     }
 
     // Intervalles avant arrondi (d exact)
-    intervallesBruts(m = 0) {
-        let pos = this.getPositions(m);
+    intervallesBruts(m = 0, ref = this.refActif()) {
+        let pos = this.getPositions(m, ref);
         let intervalles = [];
         for (let i = 1; i < pos.length; i++) {
             let a = pos[i - 1], b = pos[i];
@@ -221,14 +245,15 @@ class Data {
     // Lecture de la chronophotographie : pour chaque intervalle entre deux points successifs,
     // la distance d parcourue, la durée Δt et la vitesse v = d / Δt (valeurs exactes ; elles sont
     // arrondies seulement à l'affichage, avec les décimales de formats()).
-    getIntervalles(m = 0) {
-        return this.intervallesBruts(m).map(iv => Object.assign(iv, { v: iv.d / iv.duree }));
+    getIntervalles(m = 0, ref = this.refActif()) {
+        return this.intervallesBruts(m, ref).map(iv => Object.assign(iv, { v: iv.d / iv.duree }));
     }
 
-    // Vrai si toutes les durées Δt (tous mobiles) sont égales (à 2 % près)
-    dureesEgales() {
+    // Vrai si toutes les durées Δt (tous mobiles) sont égales (à 2 % près), dans le référentiel
+    // donné (par défaut celui en vigueur ; -1 : les points tels qu'ils sont sur l'image)
+    dureesEgales(ref = this.refActif()) {
         let durees = [];
-        for (let m = 0; m < this.numMobiles; m++) durees = durees.concat(this.intervallesBruts(m).map(iv => iv.duree));
+        for (let m = 0; m < this.numMobiles; m++) durees = durees.concat(this.intervallesBruts(m, ref).map(iv => iv.duree));
         if (durees.length < 2) return true;
         const min = Math.min(...durees), max = Math.max(...durees);
         return max - min <= 0.02 * min;
@@ -266,7 +291,7 @@ class Data {
 
     // Pour la sauvegarde de la séance (sessionStorage)
     serialiser() {
-        return { numMobiles: this.numMobiles, points: this.points, historique: this.historique };
+        return { numMobiles: this.numMobiles, points: this.points, historique: this.historique, referentiel: this.refActif() };
     }
 
     // Vérifie strictement une sauvegarde ; renvoie faux (sans rien changer) si elle est
@@ -283,6 +308,10 @@ class Data {
             if (!Array.isArray(pts) || !pts.every(pointValide)) return false;
             if (new Set(pts.map(p => p.image)).size !== pts.length) return false;
         }
+        // Référentiel (absent dans les sauvegardes plus anciennes) : -1 ou un mobile existant,
+        // un mobile seulement s'il y en a au moins deux
+        if (o.referentiel !== undefined && !(Number.isInteger(o.referentiel) && o.referentiel >= -1 && o.referentiel < n &&
+            (o.referentiel === -1 || n >= 2))) return false;
         if (o.historique !== undefined) {
             if (!Array.isArray(o.historique)) return false;
             for (const a of o.historique) {
@@ -299,6 +328,7 @@ class Data {
         this.numMobiles = o.numMobiles;
         this.points = o.points.map(pts => pts.map(p => ({ image: p.image, xpx: p.xpx, ypx: p.ypx })).sort((a, b) => a.image - b.image));
         this.historique = (o.historique || []).map(a => ({ m: a.m, image: a.image, ancien: a.ancien ? { image: a.ancien.image, xpx: a.ancien.xpx, ypx: a.ancien.ypx } : null }));
+        this.referentiel = o.referentiel === undefined ? -1 : o.referentiel;
         return true;
     }
 }

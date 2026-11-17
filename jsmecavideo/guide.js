@@ -29,7 +29,8 @@ const ETAPES_GUIDE = [
   },
   {
     titre: 'Observer',
-    texte: () => (data.dureesEgales()
+    // Les marques sur l'image : durées des points tels qu'ils sont pointés (pas le référentiel choisi)
+    texte: () => (data.dureesEgales(-1)
       ? 'Les marques forment une chronophotographie : les positions du mobile à intervalles de temps égaux. '
       : 'Attention : tes points ne sont pas tous séparés par la même durée Δt (' +
         (data.instants ? 'la caméra ne filme pas à un rythme parfaitement régulier' : 'pas changé, point inséré, mobile sauté…') + '). ') +

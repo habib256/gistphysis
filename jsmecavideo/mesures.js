@@ -12,6 +12,15 @@
 //   v est calculée avec les valeurs exactes puis arrondie ; d et Δt sont écrits avec assez de
 //   chiffres pour que d / Δt, refait avec les valeurs affichées, redonne v à l'arrondi près
 //   (une unité du dernier chiffre au plus).
+// - Référentiel : si un mobile est choisi comme référence (étape Graphiques), positions,
+//   distances et vitesses des autres mobiles sont données par rapport à lui (seulement aux
+//   images où les deux sont pointés) ; en-têtes et première ligne du fichier le disent.
+
+// « par rapport au mobile 1 » quand un mobile est la référence, sinon rien
+function texteParRapport() {
+  const r = data.refActif();
+  return r >= 0 ? ' par rapport au mobile ' + (r + 1) : '';
+}
 
 // Écrit un nombre avec `decimales` chiffres après la virgule (virgule française)
 // Arrondi correct des demi-unités (0,95 → 1,0 ; toFixed donnerait 0,9) ; décimales négatives :
@@ -66,8 +75,9 @@ function tableauMesures(lisible = false) {
   const num = lisible ? nombreLisible : nombreFr;
   const ud = data.getUnite(), uv = data.uniteVitesse(), ut = data.libelleTemps();
   const plusieurs = data.numMobiles > 1;
-  const entetes = (plusieurs ? ['Mobile'] : []).concat(['Point n°', 'Image n°', 'instant t (' + ut + ')', 'x (' + ud + ')', 'y (' + ud + ')',
-    'distance d depuis le point précédent (' + ud + ')', 'durée Δt depuis le point précédent (' + ut + ')', 'v = d / Δt (' + uv + ')']);
+  const pr = texteParRapport();
+  const entetes = (plusieurs ? ['Mobile'] : []).concat(['Point n°', 'Image n°', 'instant t (' + ut + ')', 'x' + pr + ' (' + ud + ')', 'y' + pr + ' (' + ud + ')',
+    'distance d depuis le point précédent' + pr + ' (' + ud + ')', 'durée Δt depuis le point précédent (' + ut + ')', 'v = d / Δt' + pr + ' (' + uv + ')']);
   let lignes = [];
   for (let m = 0; m < data.numMobiles; m++) {
     const pts = data.getPositions(m);
@@ -93,7 +103,7 @@ function texteEchelle() {
 function texteDurees() {
   let durees = [];
   for (let m = 0; m < data.numMobiles; m++) durees = durees.concat(data.intervallesBruts(m).map(iv => iv.duree));
-  if (durees.length === 0) return 'un seul point par mobile';
+  if (durees.length === 0) return data.refActif() >= 0 ? 'moins de deux images où un mobile et la référence sont pointés tous les deux' : 'un seul point par mobile';
   const f = data.formats(), ut = data.libelleTemps();
   const min = Math.min(...durees), max = Math.max(...durees);
   if (data.dureesEgales()) return 'durée Δt entre deux points : ' + nombreFr(min, f.t) + ' ' + ut;
@@ -111,8 +121,11 @@ function descriptionMesures() {
   const echelle = data.echelle
     ? 'échelle : ' + texteEchelle() + ' (' + calibrator.texteLongueur() + ' pour ' + nombreFr(calibrator.pixelDistance, 1) + ' px vidéo)'
     : 'sans étalonnage : distances en pixels vidéo (px)';
+  const r = data.refActif();
+  const referentiel = r >= 0 ? ' — mesures par rapport au mobile ' + (r + 1) + ' (référence : origine (0 ; 0), pas de ligne ; ' +
+    'axes x et y dans les directions de l’image ; seulement les images où les deux mobiles sont pointés)' : '';
   return 'jsMecaVidéo — vidéo : ' + nom + ' — ' + cadence + ' — ' + texteDurees() + ' — ' + echelle +
-    ' — instant t compté depuis le premier point';
+    ' — instant t compté depuis le premier point' + referentiel;
 }
 
 // Construit le texte du fichier CSV (une ligne par point, tous les mobiles)
@@ -141,7 +154,7 @@ function afficherTableauMesures(zone) {
   table.id = 'tableau-mesures';
   const legende = document.createElement('caption');
   legende.className = 'sr-only';
-  legende.textContent = 'Mesures : une ligne par point';
+  legende.textContent = 'Mesures' + texteParRapport() + ' : une ligne par point';
   table.appendChild(legende);
   const thead = document.createElement('thead');
   const tr = document.createElement('tr');
@@ -185,7 +198,8 @@ function exporterCSV() {
   let url = URL.createObjectURL(blob);
   let lien = document.createElement('a');
   lien.href = url;
-  lien.download = 'mesures-' + nomVideoCourante() + '.csv';
+  const r = data.refActif();
+  lien.download = 'mesures-' + nomVideoCourante() + (r >= 0 ? '-par-rapport-au-mobile-' + (r + 1) : '') + '.csv';
   document.body.appendChild(lien);
   lien.click();
   lien.remove();
