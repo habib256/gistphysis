@@ -174,7 +174,7 @@
         /* ---------------- Menus ---------------- */
         #menu {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+            grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
             gap: 4px 6px;
             padding: 6px;
         }
@@ -288,7 +288,7 @@
         }
 
         body.emp.etroit #menu {
-            grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
             padding: 4px 6px;
         }
 
@@ -1038,15 +1038,16 @@
     <div id="app">
         <div id="panneau">
             <div id="menu">
+                <!-- « Vidéo » d'abord (au-dessus dans le panneau latéral, à gauche en portrait), puis « Étape » -->
+                <label class="champ"><span class="legende">Vidéo</span>
+                    <select id="choix-video" aria-label="Vidéo"></select>
+                </label>
                 <label class="champ"><span class="legende">Étape</span>
                     <select id="choix-mode" aria-label="Ce que tu fais">
                         <option value="Pointage">🎯 Pointer</option>
                         <option value="Calibration">📏 Étalonner</option>
                         <option value="Graphique">📈 Graphiques</option>
                     </select>
-                </label>
-                <label class="champ"><span class="legende">Vidéo</span>
-                    <select id="choix-video" aria-label="Vidéo"></select>
                 </label>
                 <div id="reglages">
                     <label class="champ-ligne" title="Nombre d’objets en mouvement que tu pointes sur chaque image">
