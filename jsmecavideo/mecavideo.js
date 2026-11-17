@@ -599,7 +599,7 @@ function consigneAction() {
   if (m < 0) return 'Image déjà pointée : pointer à nouveau remplace son point.';
   const quoi = data.numMobiles > 1 ? 'le mobile ' + (m + 1) + ' ' + data.getColor(m).symbole : 'le centre du mobile';
   if (clavier.actif) return '⌨️ Flèches : réticule (Maj ×10) · Entrée : pointer ' + quoi + ' · Échap : sortir.';
-  if (tactile) return '👆 Pose le doigt sur ' + quoi + ', ajuste avec la loupe, relâche.';
+  if (tactile) return '👆 Pose le doigt sur ' + quoi + ', ajuste doucement, relâche.';
   return '🖱 Clique sur ' + quoi + '. Ctrl+clic ou « ↶ Annuler » : retirer le dernier point.';
 }
 

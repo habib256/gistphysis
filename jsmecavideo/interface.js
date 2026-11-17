@@ -5,20 +5,40 @@
 //   sans plafond ; sa mémoire vaut taille CSS × densité de l'écran (plafonnée) pour rester net.
 //   Les coordonnées p5 (width, height, mouseX…) sont en pixels CSS ; un geste est converti
 //   en pixels vidéo au moment où il est enregistré.
-// - Pointage au doigt : on pose le doigt, une loupe (×3) apparaît au-dessus avec un réticule ;
-//   on glisse pour ajuster, le point est enregistré au relâchement. Relâcher hors de l'image
-//   annule. Si l'écran change de taille (rotation) pendant le geste, le geste est annulé.
+// - Pointage au doigt : on pose le doigt, une loupe (×3 à ×4, pixels de la vidéo elle-même)
+//   apparaît au-dessus avec un réticule ; on glisse pour ajuster, le point est enregistré au
+//   relâchement. Glisser lentement déplace le réticule 3 à 4 fois moins que le doigt (réglage
+//   fin : dans la loupe, l'image agrandie reste immobile et la croix suit le doigt), glisser
+//   vite le déplace autant que le doigt. Au relâchement, le point est celui que le réticule
+//   montrait un peu avant (80 ms) : le saut du doigt qui se lève est ignoré. Glisser nettement
+//   hors de l'image annule. Si l'écran change de taille (rotation) pendant le geste, il est annulé.
 // - Clavier : quand l'image a le focus, les flèches déplacent le réticule (1 pixel vidéo,
 //   10 avec Maj), Entrée pointe, Retour arrière annule. Ailleurs, ← → changent d'image.
 
 const DENSITE_MAX = 2;          // densité de pixels maximale du canevas (tablettes modestes)
 const PIXELS_MAX = 6e6;         // pixels réels maximum du canevas
-const LOUPE_RAYON = 60;         // rayon de la loupe (px à l'écran)
-const LOUPE_ZOOM = 3;           // grossissement par rapport à l'affichage
-const LOUPE_ECART = 34;         // distance entre le bord de la loupe et le doigt
+// Loupe. Tailles en px CSS ; sur la tablette visée (10 pouces, 1280 × 800 px CSS), 6 px ≈ 1 mm.
+const LOUPE_RAYON_MIN = 44;     // rayon de la loupe : 16 % du petit côté de l'image, entre 44…
+const LOUPE_RAYON_MAX = 110;    // … et 110 px (3,7 cm de diamètre sur la tablette)
+const LOUPE_PART = 0.16;
+const LOUPE_PX_VIDEO = 6;       // taille visée d'un pixel vidéo dans la loupe (px)…
+const LOUPE_ZOOM_MIN = 3;       // … avec un grossissement (par rapport à l'affichage) de 3…
+const LOUPE_ZOOM_MAX = 4;       // … à 4
+const LOUPE_ECART = 56;         // distance entre le doigt et le bord de la loupe (≈ 9 mm)
+const LOUPE_ECART_MIN = 30;     // jamais moins (sinon la loupe change de place)
+const LOUPE_HYSTERESIS = 16;    // la loupe ne revient à une place préférée qu'avec 16 px de marge
+// Doigt : réglage fin et lever
+const VITESSE_LENTE = 0.15;     // px/ms : en dessous, le réticule avance 1/zoom fois le doigt
+const VITESSE_RAPIDE = 0.6;     // px/ms : au-dessus, il avance autant que le doigt
+const FENETRE_VITESSE = 50;     // ms : vitesse du doigt mesurée sur ce temps (tremblement lissé)
+const RETOUR_LEVER = 80;        // ms : au lever, on reprend la position du réticule d'avant
+const MARGE_ANNULATION = 32;    // px : le geste n'est annulé qu'au-delà de cette marge hors image
+const PRISE_BOUT_DOIGT = 32;    // px : distance de prise d'un bout d'étalonnage au doigt (24 à la souris)
 
-// État des pointeurs (positions en pixels CSS du canevas)
-let pointeurTactile = { actif: false, id: null, x: 0, y: 0, dansImage: false, glisse: 0 };
+// État des pointeurs (positions en pixels CSS du canevas). Doigt : (x, y) = doigt,
+// (rx, ry) = réticule ; echantillons = positions récentes du doigt (vitesse) ;
+// historique = positions récentes du réticule (retour au lever)
+let pointeurTactile = { actif: false, id: null, x: 0, y: 0, rx: 0, ry: 0, dansImage: false, glisse: 0, echantillons: [], historique: [] };
 let souris = { dansCanvas: false, x: 0, y: 0, glisse: 0, ignorerClic: false, clientX: -1, clientY: -1 };
 let clavier = { actif: false, x: 0, y: 0 };   // réticule clavier (pixels vidéo)
 let typePointeur = (window.matchMedia && matchMedia('(pointer: coarse)').matches) ? 'tactile' : 'souris';
@@ -251,10 +271,10 @@ function terminerGlisser() {
 }
 
 // Point d'étalonnage proche (1 ou 2) d'une position écran, 0 sinon
-function pointEtalonnageProche(p) {
+function pointEtalonnageProche(p, rayon = 24) {
   if (etat !== 'Calibration' || !calibrator) return 0;
   if (typeof confirmationOuverte === 'function' && confirmationOuverte()) return 0; // pas pendant une question
-  let meilleur = 0, dmin = 24;
+  let meilleur = 0, dmin = rayon;
   [calibrator.point1, calibrator.point2].forEach((q, i) => {
     if (!q) return;
     const e = versEcran(q.x, q.y);
@@ -264,6 +284,66 @@ function pointEtalonnageProche(p) {
   return meilleur;
 }
 
+// Instant d'un événement (ms, horloge de performance.now) : celui où l'écran l'a capté, même si
+// la page, occupée, le traite en retard ; repli sur performance.now() si le navigateur en donne
+// un autre repère
+function instantEvenement(e) {
+  const t = e && e.timeStamp, maintenant = performance.now();
+  return t > 0 && t <= maintenant + 1000 && t > maintenant - 60000 ? t : maintenant;
+}
+
+// Grossissement de la loupe par rapport à l'affichage : un pixel vidéo y mesure environ
+// LOUPE_PX_VIDEO px, entre ×3 et ×4
+function zoomLoupe() {
+  const s = dimsAffichage();
+  const k = width / s.w; // px d'écran par pixel vidéo
+  return constrain(LOUPE_PX_VIDEO / k, LOUPE_ZOOM_MIN, LOUPE_ZOOM_MAX);
+}
+
+// Démultiplication du doigt : 1/zoom quand il glisse lentement (l'image agrandie reste alors
+// immobile dans la loupe : la croix avance exactement comme le doigt), 1 quand il va vite
+function gainDoigt(vitesse) {
+  const lent = 1 / zoomLoupe();
+  if (vitesse <= VITESSE_LENTE) return lent;
+  if (vitesse >= VITESSE_RAPIDE) return 1;
+  return lent + (1 - lent) * (vitesse - VITESSE_LENTE) / (VITESSE_RAPIDE - VITESSE_LENTE);
+}
+
+// Vitesse du doigt (px/ms) sur les FENETRE_VITESSE dernières ms : un tremblement rapide se
+// compense et reste « lent »
+function vitesseDoigt(t, x, y) {
+  const e = pointeurTactile.echantillons;
+  let ref = e[0];
+  for (let i = e.length - 1; i >= 0; i--) {
+    if (t - e[i].t >= FENETRE_VITESSE) { ref = e[i]; break; }
+  }
+  if (!ref) return 0;
+  return Math.hypot(x - ref.x, y - ref.y) / Math.max(t - ref.t, 16);
+}
+
+function noterReticule(t) {
+  const h = pointeurTactile.historique;
+  h.push({ t: t, x: pointeurTactile.rx, y: pointeurTactile.ry });
+  while (h.length > 2 && t - h[1].t > 4 * RETOUR_LEVER) h.shift();
+}
+
+// Position du réticule RETOUR_LEVER ms avant le lever (celle que l'élève voyait quand il a
+// décidé de lever le doigt) ; le saut du doigt qui se lève ne compte pas
+function reticuleAvantLever(t) {
+  const h = pointeurTactile.historique;
+  let p = h[0];
+  for (let i = 0; i < h.length; i++) {
+    if (h[i].t <= t - RETOUR_LEVER) p = h[i];
+    else break;
+  }
+  return p ? { x: p.x, y: p.y } : { x: pointeurTactile.rx, y: pointeurTactile.ry };
+}
+
+function dansZoneGeste(p) {
+  const m = MARGE_ANNULATION;
+  return p.x >= -m && p.x <= width + m && p.y >= -m && p.y <= height + m;
+}
+
 function installerPointageTactile(elt) {
   elt.addEventListener('touchstart', (e) => {
     if (!modePointageActif()) return; // mode Graphiques : on laisse le navigateur gérer
@@ -271,19 +351,35 @@ function installerPointageTactile(elt) {
     typePointeur = 'tactile';
     souris.dansCanvas = false;
     clavier.actif = false;
-    if (e.touches.length > 1) {
-      annulerToucher(); // deuxième doigt (pincement…) : on abandonne le geste (bout remis en place)
+    // Deuxième doigt SUR L'IMAGE (pincement…) : on abandonne le geste (bout remis en place).
+    // Un pouce posé ailleurs (bord de l'écran, panneau) ne compte pas : e.touches les compterait.
+    const surImage = e.targetTouches ? e.targetTouches.length : e.touches.length;
+    if (surImage > 1 || pointeurTactile.actif) {
+      if (pointeurTactile.actif) annulerToucher();
       return;
     }
     const t = e.changedTouches[0];
     const p = coordonneesCanvas(elt, t.clientX, t.clientY);
+    const instant = instantEvenement(e);
     pointeurTactile.actif = true;
     pointeurTactile.id = t.identifier;
     pointeurTactile.x = p.x;
     pointeurTactile.y = p.y;
     pointeurTactile.dansImage = estDansImage(p);
-    pointeurTactile.glisse = pointEtalonnageProche(p);
-    if (pointeurTactile.glisse) calibrator.debutGlisser(pointeurTactile.glisse);
+    pointeurTactile.glisse = pointEtalonnageProche(p, PRISE_BOUT_DOIGT);
+    pointeurTactile.echantillons = [{ t: instant, x: p.x, y: p.y }];
+    // Réticule : sous le doigt, ou sur le bout d'étalonnage saisi (il ne saute pas sous le doigt)
+    let r = p;
+    if (pointeurTactile.glisse) {
+      calibrator.debutGlisser(pointeurTactile.glisse);
+      const q = pointeurTactile.glisse === 1 ? calibrator.point1 : calibrator.point2;
+      r = versEcran(q.x, q.y);
+    }
+    pointeurTactile.rx = constrain(r.x, 0, width);
+    pointeurTactile.ry = constrain(r.y, 0, height);
+    pointeurTactile.historique = [];
+    noterReticule(instant);
+    dessinerLoupe.place = -1; // nouvelle loupe : place choisie de nouveau
   }, { passive: false });
 
   elt.addEventListener('touchmove', (e) => {
@@ -292,11 +388,20 @@ function installerPointageTactile(elt) {
     const t = toucherSuivi(e.changedTouches);
     if (!t) return;
     const p = coordonneesCanvas(elt, t.clientX, t.clientY);
+    const instant = instantEvenement(e);
+    // Le réticule avance du déplacement du doigt, démultiplié quand le doigt va lentement
+    const g = gainDoigt(vitesseDoigt(instant, p.x, p.y));
+    pointeurTactile.rx = constrain(pointeurTactile.rx + g * (p.x - pointeurTactile.x), 0, width);
+    pointeurTactile.ry = constrain(pointeurTactile.ry + g * (p.y - pointeurTactile.y), 0, height);
     pointeurTactile.x = p.x;
     pointeurTactile.y = p.y;
-    pointeurTactile.dansImage = estDansImage(p);
+    const ech = pointeurTactile.echantillons;
+    ech.push({ t: instant, x: p.x, y: p.y });
+    while (ech.length > 2 && instant - ech[1].t > 3 * FENETRE_VITESSE) ech.shift();
+    pointeurTactile.dansImage = dansZoneGeste(p);
+    noterReticule(instant);
     if (pointeurTactile.glisse && pointeurTactile.dansImage) {
-      const v = versVideo(p.x, p.y);
+      const v = versVideo(pointeurTactile.rx, pointeurTactile.ry);
       calibrator.deplacerPoint(pointeurTactile.glisse, v.x, v.y);
     }
   }, { passive: false });
@@ -306,22 +411,34 @@ function installerPointageTactile(elt) {
     e.preventDefault();
     const t = toucherSuivi(e.changedTouches);
     if (!t) return;
-    const p = coordonneesCanvas(elt, t.clientX, t.clientY);
+    // La position du lever (et les derniers mouvements) ne comptent pas : on prend le réticule
+    // tel qu'il était affiché juste avant
+    const garde = pointeurTactile.dansImage;
+    const r = reticuleAvantLever(instantEvenement(e));
     const glisse = pointeurTactile.glisse;
     if (glisse) {
-      terminerGlisser();
-      annulerToucher();
+      if (garde) {
+        const v = versVideo(r.x, r.y);
+        calibrator.deplacerPoint(glisse, v.x, v.y);
+        terminerGlisser();
+      }
+      annulerToucher(); // hors de l'image : le bout revient à sa place
       surEtalonnageDeplace();
       return;
     }
     annulerToucher();
-    if (estDansImage(p)) {
-      const v = versVideo(p.x, p.y);
+    if (garde) {
+      const v = versVideo(r.x, r.y);
       traiterPointage(v.x, v.y);
     }
   }, { passive: false });
 
-  elt.addEventListener('touchcancel', annulerToucher);
+  // Le navigateur reprend le geste (appui long, geste système…) : rien n'est enregistré, on le dit
+  elt.addEventListener('touchcancel', () => {
+    const enCours = pointeurTactile.actif;
+    annulerToucher();
+    if (enCours) afficherMessageTemporaire('Geste interrompu : rien n’est enregistré. Recommence.', 2500);
+  });
 
   // Souris : le viseur suit la souris sur l'image ; glisser un point d'étalonnage
   elt.addEventListener('mousemove', (e) => {
@@ -498,7 +615,7 @@ function installerRaccourcis() {
 // Position du viseur (pixels CSS du canevas) ou null s'il ne faut pas l'afficher
 function positionViseur() {
   if (pointeurTactile.actif) {
-    return pointeurTactile.dansImage ? { x: pointeurTactile.x, y: pointeurTactile.y } : null;
+    return pointeurTactile.dansImage ? { x: pointeurTactile.rx, y: pointeurTactile.ry } : null;
   }
   if (clavier.actif) return versEcran(clavier.x, clavier.y);
   if (souris.dansCanvas && souris.x >= 0 && souris.x <= width && souris.y >= 0 && souris.y <= height) {
@@ -518,32 +635,70 @@ function loupeVisible() {
 function messagePointageTactile() {
   if (!pointeurTactile.actif) return null;
   if (!pointeurTactile.dansImage) return '✋ Relâche ici pour annuler, ou reviens sur l’image.';
-  if (pointeurTactile.glisse) return '🔍 Glisse pour déplacer ce bout, puis relâche.';
-  return '🔍 Ajuste en regardant la loupe, puis relâche le doigt pour pointer.';
+  if (pointeurTactile.glisse) return '🔍 Regarde la loupe : glisse doucement pour placer ce bout, puis relâche.';
+  return '🔍 Regarde la loupe : glisse doucement pour placer la croix, puis relâche.';
 }
 
-// Loupe ×3 (par rapport à l'affichage) de la zone autour de (x, y), entièrement visible :
-// au-dessus du doigt, sinon sur le côté. À dessiner après l'image et les points, avant le viseur.
-function dessinerLoupe(x, y, couleurReticule) {
-  const R = Math.max(20, Math.min(LOUPE_RAYON, Math.floor(Math.min(width, height) / 2) - 3));
-  const Z = LOUPE_ZOOM;
-  const ecart = pointeurTactile.actif ? LOUPE_ECART : 18;
-  let cx = x, cy = y - R - ecart;
-  if (cy - R < 2) {
-    // Trop près du haut : loupe sur le côté, vers le centre de l'image. Hystérésis : elle ne
-    // change de côté que si le viseur dépasse nettement le milieu (pas de saut de gauche à droite).
-    const milieu = width / 2, marge = Math.min(40, width / 8);
-    if (x < milieu - marge) dessinerLoupe.cote = 1;
-    else if (x > milieu + marge) dessinerLoupe.cote = -1;
-    else if (!dessinerLoupe.cote) dessinerLoupe.cote = x < milieu ? 1 : -1;
-    cy = y;
-    cx = x + dessinerLoupe.cote * (R + ecart);
-  }
-  cx = constrain(cx, R + 2, width - R - 2);
-  cy = constrain(cy, R + 2, height - R - 2);
+// Rayon de la loupe (px) pour l'image affichée
+function rayonLoupe() {
+  const petit = Math.min(width, height);
+  return Math.round(Math.min(constrain(LOUPE_PART * petit, LOUPE_RAYON_MIN, LOUPE_RAYON_MAX), petit / 2 - 3));
+}
 
-  const d = pixelDensity();
-  const cote = 2 * R / Z; // côté de la zone agrandie (px CSS)
+// Place du centre de la loupe pour un doigt (ou un viseur) en (ax, ay) : entièrement dans
+// l'image et jamais sur le doigt. Par ordre de préférence : au-dessus, en diagonale vers le
+// centre de l'image, sur le côté vers le centre, puis vers l'extérieur (jamais en dessous : la
+// main est là). Elle reste à sa place tant qu'elle convient (pas de saut d'un côté à l'autre).
+function placerLoupe(ax, ay, R, ecart, ecartMin) {
+  const m = 2;
+  const milieu = width / 2, marge = Math.min(40, width / 8);
+  if (ax < milieu - marge) placerLoupe.cote = 1;
+  else if (ax > milieu + marge) placerLoupe.cote = -1;
+  else if (!placerLoupe.cote) placerLoupe.cote = ax < milieu ? 1 : -1;
+  const s = placerLoupe.cote, d = R + ecart, k = Math.SQRT1_2;
+  const directions = [[0, -1], [s * k, -k], [s, 0], [-s * k, -k], [-s, 0]];
+  const places = directions.map(([dx, dy]) => {
+    const c = { x: constrain(ax + dx * d, R + m, width - R - m), y: constrain(ay + dy * d, R + m, height - R - m) };
+    c.distance = Math.hypot(c.x - ax, c.y - ay);
+    return c;
+  });
+  const precedente = dessinerLoupe.place >= 0 ? dessinerLoupe.place : directions.length;
+  let choix = -1;
+  for (let i = 0; i < places.length && choix < 0; i++) {
+    // Revenir à une place préférée demande une marge (hystérésis)
+    const requis = R + ecartMin + (i < precedente ? LOUPE_HYSTERESIS : 0);
+    if (places[i].distance >= requis || (i === precedente && places[i].distance >= R + ecartMin)) choix = i;
+  }
+  if (choix < 0) {
+    // Image trop petite pour respecter l'écart : la place la plus éloignée du doigt
+    choix = 0;
+    places.forEach((c, i) => { if (c.distance > places[choix].distance) choix = i; });
+  }
+  dessinerLoupe.place = choix;
+  return places[choix];
+}
+
+// Image à agrandir : la source elle-même (pixels de la vidéo, pas ceux de l'écran), ou null
+function sourceLoupe() {
+  const l = typeof lecteur === 'function' ? lecteur() : null;
+  if (!l || l.erreur) return null;
+  if (l.images && l.isRecorded && l.images[l.image]) return l.images[l.image]; // webcam : séquence
+  if (l.cam) return l.cam.videoWidth > 0 && !l.isRecorded ? l.cam : null;       // webcam en direct
+  return l.elt && l.isLoaded ? l.elt : null;
+}
+
+// Loupe de la zone autour du réticule (x, y), entièrement visible, jamais sous le doigt :
+// au-dessus du doigt, sinon en diagonale ou sur le côté. Pixels nets de la vidéo, grossis
+// ×3 à ×4 par rapport à l'affichage. À dessiner après l'image et les points, avant le viseur.
+function dessinerLoupe(x, y, couleurReticule) {
+  const R = rayonLoupe();
+  const Z = zoomLoupe();
+  const doigt = pointeurTactile.actif;
+  const ancre = doigt ? { x: pointeurTactile.x, y: pointeurTactile.y } : { x: x, y: y };
+  const c = placerLoupe(ancre.x, ancre.y, R, doigt ? LOUPE_ECART : 18, doigt ? LOUPE_ECART_MIN : 10);
+  const cx = c.x, cy = c.y;
+  dessinerLoupe.derniere = { cx: cx, cy: cy, R: R, Z: Z, x: x, y: y, ax: ancre.x, ay: ancre.y };
+
   const ctx = drawingContext;
   ctx.save();
   ctx.beginPath();
@@ -553,9 +708,22 @@ function dessinerLoupe(x, y, couleurReticule) {
   ctx.fill();
   ctx.clip();
   ctx.imageSmoothingEnabled = false; // pixels nets : on voit exactement ce qu'on pointe
-  // Copie du canevas sur lui-même (coordonnées source en pixels réels de la mémoire)
-  const sx = (x - cote / 2) * d, sy = (y - cote / 2) * d, sc = cote * d;
-  ctx.drawImage(ctx.canvas, sx, sy, sc, sc, cx - R, cy - R, 2 * R, 2 * R);
+  const src = sourceLoupe();
+  const s = dimsAffichage();
+  if (src) {
+    // Zone de la vidéo (pixels vidéo) centrée sur le réticule, découpée aux bords de l'image
+    const e = Z * width / s.w;          // px de loupe par pixel vidéo
+    const v = versVideo(x, y), demi = R / e;
+    const x0 = Math.max(0, v.x - demi), x1 = Math.min(s.w, v.x + demi);
+    const y0 = Math.max(0, v.y - demi), y1 = Math.min(s.h, v.y + demi);
+    if (x1 > x0 && y1 > y0) {
+      ctx.drawImage(src, x0, y0, x1 - x0, y1 - y0, cx + (x0 - v.x) * e, cy + (y0 - v.y) * e, (x1 - x0) * e, (y1 - y0) * e);
+    }
+  } else {
+    // Pas de source (chargement…) : copie du canevas lui-même
+    const d = pixelDensity(), cote = 2 * R / Z;
+    ctx.drawImage(ctx.canvas, (x - cote / 2) * d, (y - cote / 2) * d, cote * d, cote * d, cx - R, cy - R, 2 * R, 2 * R);
+  }
   ctx.restore();
 
   push();
@@ -566,16 +734,16 @@ function dessinerLoupe(x, y, couleurReticule) {
   stroke(0);
   strokeWeight(1.5);
   ellipse(cx, cy, 2 * R + 5, 2 * R + 5);
-  const brins = [[-R + 8, 0, -6, 0], [6, 0, R - 8, 0], [0, -R + 8, 0, -6], [0, 6, 0, R - 8]];
-  stroke(255);
-  strokeWeight(3.5);
+  // Croix fine, évidée au centre (le pixel visé reste visible) : liseré sombre puis couleur,
+  // lisible sur une vidéo claire comme sombre
+  const trou = Math.max(5, 0.9 * Z * width / s.w);
+  const brins = [[-R + 6, 0, -trou, 0], [trou, 0, R - 6, 0], [0, -R + 6, 0, -trou], [0, trou, 0, R - 6]];
+  stroke(0, 0, 0, 200);
+  strokeWeight(3);
   brins.forEach(b => line(cx + b[0], cy + b[1], cx + b[2], cy + b[3]));
   stroke(couleurReticule);
-  strokeWeight(1.5);
+  strokeWeight(1.2);
   brins.forEach(b => line(cx + b[0], cy + b[1], cx + b[2], cy + b[3]));
-  noStroke();
-  fill(couleurReticule);
-  ellipse(cx, cy, 3, 3);
   pop();
 }
 

@@ -25,7 +25,9 @@ const ETAPES_GUIDE = [
   {
     titre: 'Pointer',
     texte: () => 'Étape « 🎯 Pointer » : pointe toujours le même endroit du mobile (son centre). Après chaque point, la vidéo avance de ' +
-      texteDureeEntrePoints() + '. Une erreur ? « ↶ Annuler ». Mouvement lent ? « Images pointées : 1 sur 5 » rend les distances plus faciles à comparer.'
+      texteDureeEntrePoints() + '. ' + (typeof typePointeur !== 'undefined' && typePointeur === 'tactile'
+        ? 'Au doigt : glisse doucement, la croix avance lentement dans la loupe ; relâche quand elle est sur le centre. ' : '') +
+      'Une erreur ? « ↶ Annuler ». Mouvement lent ? « Images pointées : 1 sur 5 » rend les distances plus faciles à comparer.'
   },
   {
     titre: 'Observer',

@@ -277,9 +277,12 @@ try {
   if (partie(3, 'Parcours par l’interface : étalonnage 1,85 m → 10 points → graphiques → retour')) {
     const o = await onglet(1024, 768, {tactile: true});
     await choisir(o, 'choix-mode', 'Calibration'); await pause(200);
+    // Doigt posé sur le bout visé, petit aller-retour (le réticule n'avance plus comme le doigt
+    // quand il glisse lentement : voir tests/verifier-loupe.mjs), puis relâché
     for (const [vx, vy] of [[270, 305], [270, 112]]) {
       const a = await ecranDe(o, vx - 6, vy + 4), b = await ecranDe(o, vx, vy);
-      await doigtPose(o, a.x, a.y); await pause(60);
+      await doigtPose(o, b.x, b.y); await pause(60);
+      await doigtGlisse(o, a.x, a.y); await pause(120);
       await doigtGlisse(o, b.x, b.y); await pause(120);
       await doigtLeve(o); await pause(150);
     }
