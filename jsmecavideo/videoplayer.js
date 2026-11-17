@@ -220,21 +220,30 @@ class VideoPlayer {
         this.allerImage(this.derniereImage());
     }
 
-    // Force le décodage de la première image et repère son instant
+    // Force le décodage de la première image, repère son instant, puis cale l'image 0 en son
+    // milieu (comme toute autre image : recherche vérifiée, aucun point avant son « seeked »).
     _premiereImage() {
         if (this.isLoaded || this._attentePremiere) return;
         this._attentePremiere = true;
         const elt = this.elt;
+        // Firefox (ordinateur et Android) suspend le décodage d'une vidéo invisible (élément
+        // display:none) ; une recherche faite dans cet état affiche ensuite une autre image que
+        // celle de currentTime (la 4e image au lieu de la 1re, mesuré). Dessiner l'élément une
+        // fois sur un canevas en fait une source d'image : Firefox ne le suspend plus.
+        try {
+            const c = document.createElement('canvas');
+            c.width = c.height = 1;
+            c.getContext('2d').drawImage(elt, 0, 0, 1, 1);
+        } catch (e) { /* rien : seul Firefox en a besoin */ }
         const fin = () => {
             elt.removeEventListener('seeked', fin);
             // Certaines vidéos commencent après 0 s (première image à 0,12 s pour
-            // TableHorizRectiligneUniforme) : le navigateur ramène alors la position au début réel.
-            if (elt.currentTime > 0.0015) {
-                this.debut = elt.currentTime + 0.001;
-                elt.currentTime = this.debut;
-            }
-            this.image = 0;
+            // TableHorizRectiligneUniforme) : Chrome ramène alors la position au début réel,
+            // Firefox fait commencer la vidéo à 0 s. Dans les deux cas : début = position atteinte.
+            if (elt.currentTime > 0.0015) this.debut = elt.currentTime + 0.001;
             this.isLoaded = true;
+            this.image = -1;  // force une vraie recherche
+            this.allerImage(0);
             if (typeof surSourcePrete === 'function') surSourcePrete();
         };
         elt.addEventListener('seeked', fin);
