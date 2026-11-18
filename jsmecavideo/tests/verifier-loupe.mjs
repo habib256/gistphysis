@@ -28,7 +28,7 @@
 //      double toucher ;
 //   7. coût du dessin d'une image pendant un geste, processeur ralenti ×6 (mesure, sans seuil) ;
 //   8. défauts relevés en relecture (8.1 à 8.8 échouaient sur le commit 8902a62, 8.9 — deuxième
-//      relecture — sur 5feed34) : lever après un
+//      relecture — sur 5feed34, 8.10 — troisième relecture — sur 9fe6dc8) : lever après un
 //      glissé rapide, glissé vif après une pause, bords et coins atteignables, élève qui converge
 //      sans dépasser, pouce posé sur l'image ; second bout tout près du premier, loupe qui ne
 //      saute pas d'un côté à l'autre, bouts d'étalonnage visibles dans la loupe à la souris.
@@ -107,7 +107,7 @@ const croix=()=>{const p=positionViseur();return p&&{x:p.x,y:p.y};};
 // lu.lever : croix affichée juste avant le dernier lever ; opts.zero : instants à 0 (repli de l'app)
 async function jouer(etapes,opts={}){arrondi=opts.arrondi||0;recus.length=0;msgs.length=0;window.__pt=null;window.__pts=[];
   const t0=performance.now()+30;const lu={};const envoyes=[];
-  for(const s of etapes){const cible=t0+s.t;await jusquA(cible);if(s.type==='end')lu.lever=croix();
+  for(const s of etapes){const cible=t0+s.t;await jusquA(cible);if(s.type==='js'){eval(s.code);continue;}if(s.type==='end')lu.lever=croix();
     envoyes.push(envoyer('touch'+s.type,s.ch||[{id:s.id??1,x:s.x,y:s.y}],opts.zero?null:cible));if(s.lire)lu[s.lire]=croix();}
   arrondi=0;const instantsOk=recus.length===envoyes.length&&recus.every((t,i)=>Math.abs(t-envoyes[i])<1e-6);
   return {lu,instantsOk,msgs:msgs.slice(),pts:window.__pts.slice()};}
@@ -132,8 +132,10 @@ async function eleve(o){const {cx,cy,decalage,angle,delai=100,vmax=0.35,tau=250,
     if(t-debut>6000){fin='trop long';break;}}
   const avant=croix();if(avant)tenue.push(versVideo(avant.x,avant.y));
   const a2=Math.PI/2+(hasard()-0.5)*2;
-  for(const k of [3,7,9]){await dormir(8);envoyer('touchmove',[{id:1,x:fx+k/9*saut*Math.cos(a2),y:fy+k/9*saut*Math.sin(a2)}],performance.now());}
-  await dormir(8);window.__pt=null;envoyer('touchend',[{id:1,x:fx,y:fy}],performance.now());
+  // Instants prévus (ceux que donnerait l'écran), même si la page, chargée, les envoie en retard
+  let tl=performance.now();
+  for(const k of [3,7,9]){await dormir(8);tl+=8;envoyer('touchmove',[{id:1,x:fx+k/9*saut*Math.cos(a2),y:fy+k/9*saut*Math.sin(a2)}],tl);}
+  await dormir(8);tl+=8;window.__pt=null;envoyer('touchend',[{id:1,x:fx,y:fy}],tl);
   return {fin:fin||'ok',avant,tenue,pt:window.__pt,corrections,duree:Math.round(t-debut),parcours:Math.round(parcours)};}
 window.__pilote={envoyer,jouer,dormir,eleve,croix};})()`;
 
@@ -521,14 +523,14 @@ try {
             const t1 = t;
             while (t + pas <= t1 + 150) { t += pas; e.push({t, type: 'move', x: x0, y: y0 + 12 * (t - t1) / 150}); }
             e.push({t: t1 + 150, type: 'end', x: x0, y: y0 + 12});
-            // Le début d'un roulement lent ne se distingue pas du tremblement (immobilité jugée sur
-            // 60 ms) : ignoré à un quart de pixel vidéo près
-            await essai(`doigt qui roule de 12 px en 150 ms au lever${suffixe}`, e, 'avant', {arrondi, tolerance: 0.25});
+            // Un roulement lent (150 ms) ne se distingue pas d'une petite correction lente voulue
+            // (troisième relecture) : dans le doute, le point est la croix affichée
+            await essai(`doigt qui roule de 12 px en 150 ms au lever${suffixe}`, e, 'lever', {arrondi});
           }
         }
       }
       const mauvais = res.filter(r => r.ecart === null || r.ecart > r.tolerance || !r.instants);
-      verifier(`lever : point = croix affichée au dernier mouvement après un glissé (1 et 0,3 px/ms, lever 8 et 40 ms après), = croix d’avant le saut (≤ 0,05 px vidéo) ou le roulement du lever (≤ 0,25 px vidéo) ; 60 et 10 év./s, instants arrondis ou non (${res.length} cas, dont un saut après 300 ms sans événement ; instants reçus = envoyés)`,
+      verifier(`lever : point = croix affichée au dernier mouvement après un glissé (1 et 0,3 px/ms, lever 8 et 40 ms après), = croix d’avant le saut bref du lever, = croix affichée après un roulement lent (150 ms) ; écart ≤ 0,05 px vidéo ; 60 et 10 év./s, instants arrondis ou non (${res.length} cas, dont un saut après 300 ms sans événement ; instants reçus = envoyés)`,
         mauvais.length === 0, mauvais.length ? mauvais : res.map(r => r.ecart));
       await fermer(o);
     }
@@ -849,6 +851,76 @@ try {
         const r = res.filter(x => x.groupe === gr), f = fautes.filter(x => x.groupe === gr);
         verifier(`deuxième relecture, défaut ${gr} (${r.length} cas) : ${titres[gr]}${gr <= 5 && gr !== 4 ? ' (≤ 0,05 px vidéo)' : ''}`, r.length > 0 && f.length === 0, f.length ? f.slice(0, 3) : r.map(x => x.nom));
       }
+      await fermer(o);
+    }
+
+    // ---- 8.10 Troisième relecture : correction lente gardée, doigt annulé resté posé, pouce seul
+    if (bloc(10))
+    {
+      const o = await ouvrir(srv.base, CONFIGS[0]);
+      const g = await geom(o);
+      const X = 0.4 * g.w, Y = 0.5 * g.h;
+      const Z = await evApp(o, `zoomLoupe()`);
+      const fautes = {1: [], 2: [], 3: []}, nb = {1: 0, 2: 0, 3: 0};
+      const apres = async () => { await pause(120); await attendrePret(o); await evApp(o, `annulerToucher()`); };
+      // R1 : croix immobile 300 ms (tremblée ou sans événement), déplacée volontairement de 1 à 5 px
+      // en 64, 128 ou 176 ms, lever en mouvement (8 ms) ou peu après (40 ms) : point = croix affichée
+      // (≤ 0,05 px vidéo, objectif ≤ 0,5). Et à 10 év./s : 2 événements après une pause, lever 20 ms après.
+      for (const pauseType of ['tremblée', 'sans événement']) for (const cx of [1, 3, 5]) for (const D of [64, 128, 176]) for (const lev of [8, 40]) {
+        const e = [{t: 0, type: 'start', x: X, y: Y}];
+        if (pauseType === 'tremblée') e.push(...immobile(16, 300, 16, X, Y)); else e.push({t: 300, type: 'move', x: X + 0.01, y: Y});
+        const t1 = dernierT(e), L = Z * cx, n = D / 16;
+        for (let i = 1; i <= n; i++) e.push({t: t1 + 16 * i, type: 'move', x: X + L * i / n, y: Y});
+        e.push({t: dernierT(e) + lev, type: 'end', x: X + L, y: Y});
+        const j = await jouer(o, e);
+        const pt = j.pts[0], v = enVideo(g, j.lu.lever), ecart = pt && v ? Math.hypot(pt.x - v.x, pt.y - v.y) : null;
+        nb[1]++;
+        if (!(ecart !== null && ecart <= 0.05)) fautes[1].push({cas: `${pauseType}, ${cx} px en ${D} ms, lever ${lev} ms après`, ecart: ecart && +ecart.toFixed(2)});
+        await apres();
+      }
+      for (const cx of [2, 4]) {
+        const e = [{t: 0, type: 'start', x: X, y: Y}, {t: 300, type: 'move', x: X + Z * cx / 2, y: Y}, {t: 400, type: 'move', x: X + Z * cx, y: Y}, {t: 420, type: 'end', x: X + Z * cx, y: Y}];
+        const j = await jouer(o, e);
+        const pt = j.pts[0], v = enVideo(g, j.lu.lever), ecart = pt && v ? Math.hypot(pt.x - v.x, pt.y - v.y) : null;
+        nb[1]++;
+        if (!(ecart !== null && ecart <= 0.05)) fautes[1].push({cas: `10 év./s, ${cx} px en 2 événements`, ecart: ecart && +ecart.toFixed(2)});
+        await apres();
+      }
+      verifier(`troisième relecture R1 (${nb[1]} cas) : correction volontaire de 1 à 5 px de croix en 64 à 176 ms après une immobilité, lever en mouvement ou 40 ms après, à 60 et 10 év./s : le point est la croix affichée (≤ 0,05 px vidéo)`,
+        fautes[1].length === 0, fautes[1].slice(0, 5));
+      // R2 : doigt 1 posé, geste annulé (rotation, question…) mais doigt 1 resté posé ; doigts 2 puis 3
+      // posés et levés : chacun pointe, pas de message « Deux doigts »
+      {
+        const e = [{t: 0, type: 'start', id: 1, x: X, y: Y}, {t: 50, type: 'move', id: 1, x: X + 1, y: Y}, {t: 60, type: 'js', code: 'annulerToucher()'},
+          {t: 100, type: 'start', id: 2, x: X + 100, y: Y}, {t: 200, type: 'end', id: 2, x: X + 100, y: Y},
+          {t: 500, type: 'start', id: 3, x: X + 60, y: Y + 40}, {t: 600, type: 'end', id: 3, x: X + 60, y: Y + 40},
+          {t: 800, type: 'end', id: 1, x: X + 1, y: Y}];
+        const j = await jouer(o, e);
+        await pause(150);
+        nb[2]++;
+        if (!(j.pts.length === 2 && !j.msgs.some(m => /Deux doigts/.test(m)))) fautes[2].push({points: j.pts.length, msgs: j.msgs});
+        await apres();
+      }
+      verifier('troisième relecture R2 : doigt resté posé après une annulation (rotation, question…) : les doigts suivants pointent normalement (2 points, pas de « Deux doigts »), le doigt annulé n’enregistre rien en se levant',
+        fautes[2].length === 0, fautes[2]);
+      // R3 : pouce seul posé près du bord, immobile, tenu 2 s puis levé : aucun point, message ;
+      // toucher bref près du bord : un point ; doigt tenu 2 s près du bord mais qui a glissé de 12 px : un point
+      {
+        const cas3 = [
+          {nom: 'pouce seul tenu 2 s au bord', e: [{t: 0, type: 'start', x: 10, y: Y}, ...immobile(16, 2000, 50, 10, Y), {t: 2060, type: 'end', x: 10, y: Y}], points: 0, message: /immobile au bord/},
+          {nom: 'toucher bref au bord (200 ms)', e: [{t: 0, type: 'start', x: 10, y: Y}, {t: 200, type: 'end', x: 10, y: Y}], points: 1},
+          {nom: 'doigt tenu 2 s au bord, glissé de 12 px', e: [{t: 0, type: 'start', x: 10, y: Y}, ...immobile(16, 1000, 50, 10, Y), {t: 1100, type: 'move', x: 22, y: Y}, ...immobile(1150, 900, 50, 22, Y), {t: 2100, type: 'end', x: 22, y: Y}], points: 1}
+        ];
+        for (const k of cas3) {
+          const j = await jouer(o, k.e);
+          await pause(150);
+          nb[3]++;
+          if (!(j.pts.length === k.points && (!k.message || j.msgs.some(m => k.message.test(m))))) fautes[3].push({cas: k.nom, points: j.pts.length, msgs: j.msgs});
+          await apres();
+        }
+      }
+      verifier('troisième relecture R3 : pouce seul posé au bord, immobile, tenu 2 s puis levé : aucun point et un message qui dit pourquoi ; toucher bref au bord ou doigt tenu mais qui a glissé : un point',
+        fautes[3].length === 0, fautes[3]);
       await fermer(o);
     }
   }
