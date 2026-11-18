@@ -27,7 +27,8 @@
 //   6. ni défilement ni zoom de la page (ni de la page qui contient le cadre), appui long,
 //      double toucher ;
 //   7. coût du dessin d'une image pendant un geste, processeur ralenti ×6 (mesure, sans seuil) ;
-//   8. défauts relevés en relecture (chacun échouait sur le commit 8902a62) : lever après un
+//   8. défauts relevés en relecture (8.1 à 8.8 échouaient sur le commit 8902a62, 8.9 — deuxième
+//      relecture — sur 5feed34) : lever après un
 //      glissé rapide, glissé vif après une pause, bords et coins atteignables, élève qui converge
 //      sans dépasser, pouce posé sur l'image ; second bout tout près du premier, loupe qui ne
 //      saute pas d'un côté à l'autre, bouts d'étalonnage visibles dans la loupe à la souris.
@@ -88,23 +89,28 @@ const attendrePret = (o) => jusqua(o, `(()=>{const w=${APP(o)};return w.eval("le
 // arrondi au besoin. Coordonnées en px CSS du canevas. Élève simulé (voir partie 1).
 const PILOTE = `(()=>{if(window.__pilote)return;
 const c=document.querySelector('canvas');const actifs=new Map();const recus=[];
-['touchstart','touchmove','touchend'].forEach(t=>c.addEventListener(t,e=>recus.push(e.timeStamp),{capture:true}));
+['touchstart','touchmove','touchend','touchcancel'].forEach(t=>c.addEventListener(t,e=>recus.push(e.timeStamp),{capture:true}));
+const msgs=[];const am=afficherMessageTemporaire;window.afficherMessageTemporaire=function(m,d){msgs.push(m);return am(m,d);};
 const dormir=ms=>new Promise(r=>setTimeout(r,ms));
 async function jusquA(t){while(performance.now()<t-0.3)await dormir(Math.max(0,Math.min(4,t-performance.now()-0.3)));}
 let arrondi=0;
-function envoyer(type,id,x,y,ts){const r=c.getBoundingClientRect();
+// changes : [{id, x, y}] (plusieurs doigts dans le même événement possibles) ; ts null : instant 0
+function envoyer(type,changes,ts){const r=c.getBoundingClientRect();
   const mk=(i,p)=>new Touch({identifier:i,target:c,clientX:r.left+p.x*r.width/width,clientY:r.top+p.y*r.height/height,radiusX:8,radiusY:8,force:1});
-  const ch=mk(id,{x,y});
-  if(type==='touchstart'||type==='touchmove')actifs.set(id,{x,y});else actifs.delete(id);
+  const ch=changes.map(q=>mk(q.id,q));
+  for(const q of changes){if(type==='touchstart'||type==='touchmove')actifs.set(q.id,{x:q.x,y:q.y});else actifs.delete(q.id);}
   const tous=[...actifs].map(([i,p])=>mk(i,p));
-  const e=new TouchEvent(type,{touches:tous,targetTouches:tous,changedTouches:[ch],bubbles:true,cancelable:true});
-  const t=arrondi?Math.floor(ts/arrondi)*arrondi:ts;Object.defineProperty(e,'timeStamp',{value:t});c.dispatchEvent(e);return t;}
+  const e=new TouchEvent(type,{touches:tous,targetTouches:tous,changedTouches:ch,bubbles:true,cancelable:true});
+  const t=ts===null?0:arrondi?Math.floor(ts/arrondi)*arrondi:ts;Object.defineProperty(e,'timeStamp',{value:t});c.dispatchEvent(e);return t;}
 const croix=()=>{const p=positionViseur();return p&&{x:p.x,y:p.y};};
-// Étapes {t (ms depuis le début), type:'start'|'move'|'end', id, x, y, lire}
-async function jouer(etapes,opts={}){arrondi=opts.arrondi||0;recus.length=0;const t0=performance.now()+30;const lu={};const envoyes=[];
-  for(const s of etapes){const cible=t0+s.t;await jusquA(cible);envoyes.push(envoyer('touch'+s.type,s.id??1,s.x,s.y,cible));if(s.lire)lu[s.lire]=croix();}
+// Étapes {t (ms depuis le début), type:'start'|'move'|'end'|'cancel', id, x, y, ch:[{id,x,y}…], lire}.
+// lu.lever : croix affichée juste avant le dernier lever ; opts.zero : instants à 0 (repli de l'app)
+async function jouer(etapes,opts={}){arrondi=opts.arrondi||0;recus.length=0;msgs.length=0;window.__pt=null;window.__pts=[];
+  const t0=performance.now()+30;const lu={};const envoyes=[];
+  for(const s of etapes){const cible=t0+s.t;await jusquA(cible);if(s.type==='end')lu.lever=croix();
+    envoyes.push(envoyer('touch'+s.type,s.ch||[{id:s.id??1,x:s.x,y:s.y}],opts.zero?null:cible));if(s.lire)lu[s.lire]=croix();}
   arrondi=0;const instantsOk=recus.length===envoyes.length&&recus.every((t,i)=>Math.abs(t-envoyes[i])<1e-6);
-  return {lu,instantsOk};}
+  return {lu,instantsOk,msgs:msgs.slice(),pts:window.__pts.slice()};}
 let graine=1;const hasard=()=>{graine=(graine*1664525+1013904223)>>>0;return graine/4294967296;};
 const gauss=()=>Math.sqrt(-2*Math.log(1-hasard()))*Math.cos(2*Math.PI*hasard());
 // Élève simulé : cible (px CSS du canevas) ; pose à « decalage » px dans la direction « angle » ;
@@ -114,7 +120,7 @@ const gauss=()=>Math.sqrt(-2*Math.log(1-hasard()))*Math.cos(2*Math.PI*hasard());
 async function eleve(o){const {cx,cy,decalage,angle,delai=100,vmax=0.35,tau=250,sigma=0.5,saut=9,germe=1}=o;graine=germe;
   const Z=typeof zoomLoupe==='function'?zoomLoupe():3;
   let fx=cx+decalage*Math.cos(angle),fy=cy+decalage*Math.sin(angle);
-  let t=performance.now();envoyer('touchstart',1,fx,fy,t);const vus=[{t,...croix()}];
+  let t=performance.now();envoyer('touchstart',[{id:1,x:fx,y:fy}],t);const vus=[{t,...croix()}];
   let stable=0,corrections=0,prec=null,fin=null;const debut=t;let parcours=0;const tenue=[];
   for(;;){await dormir(16);t=performance.now();const p=croix();if(!p){fin='annulé';break;}vus.push({t,...p});
     let vu=vus[0];for(const v of vus)if(v.t<=t-delai)vu=v;
@@ -122,12 +128,12 @@ async function eleve(o){const {cx,cy,decalage,angle,delai=100,vmax=0.35,tau=250,
     if(n*Z<1.5){stable+=16;tenue.push(versVideo(p.x,p.y));if(stable>=150+delai)break;}
     else{stable=0;tenue.length=0;const v=Math.min(vmax,n*Z/tau);dx=v*16*ex/n;dy=v*16*ey/n;
       if(prec&&prec.x*dx+prec.y*dy<0)corrections++;prec={x:dx,y:dy};}
-    fx+=dx;fy+=dy;parcours+=Math.hypot(dx,dy);envoyer('touchmove',1,fx+sigma*gauss(),fy+sigma*gauss(),t);
+    fx+=dx;fy+=dy;parcours+=Math.hypot(dx,dy);envoyer('touchmove',[{id:1,x:fx+sigma*gauss(),y:fy+sigma*gauss()}],t);
     if(t-debut>6000){fin='trop long';break;}}
   const avant=croix();if(avant)tenue.push(versVideo(avant.x,avant.y));
   const a2=Math.PI/2+(hasard()-0.5)*2;
-  for(const k of [3,7,9]){await dormir(8);envoyer('touchmove',1,fx+k/9*saut*Math.cos(a2),fy+k/9*saut*Math.sin(a2),performance.now());}
-  await dormir(8);window.__pt=null;envoyer('touchend',1,fx,fy,performance.now());
+  for(const k of [3,7,9]){await dormir(8);envoyer('touchmove',[{id:1,x:fx+k/9*saut*Math.cos(a2),y:fy+k/9*saut*Math.sin(a2)}],performance.now());}
+  await dormir(8);window.__pt=null;envoyer('touchend',[{id:1,x:fx,y:fy}],performance.now());
   return {fin:fin||'ok',avant,tenue,pt:window.__pt,corrections,duree:Math.round(t-debut),parcours:Math.round(parcours)};}
 window.__pilote={envoyer,jouer,dormir,eleve,croix};})()`;
 
@@ -138,7 +144,7 @@ async function ouvrir(base, {w, h, dpr = 1.5, cadre = null, tactile = true}) {
   await pretApp(o);
   await pause(300);
   // Trace des pointages (pixels vidéo, y vers le bas) : même chose dans l'ancienne version
-  await evApp(o, `(()=>{if(window.__trace)return;window.__trace=true;const f=traiterPointage;window.traiterPointage=function(x,y){window.__pt={x,y};return f(x,y);};})()`);
+  await evApp(o, `(()=>{if(window.__trace)return;window.__trace=true;const f=traiterPointage;window.traiterPointage=function(x,y){window.__pt={x,y};(window.__pts=window.__pts||[]).push({x,y});return f(x,y);};})()`);
   await evApp(o, PILOTE);
   return o;
 }
@@ -648,7 +654,7 @@ try {
       const j = await jouer(o, e);
       await pause(200);
       const r1 = await evApp(o, `({pt:window.__pt,n:data.getTotalPointCount(),ancre:window.__loupes.length?window.__loupes[window.__loupes.length-1].ax:null})`);
-      const ok1 = r1.pt && j.lu.croix && Math.hypot(r1.pt.x - j.lu.croix.x / g.kc, r1.pt.y - j.lu.croix.y / g.kcy) <= 0.05 && r1.n === n0 + 1 &&
+      const ok1 = r1.pt && j.lu.croix && Math.hypot(r1.pt.x - j.lu.croix.x / g.kc, r1.pt.y - j.lu.croix.y / g.kcy) <= 0.1 && r1.n === n0 + 1 &&
         Math.abs(j.lu.croix.x - doigt.x) < 15;
       await attendrePret(o);
       // Doigt d'abord, puis le pouce se pose sur le bord pendant le geste
@@ -661,8 +667,8 @@ try {
       const j2 = await jouer(o, e2);
       await pause(200);
       const r2 = await evApp(o, `({pt:window.__pt,n:data.getTotalPointCount()})`);
-      const ok2 = r2.pt && j2.lu.croix && Math.hypot(r2.pt.x - j2.lu.croix.x / g.kc, r2.pt.y - j2.lu.croix.y / g.kcy) <= 0.05 && r2.n === n0 + 2;
-      verifier('portrait : pouce immobile posé sur le bord de l’image (3 px vidéo) puis doigt qui pointe : le doigt pointe (loupe et point au doigt), le pouce qui se lève n’ajoute rien ; pouce posé pendant le geste : ignoré',
+      const ok2 = r2.pt && j2.lu.croix && Math.hypot(r2.pt.x - j2.lu.croix.x / g.kc, r2.pt.y - j2.lu.croix.y / g.kcy) <= 0.1 && r2.n === n0 + 2;
+      verifier('portrait : pouce immobile posé sur le bord de l’image (3 px vidéo) puis doigt qui pointe : le doigt pointe (loupe et point au doigt, à 0,1 px vidéo près : position voisine affichée pendant l’immobilité), le pouce qui se lève n’ajoute rien ; pouce posé pendant le geste : ignoré',
         ok1 && ok2 && j.instantsOk && j2.instantsOk, {r1, croix: enVideo(g, j.lu.croix), r2, croix2: enVideo(g, j2.lu.croix)});
       await fermer(o);
     }
@@ -684,10 +690,12 @@ try {
         const r = await evApp(o, `({etat:calibrator.state,p1:calibrator.point1&&{...calibrator.point1},p2:calibrator.point2&&{...calibrator.point2}})`);
         res.push({d, ok: r.etat === 'waiting_distance' && r.p2 && Math.abs(r.p2.x - (p1.x + d) / g.kc) < 0.05 && Math.abs(r.p1.x - p1.x / g.kc) < 0.05, ...r});
       }
-      // Un glisser qui part à 20 px du premier bout le déplace toujours
+      // Les deux bouts placés : un glisser qui part à 20 px d'un bout le déplace
       await evApp(o, `document.getElementById('reset-calibration').click()`); await pause(200);
       const p1 = {x: 0.4 * g.w, y: 0.5 * g.h};
       await jouer(o, [{t: 0, type: 'start', x: p1.x, y: p1.y}, {t: 80, type: 'end', x: p1.x, y: p1.y}]);
+      await pause(150);
+      await jouer(o, [{t: 0, type: 'start', x: p1.x + 150, y: p1.y}, {t: 80, type: 'end', x: p1.x + 150, y: p1.y}]);
       await pause(150);
       const e = [{t: 0, type: 'start', x: p1.x + 20, y: p1.y}];
       for (let i = 1; i <= 30; i++) e.push({t: 16 * i, type: 'move', x: p1.x + 20, y: p1.y - i});
@@ -696,8 +704,8 @@ try {
       await jouer(o, e);
       await pause(150);
       const glisse = await evApp(o, `({etat:calibrator.state,p1:{...calibrator.point1}})`);
-      const okGlisse = glisse.etat === 'waiting_point2' && glisse.p1.y < p1.y / g.kcy - 2;
-      verifier('étalonnage : un toucher net à 20 ou 28 px du premier bout crée le second bout (là où on touche) ; un glisser parti à 20 px déplace toujours le premier',
+      const okGlisse = glisse.etat === 'waiting_distance' && glisse.p1.y < p1.y / g.kcy - 2;
+      verifier('étalonnage : pendant qu’on place le second bout, un toucher à 20 ou 28 px du premier crée le second bout (là où on touche) ; les deux bouts placés, un glisser parti à 20 px d’un bout le déplace',
         res.every(r => r.ok) && okGlisse, {res, glisse});
       await fermer(o);
     }
@@ -736,6 +744,111 @@ try {
         return {loupe:true,anneau:px};})()`);
       const vert = r && r.anneau.filter(p => p[1] > 150 && p[0] < 100).length;
       verifier('souris, étalonnage : le bout voisin du viseur apparaît dans la loupe (anneau vert)', r && vert >= 3, r);
+      await fermer(o);
+    }
+
+    // ---- 8.9 Scénarios de la deuxième relecture : le point est la croix affichée (ou aucun point)
+    if (bloc(9))
+    {
+      const o = await ouvrir(srv.base, CONFIGS[0]);
+      const g = await geom(o);
+      const X = 0.4 * g.w, Y = 0.5 * g.h;
+      const glisse = (t0, x0, y0, dx, dy, v, pas) => {
+        const e = [], n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / (v * pas)));
+        for (let i = 1; i <= n; i++) e.push({t: t0 + i * pas, type: 'move', x: x0 + dx * i / n, y: y0 + dy * i / n});
+        return e;
+      };
+      const fautes = [], res = [];
+      // Le point doit être la croix affichée au lever (≤ 0,05 px vidéo), ou aucun point (avec message)
+      const cas = async (groupe, nom, etapes, {aucun = false, message = null, zero = false, avant = null} = {}) => {
+        if (avant) await avant();
+        const j = await jouer(o, etapes, {zero});
+        await pause(120);
+        const pts = j.pts;
+        let ok, detail;
+        if (aucun) {
+          ok = pts.length === 0 && (!message || j.msgs.some(m => message.test(m)));
+          detail = {points: pts.length, msgs: j.msgs};
+        } else {
+          const pt = pts[pts.length - 1], v = enVideo(g, j.lu.lever);
+          const ecart = pt && v ? Math.hypot(pt.x - v.x, pt.y - v.y) : null;
+          ok = pts.length === 1 && ecart !== null && ecart <= 0.05;
+          detail = {points: pts.length, ecart: ecart === null ? null : +ecart.toFixed(3), croix: v, point: pt};
+        }
+        res.push({groupe, nom, ok});
+        if (!ok) fautes.push({groupe, nom, ...detail});
+        await attendrePret(o);
+        await evApp(o, `annulerToucher()`);
+      };
+      // 1. Bord : glissé lent jusqu'à x=14, pause 150 ms, poussée à x=4 (croix au bord), lever 40 / 150 ms après
+      for (const lev of [40, 150]) {
+        const e = [{t: 0, type: 'start', x: X, y: Y}, ...glisse(0, X, Y, -(X - 14), 0, 0.3, 16)];
+        e.push(...immobile(dernierT(e) + 16, 150, 16, 14, Y), ...glisse(dernierT(e) + 166, 14, Y, -10, 0, 0.2, 16));
+        e.push({t: dernierT(e) + lev, type: 'end', x: 4, y: Y});
+        await cas(1, `bord gauche après pause, lever ${lev} ms après`, e);
+      }
+      { const e = [{t: 0, type: 'start', x: X, y: 0.6 * g.h}, ...glisse(0, X, 0.6 * g.h, 0, -(0.6 * g.h - 14), 0.3, 16)];
+        e.push(...immobile(dernierT(e) + 16, 150, 16, X, 14), ...glisse(dernierT(e) + 166, X, 14, 0, -10, 0.2, 16));
+        e.push({t: dernierT(e) + 60, type: 'end', x: X, y: 4});
+        await cas(1, 'bord haut après pause, lever 60 ms après', e); }
+      { const e = [{t: 0, type: 'start', x: 20, y: Y}, ...glisse(0, 20, Y, -15, 0, 0.25, 16)];
+        e.push({t: dernierT(e) + 40, type: 'end', x: 5, y: Y});
+        await cas(1, 'toucher à x=20, glissé jusqu’à x=5, lever 40 ms après', e); }
+      // 2. Correction lente de 9 px, arrêt sans événement de 80 / 150 / 250 ms, lever
+      for (const arret of [80, 150, 250]) {
+        const e = [{t: 0, type: 'start', x: X, y: Y}, ...glisse(0, X, Y, 9, 0, 0.12, 16)];
+        e.push({t: dernierT(e) + arret, type: 'end', x: X + 9, y: Y});
+        await cas(2, `correction de 9 px, arrêt ${arret} ms sans événement, lever`, e);
+      }
+      // 3. 10 événements par seconde : glissé lent par pas de 10 / 15 px, arrêt 200 ms ou lever en mouvement ; instants à 0
+      for (const pas of [10, 15]) {
+        const e = [{t: 0, type: 'start', x: X, y: Y}, ...glisse(0, X, Y, 6 * pas, 0, pas / 100, 100)];
+        await cas(3, `10 év./s, pas de ${pas} px, arrêt 200 ms, lever`, [...e, {t: dernierT(e) + 200, type: 'end', x: X + 6 * pas, y: Y}]);
+        await cas(3, `10 év./s, pas de ${pas} px, lever 30 ms après le dernier mouvement`, [...e, {t: dernierT(e) + 30, type: 'end', x: X + 6 * pas, y: Y}]);
+        await cas(3, `10 év./s, pas de ${pas} px, lever 50 ms après, instants à 0`, [...e, {t: dernierT(e) + 50, type: 'end', x: X + 6 * pas, y: Y}], {zero: true});
+      }
+      // 5. Immobile 400 ms puis glissé lent continu (0,05 px/ms) pendant 280 ms, lever en mouvement
+      { const e = [{t: 0, type: 'start', x: X, y: Y}, ...immobile(16, 400, 16, X, Y)];
+        e.push(...glisse(dernierT(e), X, Y, 14, 0, 0.05, 16));
+        e.push({t: dernierT(e) + 8, type: 'end', x: X + 14, y: Y});
+        await cas(5, 'immobile 400 ms puis glissé continu à 0,05 px/ms pendant 280 ms, lever en mouvement', e); }
+      // 4. Index près du bord gauche (x=30), ajusté de 6 px ; pouce au bord droit ; index puis pouce levés : aucun point, message
+      { const e = [{t: 0, type: 'start', id: 1, x: 30, y: Y}, ...glisse(0, 30, Y, 6, 0, 0.05, 16).map(q => ({...q, id: 1}))];
+        const t1 = dernierT(e);
+        e.push({t: t1 + 30, type: 'start', id: 2, x: g.w - 10, y: Y + 100});
+        e.push({t: t1 + 200, type: 'end', id: 1, x: 36, y: Y}, {t: t1 + 900, type: 'end', id: 2, x: g.w - 10, y: Y + 100});
+        await cas(4, 'index près du bord gauche, pouce posé au bord droit, index puis pouce levés', e, {aucun: true, message: /Deux doigts/}); }
+      // 6. Deux doigts dans le même touchstart (loin des bords) : aucun point, message
+      { const e = [{t: 0, type: 'start', ch: [{id: 1, x: X, y: Y}, {id: 2, x: X + 150, y: Y}]}];
+        for (let i = 1; i <= 10; i++) e.push({t: 16 * i, type: 'move', ch: [{id: 1, x: X - 4 * i, y: Y}, {id: 2, x: X + 150 + 4 * i, y: Y}]});
+        e.push({t: 200, type: 'end', ch: [{id: 1, x: X - 40, y: Y}]}, {t: 210, type: 'end', ch: [{id: 2, x: X + 190, y: Y}]});
+        await cas(6, 'deux doigts posés dans le même événement, écartés, levés', e, {aucun: true, message: /Deux doigts/}); }
+      // Étalonnage : bout glissé jusqu'au bord (croix au bord), lever 60 ms après : bout posé sur la croix affichée
+      { await evApp(o, `passerAuMode('Calibration')`); await pause(300);
+        await evApp(o, `document.getElementById('reset-calibration').click()`); await pause(200);
+        const e = [{t: 0, type: 'start', x: X, y: Y}, {t: 80, type: 'end', x: X, y: Y}];
+        await jouer(o, e); await pause(150);
+        await jouer(o, [{t: 0, type: 'start', x: X + 150, y: Y}, {t: 80, type: 'end', x: X + 150, y: Y}]); await pause(150);
+        const d = [{t: 0, type: 'start', x: X + 150, y: Y}, ...glisse(0, X + 150, Y, -(X + 150 - 14), 0, 0.3, 16)];
+        d.push(...immobile(dernierT(d) + 16, 150, 16, 14, Y), ...glisse(dernierT(d) + 166, 14, Y, -10, 0, 0.2, 16));
+        d.push({t: dernierT(d) + 60, type: 'end', x: 4, y: Y});
+        const j = await jouer(o, d); await pause(150);
+        const p2 = await evApp(o, `({...calibrator.point2})`), v = enVideo(g, j.lu.lever);
+        const ecart = Math.hypot(p2.x - v.x, p2.y - v.y);
+        res.push({groupe: 1, nom: 'étalonnage : bout amené au bord', ok: ecart <= 0.05});
+        if (!(ecart <= 0.05)) fautes.push({groupe: 1, nom: 'étalonnage : bout amené au bord', bout: p2, croix: v}); }
+      const titres = {
+        1: 'au bord (gauche ou haut, après une pause ou non ; bout d’étalonnage) : le point est la croix affichée, sur le bord',
+        2: 'correction suivie d’un arrêt sans événement (80, 150, 250 ms) : le point est la croix affichée',
+        3: '10 év./s (arrêt, lever en mouvement, instants à 0) : le point est la croix affichée',
+        5: 'glissé lent continu (280 ms) après une immobilité, lever en mouvement : le point est la croix affichée',
+        4: 'index près d’un bord puis pouce sur le bord opposé : aucun point, message « Deux doigts »',
+        6: 'deux doigts posés dans le même événement : aucun point, message « Deux doigts »'
+      };
+      for (const gr of [1, 2, 3, 5, 4, 6]) {
+        const r = res.filter(x => x.groupe === gr), f = fautes.filter(x => x.groupe === gr);
+        verifier(`deuxième relecture, défaut ${gr} (${r.length} cas) : ${titres[gr]}${gr <= 5 && gr !== 4 ? ' (≤ 0,05 px vidéo)' : ''}`, r.length > 0 && f.length === 0, f.length ? f.slice(0, 3) : r.map(x => x.nom));
+      }
       await fermer(o);
     }
   }
