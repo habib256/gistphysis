@@ -6,12 +6,19 @@
 //   Les coordonnées p5 (width, height, mouseX…) sont en pixels CSS ; un geste est converti
 //   en pixels vidéo au moment où il est enregistré.
 // - Pointage au doigt : on pose le doigt, une loupe (×3 à ×4, pixels de la vidéo elle-même)
-//   apparaît au-dessus avec un réticule ; on glisse pour ajuster, le point est enregistré au
-//   relâchement. Glisser lentement déplace le réticule 3 à 4 fois moins que le doigt (réglage
-//   fin : dans la loupe, l'image agrandie reste immobile et la croix suit le doigt), glisser
-//   vite le déplace autant que le doigt. Au relâchement, le point est celui que le réticule
-//   montrait un peu avant (80 ms) : le saut du doigt qui se lève est ignoré. Glisser nettement
-//   hors de l'image annule. Si l'écran change de taille (rotation) pendant le geste, il est annulé.
+//   apparaît au-dessus avec une croix ; on glisse pour ajuster, le point est enregistré au
+//   relâchement. Règles (voir le README) :
+//   · glisser à vitesse naturelle (moins de 0,5 px/ms) déplace la croix 3 à 4 fois moins que le
+//     doigt : dans la loupe, l'image agrandie reste immobile et la croix suit exactement le doigt ;
+//     un glissement vif (plus de 1 px/ms) la déplace autant que le doigt ;
+//   · doigt poussé jusqu'au bord de l'image (à 8 px près, ou au-delà) : la croix se met sur ce
+//     bord ; tout pixel, bords et coins compris, s'atteint sans relever le doigt ;
+//   · au lever, si le doigt était immobile peu avant (300 ms) et n'a bougé depuis que de 15 px au
+//     plus (doigt qui roule ou saute en se levant), le point est la croix de cet instant ; sinon,
+//     c'est la croix telle qu'elle est affichée ;
+//   · un doigt immobile posé près d'un bord (pouce qui tient la tablette) cède la place à un
+//     autre doigt posé sur l'image ;
+//   · glisser nettement hors de l'image annule ; une rotation pendant le geste aussi.
 // - Clavier : quand l'image a le focus, les flèches déplacent le réticule (1 pixel vidéo,
 //   10 avec Maj), Entrée pointe, Retour arrière annule. Ailleurs, ← → changent d'image.
 
@@ -28,17 +35,29 @@ const LOUPE_ECART = 56;         // distance entre le doigt et le bord de la loup
 const LOUPE_ECART_MIN = 30;     // jamais moins (sinon la loupe change de place)
 const LOUPE_HYSTERESIS = 16;    // la loupe ne revient à une place préférée qu'avec 16 px de marge
 // Doigt : réglage fin et lever
-const VITESSE_LENTE = 0.15;     // px/ms : en dessous, le réticule avance 1/zoom fois le doigt
-const VITESSE_RAPIDE = 0.6;     // px/ms : au-dessus, il avance autant que le doigt
-const FENETRE_VITESSE = 50;     // ms : vitesse du doigt mesurée sur ce temps (tremblement lissé)
-const RETOUR_LEVER = 80;        // ms : au lever, on reprend la position du réticule d'avant
+const VITESSE_LENTE = 0.5;      // px/ms : en dessous, la croix avance 1/zoom fois le doigt
+const VITESSE_RAPIDE = 1;       // px/ms : au-dessus, elle avance autant que le doigt
+const FENETRE_VITESSE = 24;     // ms : vitesse mesurée sur au moins 24 ms…
+const FENETRE_VITESSE_MAX = 150; // … et au plus 150 ms (au-delà, c'était une pause)
+const FENETRE_IMMOBILE = 60;    // ms : immobilité jugée sur au moins 60 ms (tremblement lissé)…
+const FENETRE_IMMOBILE_MAX = 200; // … et au plus 200 ms
+const VITESSE_IMMOBILE = 0.015; // px/ms : doigt « immobile » (moins de 1 px en 60 ms)
+const RETOUR_MAX = 300;         // ms : au lever, on cherche un instant d'immobilité aussi loin
+const SAUT_LEVER_MAX = 15;      // px : mouvement du doigt après cet instant attribué au lever
+const BORD_ATTEINT = 8;         // px : doigt poussé à 8 px d'un bord (ou au-delà) : croix sur le bord
+const BORD_POUCE = 48;          // px : un doigt posé si près d'un bord peut être un pouce qui tient
+const POUCE_IMMOBILE = 10;      // px : … s'il n'a pas bougé de plus de 10 px
 const MARGE_ANNULATION = 32;    // px : le geste n'est annulé qu'au-delà de cette marge hors image
 const PRISE_BOUT_DOIGT = 32;    // px : distance de prise d'un bout d'étalonnage au doigt (24 à la souris)
+const TOUCHER_NET = 8;          // px et…
+const TOUCHER_NET_DUREE = 500;  // … ms : un toucher bref, presque sans glisser
 
 // État des pointeurs (positions en pixels CSS du canevas). Doigt : (x, y) = doigt,
-// (rx, ry) = réticule ; echantillons = positions récentes du doigt (vitesse) ;
-// historique = positions récentes du réticule (retour au lever)
-let pointeurTactile = { actif: false, id: null, x: 0, y: 0, rx: 0, ry: 0, dansImage: false, glisse: 0, echantillons: [], historique: [] };
+// (rx, ry) = croix ; depart = doigt au toucher ; ecartMax = plus grand écart du doigt à son
+// départ ; echantillons = positions récentes du doigt (vitesse) ; historique = croix, doigt et
+// vitesse à chaque mouvement (lever) ; ignores = doigts posés à ne pas suivre (pouce…)
+let pointeurTactile = { actif: false, id: null, x: 0, y: 0, rx: 0, ry: 0, dansImage: false, glisse: 0,
+  depart: null, ecartMax: 0, echantillons: [], historique: [], ignores: new Set() };
 let souris = { dansCanvas: false, x: 0, y: 0, glisse: 0, ignorerClic: false, clientX: -1, clientY: -1 };
 let clavier = { actif: false, x: 0, y: 0 };   // réticule clavier (pixels vidéo)
 let typePointeur = (window.matchMedia && matchMedia('(pointer: coarse)').matches) ? 'tactile' : 'souris';
@@ -300,8 +319,8 @@ function zoomLoupe() {
   return constrain(LOUPE_PX_VIDEO / k, LOUPE_ZOOM_MIN, LOUPE_ZOOM_MAX);
 }
 
-// Démultiplication du doigt : 1/zoom quand il glisse lentement (l'image agrandie reste alors
-// immobile dans la loupe : la croix avance exactement comme le doigt), 1 quand il va vite
+// Démultiplication du doigt : 1/zoom à vitesse naturelle (l'image agrandie reste alors immobile
+// dans la loupe : la croix avance exactement comme le doigt), 1 pour un glissement vif
 function gainDoigt(vitesse) {
   const lent = 1 / zoomLoupe();
   if (vitesse <= VITESSE_LENTE) return lent;
@@ -309,34 +328,61 @@ function gainDoigt(vitesse) {
   return lent + (1 - lent) * (vitesse - VITESSE_LENTE) / (VITESSE_RAPIDE - VITESSE_LENTE);
 }
 
-// Vitesse du doigt (px/ms) sur les FENETRE_VITESSE dernières ms : un tremblement rapide se
-// compense et reste « lent »
-function vitesseDoigt(t, x, y) {
+// Vitesse du doigt (px/ms) en (x, y) à l'instant t, mesurée depuis l'échantillon le plus ancien
+// des `max` dernières ms (au moins `min` ms avant si possible) : un tremblement rapide se
+// compense. Après une pause sans événement (doigt immobile), on fait comme si le doigt était
+// immobile jusqu'à `min` ms avant : un mouvement vif est reconnu vif dès qu'il commence.
+function vitesseDoigt(t, x, y, min = FENETRE_VITESSE, max = FENETRE_VITESSE_MAX) {
   const e = pointeurTactile.echantillons;
-  let ref = e[0];
-  for (let i = e.length - 1; i >= 0; i--) {
-    if (t - e[i].t >= FENETRE_VITESSE) { ref = e[i]; break; }
+  if (!e.length) return 0;
+  const dernier = e[e.length - 1];
+  if (t - dernier.t > max) return Math.hypot(x - dernier.x, y - dernier.y) / min;
+  let ref = dernier;
+  for (let i = e.length - 1; i >= 0 && t - e[i].t <= max; i--) {
+    ref = e[i];
+    if (t - e[i].t >= min) break;
   }
-  if (!ref) return 0;
   return Math.hypot(x - ref.x, y - ref.y) / Math.max(t - ref.t, 16);
 }
 
-function noterReticule(t) {
-  const h = pointeurTactile.historique;
-  h.push({ t: t, x: pointeurTactile.rx, y: pointeurTactile.ry });
-  while (h.length > 2 && t - h[1].t > 4 * RETOUR_LEVER) h.shift();
+function noterEchantillon(t, x, y) {
+  const e = pointeurTactile.echantillons;
+  e.push({ t: t, x: x, y: y });
+  while (e.length > 2 && t - e[1].t > FENETRE_IMMOBILE_MAX + 50) e.shift();
 }
 
-// Position du réticule RETOUR_LEVER ms avant le lever (celle que l'élève voyait quand il a
-// décidé de lever le doigt) ; le saut du doigt qui se lève ne compte pas
-function reticuleAvantLever(t) {
+function noterReticule(t, immobile) {
   const h = pointeurTactile.historique;
-  let p = h[0];
-  for (let i = 0; i < h.length; i++) {
-    if (h[i].t <= t - RETOUR_LEVER) p = h[i];
-    else break;
+  h.push({ t: t, x: pointeurTactile.rx, y: pointeurTactile.ry, fx: pointeurTactile.x, fy: pointeurTactile.y, immobile: immobile });
+  while (h.length > 2 && t - h[1].t > 2 * RETOUR_MAX) h.shift();
+}
+
+// Croix à enregistrer au lever (instant t). Si le doigt était immobile il y a moins de
+// RETOUR_MAX ms et n'a bougé depuis que de SAUT_LEVER_MAX px au plus, ce mouvement est celui du
+// doigt qui se lève (il roule, le contact rétrécit) : on prend la croix de cet instant. Sinon
+// (l'élève glissait encore), la croix telle qu'elle est affichée.
+function reticuleAuLever(t) {
+  const h = pointeurTactile.historique;
+  const actuelle = { x: pointeurTactile.rx, y: pointeurTactile.ry };
+  for (let i = h.length - 1; i >= 0 && t - h[i].t <= RETOUR_MAX; i--) {
+    if (!h[i].immobile) continue;
+    // Doigt immobile en h[i] : de combien a-t-il bougé depuis (jusqu'au lever) ? (L'immobilité
+    // est jugée sur 60 ms : les premières ms d'un roulement lent comptent encore comme immobiles.)
+    let ecart = Math.hypot(pointeurTactile.x - h[i].fx, pointeurTactile.y - h[i].fy);
+    for (let j = i + 1; j < h.length; j++) ecart = Math.max(ecart, Math.hypot(h[j].fx - h[i].fx, h[j].fy - h[i].fy));
+    return ecart <= SAUT_LEVER_MAX ? { x: h[i].x, y: h[i].y } : actuelle;
   }
-  return p ? { x: p.x, y: p.y } : { x: pointeurTactile.rx, y: pointeurTactile.ry };
+  return actuelle;
+}
+
+// Bords : quand le doigt, en s'approchant d'un bord, arrive à BORD_ATTEINT px de ce bord (ou
+// au-delà), la croix se met sur le bord, en face (sur cet axe). Ailleurs, rien ne change : un
+// aller-retour du doigt ramène la croix à sa place. (r = croix après le pas, avant / apres =
+// doigt, taille = côté de l'image)
+function versBord(r, avant, apres, taille) {
+  if (apres < avant && apres <= BORD_ATTEINT) return 0;
+  if (apres > avant && apres >= taille - BORD_ATTEINT) return taille;
+  return constrain(r, 0, taille);
 }
 
 function dansZoneGeste(p) {
@@ -344,42 +390,75 @@ function dansZoneGeste(p) {
   return p.x >= -m && p.x <= width + m && p.y >= -m && p.y <= height + m;
 }
 
+function presDUnBord(p) {
+  return Math.min(p.x, p.y, width - p.x, height - p.y) <= BORD_POUCE;
+}
+
+// Le doigt suivi est-il un pouce qui tient la tablette ? (posé près d'un bord, immobile)
+function pouceAuRepos() {
+  return pointeurTactile.actif && pointeurTactile.depart && presDUnBord(pointeurTactile.depart) &&
+    pointeurTactile.ecartMax < POUCE_IMMOBILE;
+}
+
+// Nouveau geste au doigt en p (pixels CSS du canevas), identifiant id, instant t
+function commencerGeste(p, id, t) {
+  pointeurTactile.actif = true;
+  pointeurTactile.id = id;
+  pointeurTactile.x = p.x;
+  pointeurTactile.y = p.y;
+  pointeurTactile.depart = { x: p.x, y: p.y, t: t };
+  pointeurTactile.ecartMax = 0;
+  pointeurTactile.dansImage = estDansImage(p);
+  pointeurTactile.glisse = pointEtalonnageProche(p, PRISE_BOUT_DOIGT);
+  pointeurTactile.echantillons = [];
+  noterEchantillon(t, p.x, p.y);
+  // Croix : sous le doigt, ou sur le bout d'étalonnage saisi (il ne saute pas sous le doigt)
+  let r = p;
+  if (pointeurTactile.glisse) {
+    calibrator.debutGlisser(pointeurTactile.glisse);
+    const q = pointeurTactile.glisse === 1 ? calibrator.point1 : calibrator.point2;
+    r = versEcran(q.x, q.y);
+  }
+  pointeurTactile.rx = constrain(r.x, 0, width);
+  pointeurTactile.ry = constrain(r.y, 0, height);
+  pointeurTactile.historique = [];
+  noterReticule(t, true);
+  dessinerLoupe.place = null; // nouvelle loupe : place choisie de nouveau
+}
+
 function installerPointageTactile(elt) {
+  const ignores = pointeurTactile.ignores;
   elt.addEventListener('touchstart', (e) => {
     if (!modePointageActif()) return; // mode Graphiques : on laisse le navigateur gérer
     e.preventDefault(); // pas de défilement, de zoom, de menu sur appui long, ni de faux clic souris
     typePointeur = 'tactile';
     souris.dansCanvas = false;
     clavier.actif = false;
-    // Deuxième doigt SUR L'IMAGE (pincement…) : on abandonne le geste (bout remis en place).
-    // Un pouce posé ailleurs (bord de l'écran, panneau) ne compte pas : e.touches les compterait.
-    const surImage = e.targetTouches ? e.targetTouches.length : e.touches.length;
-    if (surImage > 1 || pointeurTactile.actif) {
-      if (pointeurTactile.actif) annulerToucher();
-      return;
-    }
     const t = e.changedTouches[0];
     const p = coordonneesCanvas(elt, t.clientX, t.clientY);
     const instant = instantEvenement(e);
-    pointeurTactile.actif = true;
-    pointeurTactile.id = t.identifier;
-    pointeurTactile.x = p.x;
-    pointeurTactile.y = p.y;
-    pointeurTactile.dansImage = estDansImage(p);
-    pointeurTactile.glisse = pointEtalonnageProche(p, PRISE_BOUT_DOIGT);
-    pointeurTactile.echantillons = [{ t: instant, x: p.x, y: p.y }];
-    // Réticule : sous le doigt, ou sur le bout d'étalonnage saisi (il ne saute pas sous le doigt)
-    let r = p;
-    if (pointeurTactile.glisse) {
-      calibrator.debutGlisser(pointeurTactile.glisse);
-      const q = pointeurTactile.glisse === 1 ? calibrator.point1 : calibrator.point2;
-      r = versEcran(q.x, q.y);
+    // Doigts oubliés (événement de fin perdu) : on ne garde que ceux encore posés
+    const poses = new Set(Array.from(e.touches || [], x => x.identifier));
+    ignores.forEach(id => { if (!poses.has(id)) ignores.delete(id); });
+    for (let i = 1; i < e.changedTouches.length; i++) ignores.add(e.changedTouches[i].identifier);
+    if (pointeurTactile.actif) {
+      if (pouceAuRepos()) {
+        // Le doigt suivi était un pouce qui tient la tablette : il cède la place au nouveau
+        ignores.add(pointeurTactile.id);
+        annulerToucher();
+      } else if (presDUnBord(p)) {
+        ignores.add(t.identifier); // pouce posé pendant le geste : on ne le suit pas
+        return;
+      } else {
+        // Deux doigts sur l'image (pincement…) : on abandonne le geste (bout remis en place)
+        ignores.add(pointeurTactile.id);
+        ignores.add(t.identifier);
+        annulerToucher();
+        afficherMessageTemporaire('Deux doigts sur l’image : geste annulé. Pointe avec un seul doigt.', 2500);
+        return;
+      }
     }
-    pointeurTactile.rx = constrain(r.x, 0, width);
-    pointeurTactile.ry = constrain(r.y, 0, height);
-    pointeurTactile.historique = [];
-    noterReticule(instant);
-    dessinerLoupe.place = -1; // nouvelle loupe : place choisie de nouveau
+    commencerGeste(p, t.identifier, instant);
   }, { passive: false });
 
   elt.addEventListener('touchmove', (e) => {
@@ -389,37 +468,60 @@ function installerPointageTactile(elt) {
     if (!t) return;
     const p = coordonneesCanvas(elt, t.clientX, t.clientY);
     const instant = instantEvenement(e);
-    // Le réticule avance du déplacement du doigt, démultiplié quand le doigt va lentement
+    // Aucun événement depuis un moment : le doigt était immobile à sa dernière position (certains
+    // écrans n'envoient rien tant que le doigt ne bouge pas) ; on le note pour le lever
+    const h = pointeurTactile.historique;
+    if (h.length && instant - h[h.length - 1].t > FENETRE_IMMOBILE) {
+      h.push({ t: instant - 1, x: pointeurTactile.rx, y: pointeurTactile.ry, fx: pointeurTactile.x, fy: pointeurTactile.y, immobile: true });
+    }
+    // La croix avance du déplacement du doigt, démultiplié à vitesse naturelle ; doigt poussé
+    // jusqu'au bord : croix sur le bord
     const g = gainDoigt(vitesseDoigt(instant, p.x, p.y));
-    pointeurTactile.rx = constrain(pointeurTactile.rx + g * (p.x - pointeurTactile.x), 0, width);
-    pointeurTactile.ry = constrain(pointeurTactile.ry + g * (p.y - pointeurTactile.y), 0, height);
+    const immobile = vitesseDoigt(instant, p.x, p.y, FENETRE_IMMOBILE, FENETRE_IMMOBILE_MAX) <= VITESSE_IMMOBILE;
+    const rx = pointeurTactile.rx, ry = pointeurTactile.ry;
+    pointeurTactile.rx = versBord(rx + g * (p.x - pointeurTactile.x), pointeurTactile.x, p.x, width);
+    pointeurTactile.ry = versBord(ry + g * (p.y - pointeurTactile.y), pointeurTactile.y, p.y, height);
     pointeurTactile.x = p.x;
     pointeurTactile.y = p.y;
-    const ech = pointeurTactile.echantillons;
-    ech.push({ t: instant, x: p.x, y: p.y });
-    while (ech.length > 2 && instant - ech[1].t > 3 * FENETRE_VITESSE) ech.shift();
+    const d = pointeurTactile.depart;
+    pointeurTactile.ecartMax = Math.max(pointeurTactile.ecartMax, Math.hypot(p.x - d.x, p.y - d.y));
+    noterEchantillon(instant, p.x, p.y);
     pointeurTactile.dansImage = dansZoneGeste(p);
-    noterReticule(instant);
+    noterReticule(instant, immobile);
     if (pointeurTactile.glisse && pointeurTactile.dansImage) {
-      const v = versVideo(pointeurTactile.rx, pointeurTactile.ry);
-      calibrator.deplacerPoint(pointeurTactile.glisse, v.x, v.y);
+      const q = versVideo(pointeurTactile.rx, pointeurTactile.ry);
+      calibrator.deplacerPoint(pointeurTactile.glisse, q.x, q.y);
     }
   }, { passive: false });
 
   elt.addEventListener('touchend', (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier !== pointeurTactile.id) ignores.delete(e.changedTouches[i].identifier);
+    }
     if (!pointeurTactile.actif) return;
     e.preventDefault();
     const t = toucherSuivi(e.changedTouches);
     if (!t) return;
-    // La position du lever (et les derniers mouvements) ne comptent pas : on prend le réticule
-    // tel qu'il était affiché juste avant
+    // La position du lever ne compte pas : on prend la croix affichée (ou celle d'avant le
+    // mouvement du doigt qui se lève)
     const garde = pointeurTactile.dansImage;
-    const r = reticuleAvantLever(instantEvenement(e));
+    const instant = instantEvenement(e);
+    const r = reticuleAuLever(instant);
     const glisse = pointeurTactile.glisse;
+    const depart = pointeurTactile.depart;
+    const net = pointeurTactile.ecartMax < TOUCHER_NET && instant - depart.t < TOUCHER_NET_DUREE;
+    if (glisse && net && calibrator.state === 'waiting_point2') {
+      // Toucher bref près du premier bout alors qu'on place le second : c'est le second bout
+      annulerToucher(); // le premier bout reste à sa place
+      const q = versVideo(depart.x, depart.y);
+      traiterPointage(q.x, q.y);
+      surEtalonnageDeplace();
+      return;
+    }
     if (glisse) {
       if (garde) {
-        const v = versVideo(r.x, r.y);
-        calibrator.deplacerPoint(glisse, v.x, v.y);
+        const q = versVideo(r.x, r.y);
+        calibrator.deplacerPoint(glisse, q.x, q.y);
         terminerGlisser();
       }
       annulerToucher(); // hors de l'image : le bout revient à sa place
@@ -428,16 +530,22 @@ function installerPointageTactile(elt) {
     }
     annulerToucher();
     if (garde) {
-      const v = versVideo(r.x, r.y);
-      traiterPointage(v.x, v.y);
+      const q = versVideo(r.x, r.y);
+      traiterPointage(q.x, q.y);
     }
   }, { passive: false });
 
   // Le navigateur reprend le geste (appui long, geste système…) : rien n'est enregistré, on le dit
-  elt.addEventListener('touchcancel', () => {
-    const enCours = pointeurTactile.actif;
+  elt.addEventListener('touchcancel', (e) => {
+    let suivi = e.changedTouches.length === 0;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const id = e.changedTouches[i].identifier;
+      if (id === pointeurTactile.id) suivi = true;
+      ignores.delete(id);
+    }
+    if (!suivi || !pointeurTactile.actif) return;
     annulerToucher();
-    if (enCours) afficherMessageTemporaire('Geste interrompu : rien n’est enregistré. Recommence.', 2500);
+    afficherMessageTemporaire('Geste interrompu : rien n’est enregistré. Recommence.', 2500);
   });
 
   // Souris : le viseur suit la souris sur l'image ; glisser un point d'étalonnage
@@ -656,26 +764,34 @@ function placerLoupe(ax, ay, R, ecart, ecartMin) {
   else if (ax > milieu + marge) placerLoupe.cote = -1;
   else if (!placerLoupe.cote) placerLoupe.cote = ax < milieu ? 1 : -1;
   const s = placerLoupe.cote, d = R + ecart, k = Math.SQRT1_2;
-  const directions = [[0, -1], [s * k, -k], [s, 0], [-s * k, -k], [-s, 0]];
-  const places = directions.map(([dx, dy]) => {
-    const c = { x: constrain(ax + dx * d, R + m, width - R - m), y: constrain(ay + dy * d, R + m, height - R - m) };
+  // Places par ordre de préférence ; rang : au-dessus (0), diagonale (1), côté (2)
+  const places = [
+    { nom: 'haut', rang: 0, dx: 0, dy: -1 },
+    { nom: s > 0 ? 'haut-droite' : 'haut-gauche', rang: 1, dx: s * k, dy: -k },
+    { nom: s > 0 ? 'droite' : 'gauche', rang: 2, dx: s, dy: 0 },
+    { nom: s > 0 ? 'haut-gauche' : 'haut-droite', rang: 1, dx: -s * k, dy: -k },
+    { nom: s > 0 ? 'gauche' : 'droite', rang: 2, dx: -s, dy: 0 }
+  ].map(c => {
+    c.x = constrain(ax + c.dx * d, R + m, width - R - m);
+    c.y = constrain(ay + c.dy * d, R + m, height - R - m);
     c.distance = Math.hypot(c.x - ax, c.y - ay);
     return c;
   });
-  const precedente = dessinerLoupe.place >= 0 ? dessinerLoupe.place : directions.length;
-  let choix = -1;
-  for (let i = 0; i < places.length && choix < 0; i++) {
-    // Revenir à une place préférée demande une marge (hystérésis)
-    const requis = R + ecartMin + (i < precedente ? LOUPE_HYSTERESIS : 0);
-    if (places[i].distance >= requis || (i === precedente && places[i].distance >= R + ecartMin)) choix = i;
+  const convient = (c, marge) => c.distance >= R + ecartMin + marge;
+  // La loupe garde sa place tant qu'elle convient ; elle n'en change que pour une place d'un
+  // meilleur rang (au-dessus plutôt qu'en diagonale…), avec une marge : pas de saut d'un côté
+  // à l'autre quand le doigt traverse le milieu de l'image
+  const avant = places.find(c => c.nom === dessinerLoupe.place);
+  let choix = null;
+  if (avant && convient(avant, 0)) {
+    choix = places.find(c => c.rang < avant.rang && convient(c, LOUPE_HYSTERESIS)) || avant;
+  } else {
+    choix = places.find(c => convient(c, 0));
   }
-  if (choix < 0) {
-    // Image trop petite pour respecter l'écart : la place la plus éloignée du doigt
-    choix = 0;
-    places.forEach((c, i) => { if (c.distance > places[choix].distance) choix = i; });
-  }
-  dessinerLoupe.place = choix;
-  return places[choix];
+  // Image trop petite pour respecter l'écart : la place la plus éloignée du doigt
+  if (!choix) choix = places.reduce((a, c) => (c.distance > a.distance ? c : a));
+  dessinerLoupe.place = choix.nom;
+  return choix;
 }
 
 // Image à agrandir : la source elle-même (pixels de la vidéo, pas ceux de l'écran), ou null
@@ -718,6 +834,28 @@ function dessinerLoupe(x, y, couleurReticule) {
     const y0 = Math.max(0, v.y - demi), y1 = Math.min(s.h, v.y + demi);
     if (x1 > x0 && y1 > y0) {
       ctx.drawImage(src, x0, y0, x1 - x0, y1 - y0, cx + (x0 - v.x) * e, cy + (y0 - v.y) * e, (x1 - x0) * e, (y1 - y0) * e);
+    }
+    // Étalonnage : les bouts (et le segment) sont aussi dans la loupe, pour les retrouver et les
+    // saisir ; le bout qu'on déplace est au centre, sous la croix
+    if (etat === 'Calibration' && calibrator) {
+      const bouts = [calibrator.point1, calibrator.point2].filter(Boolean).map(q => ({ x: cx + (q.x - v.x) * e, y: cy + (q.y - v.y) * e }));
+      ctx.lineCap = 'round';
+      [['rgba(0,0,0,0.8)', 4.5], ['rgb(0,230,90)', 2]].forEach(([couleur, epaisseur]) => {
+        ctx.strokeStyle = couleur;
+        ctx.lineWidth = epaisseur;
+        if (bouts.length === 2 && !pointeurTactile.glisse && !souris.glisse) {
+          ctx.beginPath();
+          ctx.moveTo(bouts[0].x, bouts[0].y);
+          ctx.lineTo(bouts[1].x, bouts[1].y);
+          ctx.stroke();
+        }
+        bouts.forEach(b => {
+          if (Math.hypot(b.x - cx, b.y - cy) < 1) return;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, 10, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+      });
     }
   } else {
     // Pas de source (chargement…) : copie du canevas lui-même
