@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const formulas = {C:'C', O2:'O₂', CH4:'CH₄', CO2:'CO₂', H2O:'H₂O', C4H10:'C₄H₁₀'};
 const shapes = {C:['C'], O2:['O','O'], CH4:['C','H','H','H','H'], CO2:['O','C','O'], H2O:['H','O','H']};
 const instructions = {
-  carbone:['Assembler le dioxyde de carbone','Choisis un jeton, puis touche le modèle de CO₂ pour y placer cet atome. Utilise tous les jetons.'],
+  carbone:['Assembler le dioxyde de carbone','Assemble les atomes du carbone et du dioxygène pour former une molécule de CO₂.'],
   methane:['Faire brûler le méthane','Lors de la combustion complète du méthane, il se forme du dioxyde de carbone et de l’eau. Construis ces molécules. Ajuste la quantité de dioxygène pour utiliser tous les atomes.'],
   enquete:['Examiner la proposition de Lina','Choisis un élément et compte ses atomes de chaque côté de la flèche. Trouve celui dont les nombres diffèrent, puis corrige la quantité de dioxygène.'],
   butane:['Les cartes de la combustion complète du butane','Deux molécules de butane réagissent. Choisis le nombre de cartes O₂, CO₂ et H₂O. Une carte représente une molécule entière. Compare les nombres d’atomes.']
@@ -39,18 +39,27 @@ function stock(){
 function counter(key,value,limit,minimum=0){
   return '<span class="count"><button data-step="-1" data-key="'+key+'" aria-label="Retirer une molécule de '+formulas[key]+'" '+(value<=minimum?'disabled':'')+'>−</button><output>'+value+'</output><button '+(key==='O2'?'id="oxygen-plus" ':'')+'data-step="1" data-key="'+key+'" aria-label="Ajouter une molécule de '+formulas[key]+'" '+(value>=limit?'disabled':'')+'>+</button></span>';
 }
+function freeSlot(key,symbol){
+  return shapes[key].filter(s=>s===symbol).length > current[key].filter(s=>s===symbol).length;
+}
+function target(key){
+  const progress=current[key].length+' / '+shapes[key].length+' atomes placés';
+  return '<button class="target" data-product="'+key+'" aria-label="Placer dans '+formulas[key]+', '+progress+'">'+
+    '<strong>'+formulas[key]+'</strong>'+model(key,current[key])+'<span class="progress">'+progress+'</span></button>';
+}
 function board(){
   const fuel=mode==='methane'?'CH4':'C';
   const supply=stock();
   const pool=Object.keys(supply).flatMap(symbol=>Array.from({length:supply[symbol]},(_,i)=>
     '<button data-atom="'+symbol+'" data-index="'+i+'" aria-pressed="'+(selected?.symbol===symbol&&selected.i===i)+'" aria-label="Choisir un atome '+symbol+'">'+atom(symbol)+'</button>')).join('');
-  const targets=(mode==='methane'?['CO2','H2O']:['CO2']).map(key=>
-    '<button class="target" data-product="'+key+'" aria-label="Placer dans '+formulas[key]+'">'+model(key,current[key])+formulas[key]+'</button>').join('');
+  const targets=(mode==='methane'?['CO2','H2O']:['CO2']).map(target).join('');
   return '<div class="cols"><section class="panel"><h3>Avant · réactifs</h3><div class="models">'+particles(fuel,1)+' + '+particles('O2',oxygen)+'</div>'+
     (mode==='methane'?'Molécules O₂ '+counter('O2',oxygen,4,1):'Carbone et dioxygène')+'</section>'+
-    '<section class="panel"><h3>Après · produits</h3>Jetons à placer<div class="pool">'+(pool||'Tous les jetons sont placés.')+'</div>'+
-    (!solved?'<div>Modèles à remplir</div>'+targets:'')+
-    '<div class="models">'+formed.map(k=>particles(k,1,true)).join('')+'</div>'+
+    '<section class="panel assembly"><h3>Après · produits</h3>'+
+    (!solved?'<h4>1. Choisis un atome</h4><div class="pool">'+(pool||'Réserve vide.')+'</div>'+
+      '<h4>2. Touche la molécule à compléter</h4><p class="legend"><span><i class="free"></i>Place libre</span><span><i class="placed"></i>Atome placé</span></p>'+
+      '<div class="targets">'+targets+'</div>':'')+
+    (formed.length?'<h4>Molécules formées</h4><div class="models">'+formed.map(k=>particles(k,1,true)).join('')+'</div>':'')+
     (history.length&&!solved?'<button id="undo">Annuler le dernier jeton</button>':'')+'</section></div>';
 }
 const names={C:'de carbone',CH4:'de méthane',O2:'de dioxygène',CO2:'de dioxyde de carbone',H2O:'d’eau',C4H10:'de butane'};
@@ -145,16 +154,22 @@ function check(){
   render(); say(hint||(mode==='methane'?'Bilan vérifié. Touche le 2 devant H₂O dans l’équation.':'Bilan vérifié. Explique comment tu as retrouvé chaque atome.'));
 }
 function place(key){
-  if(!selected) return say('Choisis d’abord un jeton à placer.');
+  if(!selected) return say('Choisis d’abord un atome dans la réserve, puis touche le modèle à compléter.');
   const symbol=selected.symbol;
-  if(current[key].filter(s=>s===symbol).length>=shapes[key].filter(s=>s===symbol).length) return say('Ce modèle n’a pas de place libre pour cet élément.');
+  if(!freeSlot(key,symbol)) return say('Le modèle '+formulas[key]+' n’a aucune place libre pour '+symbol+'. Choisis un autre modèle ou change d’atome.');
   history.push({key,symbol}); current[key].push(symbol); selected=null;
-  if(current[key].length===shapes[key].length){
+  const complete=current[key].length===shapes[key].length;
+  if(complete){
     formed.push(key);
     current[key]=[];
     highlighted=key;
   }
-  render(); say('Atome placé.');
+  render();
+  const missing=shapes[key].length-current[key].length;
+  say(complete?'Molécule '+formulas[key]+' formée ! Retrouve-la dans les produits et dans l’équation.':
+    symbol+' placé dans '+formulas[key]+'. Il reste '+missing+(missing===1?' place libre.':' places libres.'));
+  const next=$('work').querySelector('[data-atom]')||$('check');
+  next.focus({preventScroll:true});
 }
 $('work').addEventListener('click',event=>{
   const button=event.target.closest('button');
@@ -165,14 +180,16 @@ $('work').addEventListener('click',event=>{
   if(data.atom){
     selected={symbol:data.atom,i:Number(data.index)};
     $('work').querySelectorAll('[data-atom]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
-    say('Jeton '+data.atom+' choisi. Touche son modèle de destination.');
+    $('work').querySelectorAll('[data-product]').forEach(target=>target.classList.toggle('compatible',freeSlot(target.dataset.product,data.atom)));
+    say('Atome '+data.atom+' choisi. Touche une molécule où sa place est libre.');
   }else if(data.product) place(data.product);
   else if(button.id==='undo'){
-    const {key}=history.pop();
+    const {key,symbol}=history.pop();
     highlighted=key;
     if(!current[key].length){formed.splice(formed.lastIndexOf(key),1);current[key]=history.filter(s=>s.key===key).map(s=>s.symbol).slice(-(shapes[key].length-1));}
     else current[key].pop();
-    selected=null; render(); say('Jeton remis dans la réserve.');
+    selected=null; render(); say('Atome '+symbol+' remis dans la réserve. Sa place est de nouveau libre dans '+formulas[key]+'.');
+    ($('undo')||$('work').querySelector('[data-atom]')).focus({preventScroll:true});
   }else if(data.inspect){
     inspected=data.inspect;
     render();say(diagnosed?'Ajuste le nombre de molécules O₂.':'Compte les atomes '+inspected+' avant et après.');
