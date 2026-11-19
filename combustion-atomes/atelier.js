@@ -58,9 +58,8 @@ function equation(){
   return 'CH₄ + 2 O₂ → CO₂ + '+(mode==='methane'?'<button id="water-count" aria-label="Montrer les deux molécules d’eau">2</button>':'2')+' H₂O';
 }
 function investigation(){
-  const before={C:1,H:4,O:2*oxygen}, after={C:1,H:4,O:4};
   return '<section class="panel"><h3>Proposition à examiner</h3><p>CH₄ + '+(oxygen===1?'':oxygen+' ')+'O₂ → CO₂ + 2 H₂O</p><div class="models">'+model('CH4')+' + '+Array.from({length:oxygen},()=>model('O2')).join(' ')+' → '+model('CO2')+' + '+model('H2O')+' '+model('H2O')+'</div><div class="row">Élément à compter '+['C','H','O'].map(s=>'<button data-inspect="'+s+'" aria-pressed="'+(inspected===s)+'">'+s+'</button>').join('')+'</div>'+
-    (inspected?'<p>'+inspected+' · avant : '+before[inspected]+' · après : '+after[inspected]+'</p>':'')+
+    (inspected&&!diagnosed?'<div class="row"><strong>Atomes '+inspected+'</strong><label>Avant <input id="before" type="number" inputmode="numeric" min="0" max="20"></label><label>Après <input id="after" type="number" inputmode="numeric" min="0" max="20"></label><button id="compare">Comparer</button></div>':'')+
     (diagnosed?'Molécules O₂ '+counter('O2',oxygen,4,1):'')+'</section>';
 }
 function cards(){
@@ -112,8 +111,14 @@ $('work').addEventListener('click',event=>{
     selected=null; render(); say('Jeton remis dans la réserve.');
   }else if(data.inspect){
     inspected=data.inspect;
-    if(inspected==='O'&&oxygen!==2) diagnosed=true;
-    render(); say(diagnosed?'Ajuste le nombre de molécules O₂.':'Cet élément a le même nombre d’atomes de chaque côté.');
+    render();say(diagnosed?'Ajuste le nombre de molécules O₂.':'Compte les atomes '+inspected+' avant et après.');
+    if(!diagnosed) $('before').focus();
+  }else if(button.id==='compare'){
+    const before={C:1,H:4,O:2*oxygen}, after={C:1,H:4,O:4};
+    if($('before').valueAsNumber!==before[inspected]) return say('Recompte les atomes '+inspected+' dans les réactifs.');
+    if($('after').valueAsNumber!==after[inspected]) return say('Recompte les atomes '+inspected+' dans les produits.');
+    if(before[inspected]===after[inspected]) return say('Le compte est juste. Cherche maintenant un élément dont les nombres diffèrent.');
+    diagnosed=true;render();say('Tes comptes diffèrent. Ajuste le nombre de molécules O₂.');
   }else if(data.step){
     const step=Number(data.step);
     if(data.key==='O2'){
