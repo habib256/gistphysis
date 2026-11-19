@@ -2,3 +2,55 @@
 html,body{height:100%;overflow:hidden}#app{width:100%;height:100%;max-width:none;overflow:auto;padding-inline:max(clamp(12px,3vw,32px),calc((100% - 1000px)/2))}
 
 [data-inspect]{min-width:44px}#before,#after{font:inherit;width:4em;min-height:44px;border:1px solid #82989a;border-radius:.4em;padding:.3em}.row+.row{margin-top:.6rem}
+
+.balance {
+  margin-top: .9rem;
+  border: 1px solid #bdcfc8;
+  border-top: 4px solid #15584c;
+  border-radius: 12px;
+  background: #fff;
+  padding: .7rem clamp(.55rem, 2vw, 1.25rem);
+}
+.balance h2 { margin: 0 0 .45rem; font-size: 1.05rem; }
+#equation {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: .3em;
+  font-size: clamp(1.4rem, 4vw, 3.45rem);
+  line-height: 1.18;
+}
+.side { min-width: 0; }
+.side small { display: block; font-size: .85rem; font-weight: 650; }
+.side > div { display: flex; align-items: center; gap: .13em; flex-wrap: wrap; }
+.side button {
+  color: #162c32;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.18;
+  padding: .12em;
+  border: 1px solid transparent;
+  border-bottom: 2px solid #88aaa0;
+  border-radius: .18em;
+  background: #f2f6f3;
+  white-space: nowrap;
+}
+.coefficient { color: #0759a6; font-weight: 800; }
+.arrow { align-self: end; padding-bottom: .16em; color: #435353; }
+#reading { font-size: .9rem; margin: .5rem 0 0; }
+.particle { padding: 3px; min-width: 44px; border: 1px solid #c5d3ce; border-radius: .4rem; }
+.particle.lit, .side button[aria-pressed=true] { background: #e2f1e9; }
+.card-row { border-top: 1px solid #d9e0da; margin-top: .5rem; }
+.card-set { display: flex; flex-wrap: wrap; gap: 4px; }
+.card-set .particle { padding: .2em .45em; }
+.inquiry { margin-top: .75rem; }
+@media (max-width: 620px) {
+  #equation { font-size: clamp(1.65rem, 6vw, 2.2rem); }
+  .side > div { gap: .04em; }
+  .side button { padding-inline: .04em; }
+}
+@media (max-width: 420px) {
+  #equation { grid-template-columns: auto 1fr; }
+  .reactants { grid-column: 1 / -1; }
+  .arrow { grid-column: 1; }
+}

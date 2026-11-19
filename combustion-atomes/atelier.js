@@ -8,6 +8,7 @@ const instructions = {
   enquete:['Examiner la proposition de Lina','Choisis un élément et compte ses atomes de chaque côté de la flèche. Trouve celui dont les nombres diffèrent, puis corrige la quantité de dioxygène.'],
   butane:['Les cartes de la combustion complète du butane','Deux molécules de butane réagissent. Choisis le nombre de cartes O₂, CO₂ et H₂O. Une carte représente une molécule entière. Compare les nombres d’atomes.']
 };
+let highlighted;
 let mode, oxygen, selected, counts, current, formed, history, solved, inspected, diagnosed;
 function atom(symbol,empty=false){
   return '<span class="atom '+symbol+(empty?' empty':'')+'">'+symbol+'</span>';
@@ -21,6 +22,7 @@ function model(key,placed=shapes[key]){
   }).join('')+'</span>';
 }
 function reset(){
+  highlighted=null;
   mode=$('challenge').value;
   oxygen=mode==='butane'?0:1;
   selected=null; counts={CO2:0,H2O:0}; current={CO2:[],H2O:[]};
@@ -44,31 +46,86 @@ function board(){
     '<button data-atom="'+symbol+'" data-index="'+i+'" aria-pressed="'+(selected?.symbol===symbol&&selected.i===i)+'" aria-label="Choisir un atome '+symbol+'">'+atom(symbol)+'</button>')).join('');
   const targets=(mode==='methane'?['CO2','H2O']:['CO2']).map(key=>
     '<button class="target" data-product="'+key+'" aria-label="Placer dans '+formulas[key]+'">'+model(key,current[key])+formulas[key]+'</button>').join('');
-  return '<div class="cols"><section class="panel"><h3>Avant · réactifs</h3><div class="models">'+model(fuel)+' + '+Array.from({length:oxygen},()=>model('O2')).join(' ')+'</div>'+
+  return '<div class="cols"><section class="panel"><h3>Avant · réactifs</h3><div class="models">'+particles(fuel,1)+' + '+particles('O2',oxygen)+'</div>'+
     (mode==='methane'?'Molécules O₂ '+counter('O2',oxygen,4,1):'Carbone et dioxygène')+'</section>'+
     '<section class="panel"><h3>Après · produits</h3>Jetons à placer<div class="pool">'+(pool||'Tous les jetons sont placés.')+'</div>'+
     (!solved?'<div>Modèles à remplir</div>'+targets:'')+
-    '<div class="models">'+formed.map(k=>'<span class="formed" data-formed="'+k+'">'+model(k)+'</span>').join('')+'</div>'+
+    '<div class="models">'+formed.map(k=>particles(k,1,true)).join('')+'</div>'+
     (history.length&&!solved?'<button id="undo">Annuler le dernier jeton</button>':'')+'</section></div>';
 }
+const names={C:'de carbone',CH4:'de méthane',O2:'de dioxygène',CO2:'de dioxyde de carbone',H2O:'d’eau',C4H10:'de butane'};
+function particles(key,count,product=false){
+  return Array.from({length:count},()=>'<button type="button" class="particle" data-species="'+key+'" '+
+    (product?'data-formed="'+key+'" ':'')+'aria-label="Repérer '+formulas[key]+' dans l’équation">'+
+    (mode==='butane'?formulas[key]:model(key))+'</button>').join(' ');
+}
+function quantities(){
+  const fuel=mode==='butane'?'C4H10':mode==='carbone'?'C':'CH4';
+  const products=mode==='carbone'?['CO2']:['CO2','H2O'];
+  function total(key){
+    if(mode==='butane') return counts[key];
+    if(mode==='enquete') return key==='H2O'?2:1;
+    return formed.filter(k=>k===key).length;
+  }
+  return [[[fuel,mode==='butane'?2:1],['O2',oxygen]],products.map(k=>[k,total(k)])];
+}
+function term([key,n]){
+  const coefficient=n===1?'':n||'?';
+  return '<button type="button" data-term="'+key+'" aria-label="'+(n||'Nombre à déterminer')+' '+formulas[key]+'" aria-pressed="false">'+
+    '<span class="coefficient" '+(key==='H2O'&&n===2?'id="water-count"':'')+'>'+coefficient+'</span>'+
+    (coefficient?' ':'')+formulas[key]+'</button>';
+}
 function equation(){
-  if(!solved) return '';
-  if(mode==='carbone') return 'C + O₂ → CO₂';
-  if(mode==='butane') return '2 C₄H₁₀ + 13 O₂ → 8 CO₂ + 10 H₂O';
-  return 'CH₄ + 2 O₂ → CO₂ + '+(mode==='methane'?'<button id="water-count" aria-label="Montrer les deux molécules d’eau">2</button>':'2')+' H₂O';
+  const [before,after]=quantities();
+  const side=terms=>terms.map(term).join('<span class="op"> + </span>');
+  return '<div class="side reactants"><small>Avant · réactifs consommés</small><div>'+side(before)+'</div></div>'+
+    '<span class="arrow"> → </span><div class="side products"><small>Après · produits formés</small><div>'+side(after)+'</div></div>';
+}
+function highlight(key){
+  highlighted=key;
+  document.querySelectorAll('[data-term]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.term===key)));
+  document.querySelectorAll('[data-species]').forEach(b=>{
+    const active=b.dataset.species===key;
+    b.classList.toggle('lit',active);
+    b.setAttribute('aria-pressed',String(active));
+  });
+  if(!key){
+    $('reading').textContent='Le coefficient devant une formule compte les particules représentées. Touche la formule pour les repérer.';
+    return;
+  }
+  const [reactants,products]=quantities();
+  const reactant=reactants.some(([k])=>k===key);
+  const [,n]=(reactant?reactants:products).find(([k])=>k===key);
+  if(!n){
+    $('reading').textContent='? '+formulas[key]+' · Le nombre de molécules '+names[key]+' reste à déterminer.';
+    return;
+  }
+  const noun=key==='C'?'atome':'molécule';
+  const suffix=n>1?'s':'';
+  $('reading').textContent=(n===1?'Le coefficient 1 est sous-entendu. ':'Le coefficient '+n+' compte ')+
+    (n===1?'1':n)+' '+noun+suffix+' '+names[key]+(reactant?' avant la transformation.':' après la transformation.')+
+    (key==='O2'?' Dans O₂, l’indice ₂ indique deux atomes O par molécule.':
+     key==='H2O'?' Dans H₂O, l’indice ₂ indique deux atomes H par molécule.':'');
 }
 function investigation(){
-  return '<section class="panel"><h3>Proposition à examiner</h3><p>CH₄ + '+(oxygen===1?'':oxygen+' ')+'O₂ → CO₂ + 2 H₂O</p><div class="models">'+model('CH4')+' + '+Array.from({length:oxygen},()=>model('O2')).join(' ')+' → '+model('CO2')+' + '+model('H2O')+' '+model('H2O')+'</div><div class="row">Élément à compter '+['C','H','O'].map(s=>'<button data-inspect="'+s+'" aria-pressed="'+(inspected===s)+'">'+s+'</button>').join('')+'</div>'+
+  return '<div class="cols"><section class="panel"><h3>Avant · réactifs</h3><div class="models">'+particles('CH4',1)+' + '+particles('O2',oxygen)+'</div></section>'+
+    '<section class="panel"><h3>Après · produits</h3><div class="models">'+particles('CO2',1)+' + '+particles('H2O',2)+'</div></section></div>'+
+    '<section class="panel inquiry"><h3>Vérifier la proposition</h3><div class="row">Élément à compter '+['C','H','O'].map(s=>'<button data-inspect="'+s+'" aria-pressed="'+(inspected===s)+'">'+s+'</button>').join('')+'</div>'+
     (inspected&&!diagnosed?'<div class="row"><strong>Atomes '+inspected+'</strong><label>Avant <input id="before" type="number" inputmode="numeric" min="0" max="20"></label><label>Après <input id="after" type="number" inputmode="numeric" min="0" max="20"></label><button id="compare">Comparer</button></div>':'')+
     (diagnosed?'Molécules O₂ '+counter('O2',oxygen,4,1):'')+'</section>';
 }
 function cards(){
-  return '<div class="cols"><section class="panel"><h3>Avant · réactifs</h3><p>2 × C₄H₁₀</p><div>O₂ '+counter('O2',oxygen,20)+'</div><p>Atomes : C × 8 · H × 20 · O × '+2*oxygen+'</p></section><section class="panel"><h3>Après · produits</h3>'+Object.keys(counts).map(k=>'<div>'+formulas[k]+' '+counter(k,counts[k],20)+'</div>').join('')+'<p>Atomes : C × '+counts.CO2+' · H × '+2*counts.H2O+' · O × '+(2*counts.CO2+counts.H2O)+'</p></section></div>';
+  const cardRow=(key,n)=>'<div class="card-row"><strong>'+formulas[key]+'</strong> '+counter(key,n,20)+'<div class="card-set">'+particles(key,n)+'</div></div>';
+  return '<div class="cols"><section class="panel"><h3>Avant · réactifs</h3><div class="card-set">'+particles('C4H10',2)+'</div>'+
+    cardRow('O2',oxygen)+'<p>Atomes : C × 8 · H × 20 · O × '+2*oxygen+'</p></section>'+
+    '<section class="panel"><h3>Après · produits</h3>'+Object.keys(counts).map(k=>cardRow(k,counts[k])).join('')+'<p>Atomes : C × '+counts.CO2+' · H × '+2*counts.H2O+' · O × '+(2*counts.CO2+counts.H2O)+'</p></section></div>';
 }
 function render(){
   $('work').innerHTML=mode==='enquete'?investigation():mode==='butane'?cards():board();
   $('equation').innerHTML=equation();
-  if(solved) $('work').querySelectorAll('button').forEach(b=>b.disabled=true);
+  $('equation-title').textContent=solved?'Équation-bilan vérifiée':mode==='enquete'?'Équation proposée par Lina':'Équation-bilan à construire';
+  highlight(highlighted);
+  if(solved) $('work').querySelectorAll('button:not([data-species])').forEach(b=>b.disabled=true);
   $('check').disabled=solved;
 }
 function check(){
@@ -92,12 +149,18 @@ function place(key){
   const symbol=selected.symbol;
   if(current[key].filter(s=>s===symbol).length>=shapes[key].filter(s=>s===symbol).length) return say('Ce modèle n’a pas de place libre pour cet élément.');
   history.push({key,symbol}); current[key].push(symbol); selected=null;
-  if(current[key].length===shapes[key].length){formed.push(key);current[key]=[];}
+  if(current[key].length===shapes[key].length){
+    formed.push(key);
+    current[key]=[];
+    highlighted=key;
+  }
   render(); say('Atome placé.');
 }
 $('work').addEventListener('click',event=>{
   const button=event.target.closest('button');
-  if(!button||solved) return;
+  if(!button) return;
+  if(button.dataset.species) return highlight(button.dataset.species);
+  if(solved) return;
   const data=button.dataset;
   if(data.atom){
     selected={symbol:data.atom,i:Number(data.index)};
@@ -106,6 +169,7 @@ $('work').addEventListener('click',event=>{
   }else if(data.product) place(data.product);
   else if(button.id==='undo'){
     const {key}=history.pop();
+    highlighted=key;
     if(!current[key].length){formed.splice(formed.lastIndexOf(key),1);current[key]=history.filter(s=>s.key===key).map(s=>s.symbol).slice(-(shapes[key].length-1));}
     else current[key].pop();
     selected=null; render(); say('Jeton remis dans la réserve.');
@@ -125,14 +189,14 @@ $('work').addEventListener('click',event=>{
       if(mode==='methane'&&step<0&&stock().O<2) return say('Annule d’abord des placements pour libérer deux atomes O.');
       oxygen+=step;
     }else counts[data.key]+=step;
+    highlighted=data.key;
     selected=null;render(); say('');
     const next=$('work').querySelector('[data-key="'+data.key+'"][data-step="'+step+'"]');
     if(next&&!next.disabled) next.focus();
   }
 });
 $('equation').addEventListener('click',e=>{
-  if(e.target.id!=='water-count') return;
-  document.querySelectorAll('[data-formed="H2O"]').forEach(el=>el.classList.add('lit'));
-  say('Le coefficient 2 compte deux molécules d’eau entières.');
+  const button=e.target.closest('[data-term]');
+  if(button) highlight(button.dataset.term);
 });
 $('challenge').addEventListener('change',reset); $('reset').addEventListener('click',reset); $('check').addEventListener('click',check);reset();
