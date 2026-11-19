@@ -31,8 +31,8 @@ html,body{height:100%;overflow:hidden}#app{width:100%;height:100%;max-width:none
   line-height: 1.18;
 }
 .side { min-width: 0; }
-.side small { display: block; font-size: .85rem; font-weight: 650; }
-.side > div { display: flex; align-items: center; gap: .13em; flex-wrap: wrap; }
+.side small { display: block; margin-bottom: .75rem; font-size: .85rem; font-weight: 650; }
+.side > div { display: flex; align-items: center; gap: .6rem .13em; flex-wrap: wrap; }
 .side button {
   color: #162c32;
   font: inherit;
@@ -56,11 +56,11 @@ html,body{height:100%;overflow:hidden}#app{width:100%;height:100%;max-width:none
 .inquiry { margin-top: .75rem; }
 @media (max-width: 620px) {
   #equation { font-size: clamp(1.65rem, 6vw, 2.2rem); }
-  .side > div { gap: .04em; }
+  .side > div { column-gap: .04em; }
   .side button { padding-inline: .04em; }
 }
 @media (max-width: 420px) {
-  #equation { grid-template-columns: auto 1fr; }
+  #equation { grid-template-columns: auto 1fr; row-gap: .75rem; }
   .reactants { grid-column: 1 / -1; }
   .arrow { grid-column: 1; }
 }
