@@ -326,6 +326,21 @@ async function scenarioChrome(nav, srv) {
     await page.fermer();
   }
 
+  // 4 bis. Saisons à 360×640 : étiquette de mois masquée près de la Terre
+  {
+    const page = await nav.ouvrir(srv.base + '/index.html#saisons', 360, 640, {tactile: true, dpr: 2});
+    // aucun mois écrit ne touche le disque de la Terre, l'étiquette « Terre » ni le « N » de l'axe
+    const lire = `(async()=>{await __image();const g=STL.parties.saisons.geo();
+      const chocs=g.moisEcrits.filter(m=>g.obstacles.some(([x,y,dx,dy])=>Math.abs(m.x-x)<m.dx+dx&&Math.abs(m.y-y)<m.dy+dy)).map(m=>m.nom);
+      return {masques:g.moisMasques,chocs};})()`;
+    const juin = await page.ev(lire);
+    await page.ev(`(document.querySelector('#p-saisons [data-evenement="3"]').click(),true)`);
+    const dec = await page.ev(lire);
+    verifier(`${nav.nom} 360×640 : aucun mois ne touche la Terre, « Terre » ou « N » (masqués le 21 juin : ${juin.masques.join(', ')} ; le 22 déc. : ${dec.masques.join(', ')})`,
+      juin.chocs.length === 0 && dec.chocs.length === 0 && dec.masques.includes('déc.') && juin.masques.length <= 4 && dec.masques.length <= 4, {juin, dec});
+    await page.fermer();
+  }
+
   // 5. Phases : glisser au doigt (densité 1 et 2), orientation selon l'hémisphère
   for (const [w, h, opts] of [[1024, 768, {tactile: true}], [360, 640, {tactile: true, dpr: 2}]]) {
     const page = await nav.ouvrir(srv.base + '/index.html#phases', w, h, opts);
@@ -401,6 +416,12 @@ async function scenarioChrome(nav, srv) {
     await page.ev(`(STL.parties.eclipses.etat.alpha=210,STL.parties.eclipses.etat.nu=30,STL.app.demanderDessin(),true)`);
     const der = await page.ev(`(async()=>{await __image();return STL.parties.eclipses.geoVues().mention;})()`);
     verifier(`${nav.nom} : vue de côté, Lune à 210° sur un nœud : « ${der} »`, der === 'Lune derrière l’ombre (plus loin de toi)', der);
+    // cas rasant : |y| et |z| sous « pénombre + rayon de la Lune », mais pas d'éclipse
+    const ras = await page.ev(`(async()=>{const E=STL.parties.eclipses,A=Astro;let t=null;
+      for(let al=178;al<=182&&!t;al+=0.01)for(let nu=0;nu<360&&!t;nu+=0.25){const M=A.positionLune(al,nu);const lim=A.ombreTerre(M.x).penombre+A.R_LUNE;
+        if(Math.abs(M.y)<lim-0.05&&Math.abs(M.z)<lim-0.05&&Math.abs(M.y)>0.5&&Math.abs(M.z)>0.5&&A.eclipse(M).type===null)t={al,nu,y:M.y,z:M.z,lim};}
+      Object.assign(E.etat,{alpha:t.al,nu:t.nu});STL.app.demanderDessin();await __image();return {...t,m:E.geoVues().mention,e:A.eclipse(E.lune()).type};})()`);
+    verifier(`${nav.nom} : vue de côté, cas rasant (|y| = ${ras.y.toFixed(2)}, |z| = ${ras.z.toFixed(2)} rayons terrestres, pas d'éclipse) : « ${ras.m} »`, ras.e === null && /^Lune (devant|derrière) l’ombre/.test(ras.m), ras);
     // jours au singulier
     await tap('#ec-zero');
     const j0 = await page.ev(`__txt('ec-jours')`);

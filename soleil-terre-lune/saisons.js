@@ -39,13 +39,31 @@
     ctx.beginPath();
     for (let n = 1; n <= 366; n += 1) { const [X, Y] = ecran(positionTerre(n)); n === 1 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
     ctx.closePath(); ctx.stroke();
-    // mois
+    // Terre : position, étiquette « Terre » et bout de l'axe « N » (pour ne pas y poser un mois)
+    const PT = positionTerre(etat.n);
+    const [tx, ty] = ecran(PT), yT = ty + rE + 12;
+    const av = vueOblique(axe()), la = Math.hypot(av[0], av[1]) || 1;
+    const nx = tx + av[0] * rE * 1.8 + av[0] / la * 10, ny = ty - av[1] * rE * 1.8 - av[1] / la * 10;
+    // mois (une étiquette trop proche de la Terre, de « Terre » ou du « N » n'est pas écrite)
     const t = Math.max(10, Math.min(12.5, R / 16));
+    const masques = [], ecrits = [];
+    let obstacles = [];
     for (let m = 0; m < 12; m++) {
       const P = positionTerre(A.jourDeDate(m, 1));
       const [X0, Y0] = ecran(P);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; ctx.beginPath(); ctx.arc(X0, Y0, 2, 0, 2 * Math.PI); ctx.fill();
       const [X, Y] = ecran(V.mul(P, 1 + 18 / R + 0.08));
+      ctx.font = D.police(t);
+      const dl = ctx.measureText(A.MOIS_COURT[m]).width / 2;
+      // chevauchement de rectangles (demi-largeur, demi-hauteur) : disque de la Terre, étiquettes « Terre » et « N »
+      ctx.font = D.police(12);
+      const dT = ctx.measureText('Terre').width / 2 + 4;
+      ctx.font = D.police(t);
+      obstacles = [[tx, ty, rE, rE], [tx, yT, dT, 7], [nx, ny, 5, 7]];
+      const touche = (x, y, dx, dy) => Math.abs(X - x) < dl + dx && Math.abs(Y - y) < t * 0.45 + dy;
+      const gene = touche(tx, ty, rE + 5, rE + 3) || touche(tx, yT, dT, 9) || touche(nx, ny, 7, 9);
+      if (gene) { masques.push(A.MOIS_COURT[m]); continue; }
+      ecrits.push({nom: A.MOIS_COURT[m], x: X, y: Y, dx: dl, dy: t * 0.45});
       D.etiquette(ctx, A.MOIS_COURT[m], X, Y, {taille: t, fond: false, couleur: C.texteDoux});
     }
     // sens de révolution
@@ -55,7 +73,7 @@
 
     const P = positionTerre(etat.n);
     const [ex, ey] = ecran(P);
-    geo = {cx, cy, R, ex, ey, rE};
+    geo = {cx, cy, R, ex, ey, rE, moisMasques: masques, moisEcrits: ecrits, obstacles};
     const terre = () => {
       const s = vueOblique(V.norme(V.mul(P, -1)));
       D.sphere(ctx, ex, ey, rE, s, C.terreJour, C.terreNuit, 'rgba(255,255,255,0.6)');
@@ -64,7 +82,7 @@
     if (P[0] < 0) terre();
     D.soleil(ctx, cx, cy, rS);
     if (P[0] >= 0) terre();
-    const yS = cy + rS + 12, yT = ey + rE + 12;
+    const yS = cy + rS + 12;
     if (Math.abs(ex - cx) > 70 || Math.abs(yT - yS) > 18) D.etiquette(ctx, 'Soleil', cx, yS, {taille: 12, couleur: '#ffe39a'});
     D.etiquette(ctx, 'Terre', ex, yT, {taille: 12});
     D.titreVue(ctx, v, 'La Terre autour du Soleil');

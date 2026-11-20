@@ -240,15 +240,15 @@
     geoVues.mention = '';
     const [lx, ly] = E(M.x, M.z), rL = Math.max(3, rm * sv);
     let mention = '';
+    // Mention dès que le dessin montre un contact (Lune sur la bande d'ombre ou de pénombre, ombre
+    // de la Lune sur la Terre) alors que le calcul en trois dimensions ne donne aucune éclipse.
     if (Math.abs(M.x) < 1.5) {
       if (Math.abs(M.z) < 1 + rm) mention = M.y < 0 ? 'Lune devant la Terre\n(plus près de toi)' : 'Lune derrière la Terre\n(plus loin de toi)';
-    } else if (M.x > 0) {
-      const o = A.ombreTerre(M.x);
-      if (Math.abs(M.z) < o.penombre + rm && Math.abs(M.y) > o.penombre + rm)
+    } else if (ecl.type === null && M.x > 0) {
+      if (Math.abs(M.z) < A.ombreTerre(M.x).penombre + rm)
         mention = M.y < 0 ? 'Lune devant l’ombre\n(plus près de toi)' : 'Lune derrière l’ombre\n(plus loin de toi)';
-    } else if (M.x < 0) {
-      const o = A.ombreLune(-M.x, Ds + M.x);
-      if (Math.abs(M.z) < 1 + o.penombre && Math.abs(M.y) > 1 + o.penombre)
+    } else if (ecl.type === null && M.x < 0) {
+      if (Math.abs(zAxe(0)) < 1 + A.ombreLune(-M.x, Ds + M.x).penombre)
         mention = M.y < 0 ? 'Lune et son ombre\ndevant la Terre' : 'Lune et son ombre\nderrière la Terre';
     }
     if (mention) {
