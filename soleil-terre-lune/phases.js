@@ -46,6 +46,14 @@
     ctx.beginPath(); ctx.arc(cx, cy, Ro, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; ctx.lineWidth = 1.8;
     D.arcFleche(ctx, cx, cy, Ro, 0.5, 0.85, true, 9);
+    // repères des quatre phases du cours : angle Soleil-Terre-Lune de 0°, 90°, 180° et 270°
+    for (const a of [0, 90, 180, 270]) {
+      const u = (180 + a) * A.RAD, c = Math.cos(u), s = -Math.sin(u);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx + c * (Ro - 7), cy + s * (Ro - 7)); ctx.lineTo(cx + c * (Ro + 7), cy + s * (Ro + 7)); ctx.stroke();
+      const ecart = Math.abs(A.mod(etat.alpha - a + 180, 360) - 180);
+      if (ecart > 25) D.etiquette(ctx, a + '°', cx + c * (Ro + 20), cy + s * (Ro + 18), {taille: 11, couleur: C.texteDoux, fond: false});
+    }
     // Terre vue au-dessus du pôle Nord
     D.sphere(ctx, cx, cy, rE, [-1, 0, 0], C.terreJour, C.terreNuit, 'rgba(255,255,255,0.6)');
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, 2.2, 0, 2 * Math.PI); ctx.fill();
@@ -80,6 +88,8 @@
     D.etiquette(ctx, sud ? 'depuis La Réunion (hémisphère Sud)' : 'depuis la métropole (hémisphère Nord)', x, v.y + 36, {taille: 12, fond: false, couleur: C.texteDoux});
     const k = A.fractionEclairee(etat.alpha);
     D.etiquette(ctx, maj(A.nomPhase(etat.alpha)) + '\n' + Math.round(k * 100) + ' % éclairée', x, v.y + v.h - 28, {taille: 14, gras: true});
+    const rep = A.reperePhase(etat.alpha);
+    if (rep && y + rv + 10 < v.y + v.h - 66) D.etiquette(ctx, '(' + rep + ')', x, v.y + v.h - 58, {taille: 12, couleur: C.texteDoux, fond: false});
   }
 
   function dessiner(ctx, w, h) {
@@ -95,6 +105,7 @@
     if (Math.abs(+$('ph-age').value - age) > 0.06) $('ph-age').value = String(age);
     $('ph-age').setAttribute('aria-valuetext', t);
     ecrire($('ph-nom'), maj(A.nomPhase(etat.alpha)));
+    ecrire($('ph-repere'), A.reperePhase(etat.alpha));
     ecrire($('ph-fraction'), Math.round(A.fractionEclairee(etat.alpha) * 100) + ' %');
     ecrire($('ph-evolution'), A.evolution(etat.alpha));
     ecrire($('ph-angle'), Math.round(A.mod(etat.alpha, 360)) % 360 + '°');
@@ -144,7 +155,8 @@
       <li>Le Soleil est supposé très loin : ses rayons arrivent parallèles.</li>
       <li>L’orbite de la Lune est dessinée dans le plan de l’orbite de la Terre ; son inclinaison (environ 5°) est étudiée dans la partie « Éclipses ».</li>
       <li>Les noms des quatre phases principales sont donnés à moins de 7° (environ une demi-journée) de la position exacte.</li>
-      <li>Orientation : on retourne l’image de la Lune entre les deux hémisphères. En réalité, près des tropiques, le croissant apparaît aussi plus ou moins couché selon l’heure et la saison.</li>
+      <li>Orientation : entre les deux hémisphères, l’image de la Lune est tournée d’un demi-tour (haut et bas, gauche et droite échangés). En réalité, près des tropiques, le croissant apparaît aussi plus ou moins couché selon l’heure et la saison.</li>
+      <li>Les quatre phases du cours (nouvelle Lune, premier quartier, pleine Lune, dernier quartier) sont les repères principaux ; entre deux, l’app donne le nom de la phase intermédiaire et les deux phases du cours qui l’entourent.</li>
       <li>Pendant une lunaison (29,5 jours), la Terre avance aussi autour du Soleil : la vue de dessus ne le montre pas.</li>
     </ul>`
   };

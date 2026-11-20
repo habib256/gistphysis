@@ -154,7 +154,16 @@
     $('sa-date').setAttribute('aria-valuetext', A.texteDate(n));
     for (const [lieu, k] of [[SD, 'sd'], [PA, 'pa']]) {
       const m = A.mesuresLieu(lieu, n, etat.incline);
-      ecrire($('sa-s-' + k), m.saison);
+      const el = $('sa-s-' + k);
+      if (el.textContent !== m.saison) {
+        if (m.evenement) {
+          el.textContent = '';
+          const petit = document.createElement('small');
+          petit.className = 'evenement';
+          petit.textContent = m.evenement + ' :';
+          el.append(petit, ' ' + m.saison.slice(m.evenement.length + 3));
+        } else el.textContent = m.saison;
+      }
       ecrire($('sa-d-' + k), A.dureeTexte(m.duree));
       ecrire($('sa-h-' + k), texteHauteur(m));
     }
@@ -178,11 +187,17 @@
       $('sa-date').addEventListener('input', e => { changerDate(+e.target.value); app.demanderDessin(); });
       $('sa-vitesse').addEventListener('change', e => { etat.vitesse = +e.target.value; });
       $('sa-hypothese').addEventListener('change', e => { etat.incline = !e.target.checked; app.demanderDessin(); });
-      document.querySelectorAll('#p-saisons [data-date]').forEach(b => b.addEventListener('click', () => {
-        const [m, j] = b.dataset.date.split(',').map(Number);
-        if (app.lecture) app.mettreLecture(false);
-        changerDate(A.jourDeDate(m, j)); app.demanderDessin();
-      }));
+      // Raccourcis : jours des équinoxes et des solstices calculés par le modèle (année 2027, TU)
+      document.querySelectorAll('#p-saisons [data-evenement]').forEach(b => {
+        const k = +b.dataset.evenement, n = A.jourEvenement(k);
+        b.textContent = A.texteDate(n, true);
+        b.setAttribute('aria-label', A.texteDate(n) + ' (' + A.EVENEMENTS[k] + ')');
+        b.title = A.EVENEMENTS[k];
+        b.addEventListener('click', () => {
+          if (app.lecture) app.mettreLecture(false);
+          changerDate(n); app.demanderDessin();
+        });
+      });
     },
     avancer(dt) { changerDate(etat.n + dt * etat.vitesse); },
     pas(sens, grand) { changerDate(Math.floor(etat.n) + sens * (grand ? 10 : 1)); },
@@ -206,8 +221,8 @@
     },
     consignes: [
       'Appuie sur « Lecture » ou fais glisser la Terre sur son orbite. Observe la direction de l’axe de la Terre au fil de l’année.',
-      'Le 21 juin, puis le 21 décembre, regarde la vue de côté : quel hémisphère est penché vers le Soleil ?',
-      'À ces deux dates, relève pour Saint-Denis et pour Paris la durée du jour et la hauteur du Soleil à midi. Compare-les avec la saison de chaque ville.',
+      'Avec les boutons de dates, place la Terre au solstice de juin (21 juin), puis au solstice de décembre (22 décembre) : dans la vue de côté, quel hémisphère est penché vers le Soleil ?',
+      'À ces deux dates, relève pour Saint-Denis et pour Paris la durée du jour, la hauteur du Soleil à midi et la saison qui commence. Compare.',
       'Relève la distance Terre-Soleil début janvier et début juillet, et la saison de chaque ville à ces dates.',
       'Coche l’hypothèse « axe non incliné » et refais tes relevés. Rédige ta conclusion.'
     ],
@@ -216,7 +231,8 @@
       <li>Durée du jour : moment où le centre du Soleil passe à l’horizon, <strong>sans tenir compte de la réfraction</strong> par l’atmosphère (les éphémérides donnent quelques minutes de plus).</li>
       <li>Hauteur du Soleil à midi (heure solaire) : 90° − |latitude − déclinaison du Soleil|.</li>
       <li>Latitudes : Saint-Denis 20,9° S, Paris 48,9° N.</li>
-      <li>Saison : saison astronomique du calendrier (équinoxes et solstices), donnée d’après la date seulement.</li>
+      <li>Saison : saison astronomique du calendrier, donnée d’après la date seulement. Le jour d’un équinoxe ou d’un solstice, l’app l’indique (par exemple « solstice de juin : début de l’hiver » à Saint-Denis) ; la nouvelle saison est affichée à partir du lendemain.</li>
+      <li>Les dates sont celles de 2027 en temps universel (TU). Selon l’année et l’heure locale (La Réunion : TU + 4 h ; Paris : TU + 1 h ou + 2 h), un équinoxe ou un solstice peut tomber un jour plus tôt ou plus tard (par exemple le 21 ou le 22 décembre).</li>
       <li>L’orbite est dessinée avec sa vraie forme (presque un cercle), mais les tailles de la Terre et du Soleil ne sont pas à l’échelle de la distance.</li>
     </ul>`
   };

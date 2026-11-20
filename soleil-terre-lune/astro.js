@@ -78,15 +78,40 @@
     return lat >= 0 ? nord[k] : nord[(k + 2) % 4];
   }
 
+  // Équinoxes et solstices : jour (de 0 h à 24 h TU) où la longitude du Soleil franchit k × 90°.
+  // Ce jour-là, on affiche l'événement (« solstice de juin : début de l’hiver ») ; la nouvelle
+  // saison est affichée à partir du lendemain. Sans cela, le Soleil étant calculé à midi TU, le
+  // 21 juin aurait encore la saison précédente.
+  const EVENEMENTS = ['équinoxe de mars', 'solstice de juin', 'équinoxe de septembre', 'solstice de décembre'];
+  const DEBUT = {printemps: 'du printemps', 'été': 'de l’été', automne: 'de l’automne', hiver: 'de l’hiver'};
+  function evenementDuJour(n) {
+    const j = Math.floor(n), a = soleil(j - 0.5).L, b = soleil(j + 0.5).L;
+    for (let k = 0; k < 4; k++) if (mod(k * 90 - a, 360) < mod(b - a, 360)) return k;
+    return -1;
+  }
+  function jourEvenement(k) {
+    for (let n = 1; n <= 365; n++) if (evenementDuJour(n) === k) return n;
+    return -1;
+  }
+  function saisonDuJour(n, lat) {
+    const k = evenementDuJour(n);
+    if (k >= 0) {
+      const s = saison(k * 90 + 1, lat);
+      return {saison: s, evenement: EVENEMENTS[k], texte: EVENEMENTS[k] + ' : début ' + DEBUT[s]};
+    }
+    const s = saison(soleil(Math.floor(n)).L, lat);
+    return {saison: s, evenement: null, texte: s};
+  }
+
   // Mesures de la partie « Saisons » pour un lieu
   function mesuresLieu(lieu, n, incline = true) {
     const s = soleil(Math.floor(n), incline ? INCLINAISON_AXE : 0);
-    const s0 = incline ? s : soleil(Math.floor(n));
+    const sj = saisonDuJour(n, lieu.lat);
     return {
       duree: dureeDuJour(lieu.lat, s.delta),
       hauteur: hauteurMidi(lieu.lat, s.delta),
       cote: Math.abs(lieu.lat - s.delta) < 0.25 ? 'zenith' : (s.delta > lieu.lat ? 'nord' : 'sud'),
-      saison: saison(s0.L, lieu.lat),
+      saison: sj.texte, saisonSeule: sj.saison, evenement: sj.evenement,
       delta: s.delta
     };
   }
@@ -104,6 +129,14 @@
     if (a < 180) return 'gibbeuse croissante';
     if (a < 270) return 'gibbeuse décroissante';
     return 'dernier croissant';
+  }
+  // Pour une phase intermédiaire : entre quelles phases du cours (repères principaux) se trouve-t-elle ?
+  const PRINCIPALES = ['la nouvelle Lune', 'le premier quartier', 'la pleine Lune', 'le dernier quartier'];
+  function reperePhase(alpha) {
+    const a = mod(alpha, 360);
+    if (['nouvelle Lune', 'premier quartier', 'pleine Lune', 'dernier quartier'].includes(nomPhase(a))) return '';
+    const k = Math.floor(a / 90);
+    return 'entre ' + PRINCIPALES[k] + ' et ' + PRINCIPALES[(k + 1) % 4];
   }
   function evolution(alpha) {
     const a = mod(alpha, 360);
@@ -155,8 +188,8 @@
   const Astro = {
     RAD, MOIS, MOIS_COURT, JOURS_MOIS, INCLINAISON_AXE, UA_KM, LUNAISON, ANNEE_ECLIPSES, INCLINAISON_LUNE,
     RT_KM, R_SOLEIL, R_LUNE, D_SOLEIL, D_LUNE, LIEUX,
-    mod, dateDuJour, jourDeDate, texteDate, soleil, dureeDuJour, hauteurMidi, saison, mesuresLieu,
-    fractionEclairee, nomPhase, evolution, positionLune, ombreTerre, ombreLune, eclipse,
+    mod, dateDuJour, jourDeDate, texteDate, soleil, dureeDuJour, hauteurMidi, saison, EVENEMENTS, evenementDuJour, jourEvenement, saisonDuJour, mesuresLieu,
+    fractionEclairee, nomPhase, reperePhase, evolution, positionLune, ombreTerre, ombreLune, eclipse,
     virgule, heureTexte, dureeTexte, milliers
   };
   if (typeof module === 'object' && module.exports) module.exports = Astro;

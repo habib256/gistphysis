@@ -11,13 +11,20 @@
 //   - valeurs numériques (durées du jour, hauteurs du Soleil à midi, distance Terre-Soleil,
 //     fraction éclairée à 0°, 90°, 180°, 270°) et valeurs affichées dans le panneau ;
 //   - « axe non incliné » : 12 h 00 de jour partout, toute l'année ;
+//   - saisons : jour de chaque équinoxe et solstice (raccourcis) annoncé comme tel, avec la saison
+//     qui commence (« solstice de juin : début de l’hiver » à Saint-Denis), saison suivante le
+//     lendemain ; repères des phases du cours ; consignes visibles sans faire défiler le panneau ;
 //   - glisser la Lune au doigt change la phase (aussi à densité 2) ; glisser la Terre change
 //     l'heure ; flèches et barre d'espace ;
 //   - orientation : premier quartier éclairé à gauche vu de La Réunion, à droite vu de métropole ;
 //     Terre éclairée du côté du Soleil ; ville de l'autre hémisphère « par transparence » ;
 //   - éclipses : nouvelle et pleine Lune suivantes, compteurs, rareté sur une année, hypothèse
 //     « orbite non inclinée », Lune rouge sombre pendant une éclipse totale, arrêt de la lecture ;
-//   - animation suspendue quand le cadre sort de l'écran (tests/cadre.html).
+//   - éclipses : vue du Soleil jamais retournée (nord en haut), Lune éclipsée vue « à l'envers »
+//     depuis La Réunion, mention « devant l'ombre » dans la vue de côté, curseur de position sans
+//     passage du temps, « 0 jour / 1 jour / 2 jours » ;
+//   - animation suspendue quand le cadre sort de l'écran (tests/cadre.html) ; dans ce cadre, un
+//     doigt glissé sur une zone vide du dessin fait défiler la page, un doigt posé sur la Lune non.
 // Firefox (WebDriver BiDi, avec --firefox) : chargement des 4 parties sans erreur, dimensions,
 // valeurs numériques, glisser la Lune, éclipses, animation. Il faut Node 22 ou plus, ou
 // « node --experimental-websocket tests/verifier.mjs --firefox » avec Node 20-21.
@@ -155,6 +162,11 @@ async function controlerChargement(nav, srv, page, partie, w, h, dpr) {
   verifier(`${etiquette} : l'app remplit la fenêtre sans défilement`, e.defH <= e.iw && e.defV <= e.ih && e.sw > 100 && e.sh > 150, e);
   const res = await page.ev('__ressources()');
   verifier(`${etiquette} : aucune ressource hors du dossier de l'app`, res.every(u => u.startsWith(srv.base + '/')), res.filter(u => !u.startsWith(srv.base + '/')));
+  const haut = await page.ev(`(()=>{const sec=document.querySelector('.partie:not([hidden])'),p=document.getElementById('panneau').getBoundingClientRect();
+    const vu=e=>{const b=e.getBoundingClientRect();return b.top>=p.top-1&&b.bottom<=Math.min(p.bottom,innerHeight)+1;};
+    return {c:vu(sec.querySelector('.consignes')),f:vu(sec.querySelector('.fiche')),h:sec.querySelector('[data-hemisphere]')?vu(sec.querySelector('[data-hemisphere]')):null};})()`);
+  if (h >= 600) verifier(`${etiquette} : « Consignes » et « Valeurs réelles » visibles sans faire défiler le panneau` + (haut.h === null ? '' : ', ainsi que le choix de l’hémisphère'),
+    haut.c && haut.f && haut.h !== false, haut);
   const petites = await page.ev('__petites()');
   verifier(`${etiquette} : commandes d'au moins 44 px`, petites.length === 0, petites);
 }
@@ -166,7 +178,9 @@ async function controlerValeurs(nav, page) {
     return {sdJ:A.dureeTexte(m(L.stdenis,j(5,21)).duree),sdD:A.dureeTexte(m(L.stdenis,j(11,21)).duree),
       paJ:A.dureeTexte(m(L.paris,j(5,21)).duree),paD:A.dureeTexte(m(L.paris,j(11,21)).duree),
       hsdJ:m(L.stdenis,j(5,21)).hauteur,hsdD:m(L.stdenis,j(11,21)).hauteur,hpaJ:m(L.paris,j(5,21)).hauteur,hpaD:m(L.paris,j(11,21)).hauteur,
-      sdJs:m(L.stdenis,j(5,21)).saison,paJs:m(L.paris,j(5,21)).saison,
+      ev:[0,1,2,3].map(k=>{const n=A.jourEvenement(k);return [A.texteDate(n),m(L.stdenis,n).saison,m(L.paris,n).saison,m(L.stdenis,n+1).saison,m(L.paris,n+1).saison,m(L.stdenis,n-1).saison];}),
+      milieu:[[j(0,15),'stdenis'],[j(0,15),'paris'],[j(6,15),'stdenis'],[j(6,15),'paris']].map(([n,l])=>m(L[l],n).saison),
+      repere:[A.reperePhase(61),A.reperePhase(90),A.reperePhase(200),A.reperePhase(300)],
       pe:[pe[0]/1e6,A.texteDate(pe[1])],ap:[ap[0]/1e6,A.texteDate(ap[1])],
       zero:[1,60,172,250,355].every(n=>A.dureeTexte(m(L.stdenis,n,false).duree)==='12 h 00'&&A.dureeTexte(m(L.paris,n,false).duree)==='12 h 00'),
       f:[0,90,180,270].map(a=>+A.fractionEclairee(a).toFixed(6)),noms:[0,90,180,270].map(A.nomPhase),evo:[45,135,225,315].map(A.evolution)};})()`);
@@ -175,7 +189,15 @@ async function controlerValeurs(nav, page) {
   verifier(`${nav.nom} : durée du jour à Paris le 21 juin ≈ 16 h et le 21 décembre ≈ 8 h`, proche(r.paJ, 960) && proche(r.paD, 480), [r.paJ, r.paD]);
   verifier(`${nav.nom} : hauteur du Soleil à midi (Saint-Denis 45,7° / 87,5° ; Paris 64,5° / 17,7°)`,
     Math.abs(r.hsdJ - 45.7) < 0.15 && Math.abs(r.hsdD - 87.5) < 0.15 && Math.abs(r.hpaJ - 64.5) < 0.15 && Math.abs(r.hpaD - 17.7) < 0.15, [r.hsdJ, r.hsdD, r.hpaJ, r.hpaD]);
-  verifier(`${nav.nom} : saisons inversées le 21 juin (Saint-Denis : ${r.sdJs}, Paris : ${r.paJs})`, r.sdJs === 'automne' && r.paJs === 'printemps' || r.sdJs === 'hiver' && r.paJs === 'été', [r.sdJs, r.paJs]);
+  const attendu = [
+    ['20 mars', 'équinoxe de mars : début de l’automne', 'équinoxe de mars : début du printemps', 'automne', 'printemps', 'été'],
+    ['21 juin', 'solstice de juin : début de l’hiver', 'solstice de juin : début de l’été', 'hiver', 'été', 'automne'],
+    ['23 septembre', 'équinoxe de septembre : début du printemps', 'équinoxe de septembre : début de l’automne', 'printemps', 'automne', 'hiver'],
+    ['22 décembre', 'solstice de décembre : début de l’été', 'solstice de décembre : début de l’hiver', 'été', 'hiver', 'printemps']];
+  verifier(`${nav.nom} : jour de chaque équinoxe et solstice (2027, TU) annoncé, saison suivante le lendemain, saisons inversées entre Saint-Denis et Paris`,
+    JSON.stringify(r.ev) === JSON.stringify(attendu), r.ev);
+  verifier(`${nav.nom} : mi-janvier, été à Saint-Denis et hiver à Paris ; mi-juillet, l'inverse`, JSON.stringify(r.milieu) === JSON.stringify(['été', 'hiver', 'hiver', 'été']), r.milieu);
+  verifier(`${nav.nom} : phases intermédiaires situées entre deux phases du cours`, JSON.stringify(r.repere) === JSON.stringify(['entre la nouvelle Lune et le premier quartier', '', 'entre la pleine Lune et le dernier quartier', 'entre le dernier quartier et la nouvelle Lune']), r.repere);
   verifier(`${nav.nom} : distance Terre-Soleil la plus courte début janvier (≈ 147,1 millions de km), la plus longue début juillet (≈ 152,1)`,
     Math.abs(r.pe[0] - 147.1) < 0.1 && /janvier/.test(r.pe[1]) && Math.abs(r.ap[0] - 152.1) < 0.1 && /juillet/.test(r.ap[1]), [r.pe, r.ap]);
   verifier(`${nav.nom} : axe non incliné → 12 h 00 de jour partout, toute l'année`, r.zero);
@@ -234,16 +256,28 @@ async function scenarioChrome(nav, srv) {
     await controlerValeurs(nav, page);
     // 3. Saisons : panneau, raccourcis de date, hypothèse
     const tap = async sel => { const [x, y] = await page.ev(`__centre(${JSON.stringify(sel)})`); await page.toucher(x, y); await page.ev('__image()'); };
-    await tap('#p-saisons [data-date="5,21"]');
-    let t = await page.ev(`({d:__txt('sa-date-txt'),sd:__txt('sa-d-sd'),pa:__txt('sa-d-pa'),hsd:__txt('sa-h-sd'),hpa:__txt('sa-h-pa'),s:__txt('sa-s-sd')+'/'+__txt('sa-s-pa'),dist:__txt('sa-distance')})`);
-    verifier(`${nav.nom} : « 21 juin » au doigt → panneau : ${t.sd} / ${t.pa}, ${t.hsd} / ${t.hpa}, ${t.dist}`, t.d === '21 juin' && t.sd === '10 h 44' && t.pa === '15 h 58' && t.hsd === '45,7° (vers le nord)' && t.hpa === '64,5° (vers le sud)' && /^152,0 millions de km$/.test(t.dist), t);
-    await tap('#p-saisons [data-date="11,21"]');
-    t = await page.ev(`({sd:__txt('sa-d-sd'),pa:__txt('sa-d-pa'),hsd:__txt('sa-h-sd'),s:__txt('sa-s-sd')+'/'+__txt('sa-s-pa')})`);
-    verifier(`${nav.nom} : « 21 déc. » → ${t.sd} / ${t.pa}, saisons ${t.s}`, t.sd === '13 h 16' && t.pa === '8 h 02' && t.s === 'printemps/automne' && t.hsd === '87,5° (vers le sud)', t);
+    const libelles = await page.ev(`[...document.querySelectorAll('#p-saisons [data-evenement]')].map(b=>b.textContent)`);
+    verifier(`${nav.nom} : raccourcis aux dates des équinoxes et solstices du modèle (${libelles.join(', ')})`, JSON.stringify(libelles) === JSON.stringify(['20 mars', '21 juin', '23 sept.', '22 déc.']), libelles);
+    const lireS = () => page.ev(`({d:__txt('sa-date-txt'),sd:__txt('sa-d-sd'),pa:__txt('sa-d-pa'),hsd:__txt('sa-h-sd'),hpa:__txt('sa-h-pa'),ssd:__txt('sa-s-sd'),spa:__txt('sa-s-pa'),dist:__txt('sa-distance')})`);
+    await tap('#p-saisons [data-evenement="1"]');
+    let t = await lireS();
+    verifier(`${nav.nom} : « 21 juin » au doigt → ${t.ssd} / ${t.spa} ; ${t.sd} / ${t.pa}, ${t.hsd} / ${t.hpa}, ${t.dist}`, t.d === '21 juin' && t.ssd === 'solstice de juin : début de l’hiver' && t.spa === 'solstice de juin : début de l’été' &&
+      t.sd === '10 h 44' && t.pa === '15 h 58' && t.hsd === '45,7° (vers le nord)' && t.hpa === '64,5° (vers le sud)' && /^152,0 millions de km$/.test(t.dist), t);
+    await tap('#p-saisons [data-evenement="3"]');
+    t = await lireS();
+    verifier(`${nav.nom} : « 22 déc. » → ${t.ssd} / ${t.spa} ; ${t.sd} / ${t.pa}`, t.d === '22 décembre' && t.ssd === 'solstice de décembre : début de l’été' && t.spa === 'solstice de décembre : début de l’hiver' &&
+      t.sd === '13 h 16' && t.pa === '8 h 02' && t.hsd === '87,5° (vers le sud)', t);
+    await page.touche('ArrowRight');
+    t = await page.ev(`(async()=>{await __image();return {d:__txt('sa-date-txt'),ssd:__txt('sa-s-sd'),spa:__txt('sa-s-pa')};})()`);
+    verifier(`${nav.nom} : le lendemain (${t.d}) : ${t.ssd} à Saint-Denis, ${t.spa} à Paris`, t.d === '23 décembre' && t.ssd === 'été' && t.spa === 'hiver', t);
+    await tap('#p-saisons [data-evenement="2"]');
+    t = await lireS();
+    verifier(`${nav.nom} : « 23 sept. » → ${t.ssd} / ${t.spa}`, t.ssd === 'équinoxe de septembre : début du printemps' && t.spa === 'équinoxe de septembre : début de l’automne', t);
+    await tap('#p-saisons [data-evenement="3"]');
     await tap('#sa-hypothese');
     const zero = [];
-    for (const d of ['2,21', '5,21', '8,23', '11,21']) {
-      await tap(`#p-saisons [data-date="${d}"]`);
+    for (const d of [0, 1, 2, 3]) {
+      await tap(`#p-saisons [data-evenement="${d}"]`);
       zero.push(await page.ev(`[__txt('sa-d-sd'),__txt('sa-d-pa'),__txt('sa-h-sd'),__txt('sa-h-pa')]`));
     }
     verifier(`${nav.nom} : hypothèse « axe non incliné » cochée au doigt → 12 h 00 partout, hauteur constante`, zero.every(z => z[0] === '12 h 00' && z[1] === '12 h 00' && z[2] === '69,1° (vers le nord)' && z[3] === '41,1° (vers le sud)'), zero);
@@ -253,7 +287,7 @@ async function scenarioChrome(nav, srv) {
     await page.glisser(g.ex, g.ey, g.cx, g.cy + g.R * Math.sin(25 * Math.PI / 180));
     await page.ev('__image()');
     const dd = await page.ev(`__txt('sa-date-txt')`);
-    verifier(`${nav.nom} : glisser la Terre au doigt sur son orbite change la date (21 déc. → ${dd})`, /septembre/.test(dd), dd);
+    verifier(`${nav.nom} : glisser la Terre au doigt sur son orbite change la date (22 déc. → ${dd})`, /septembre/.test(dd), dd);
     await page.touche('ArrowRight'); await page.ev('__image()');
     const d2 = await page.ev(`__txt('sa-date-txt')`);
     verifier(`${nav.nom} : flèche → avance d'un jour (${dd} → ${d2})`, d2 !== dd);
@@ -313,6 +347,12 @@ async function scenarioChrome(nav, srv) {
     await placer(180); const plein = await cotes();
     await placer(0); const nouv = await cotes();
     verifier(`${nav.nom} : pleine Lune entièrement éclairée, nouvelle Lune sombre`, plein.g > 150 && plein.d > 150 && plein.c > 150 && nouv.c < 40 && nouv.g < 40 && nouv.d < 40, {plein, nouv});
+    await placer(61);
+    const rp = await page.ev(`(async()=>{await __image();return [__txt('ph-nom'),__txt('ph-repere')];})()`);
+    await placer(90);
+    const rq = await page.ev(`(async()=>{await __image();return [__txt('ph-nom'),__txt('ph-repere')];})()`);
+    verifier(`${nav.nom} : phase intermédiaire située par rapport aux phases du cours (« ${rp.join(' — ')} »)`, rp[0] === 'Premier croissant' && rp[1] === 'entre la nouvelle Lune et le premier quartier' && rq[0] === 'Premier quartier' && rq[1] === '', [rp, rq]);
+    await placer(0);
     const t = await page.ev(`(async()=>{await __image();return [__txt('ph-nom'),__txt('ph-fraction')];})()`);
     verifier(`${nav.nom} : panneau à la nouvelle Lune : ${t.join(', ')}`, t[0] === 'Nouvelle Lune' && t[1] === '0 %', t);
     await page.fermer();
@@ -331,6 +371,46 @@ async function scenarioChrome(nav, srv) {
     await tap('#ec-pleine');
     e = await lire();
     verifier(`${nav.nom} : « Pleine Lune suivante » → ${e.etat}`, e.etat === 'Éclipse de Lune partielle' && e.pl === 1 && e.el === 1, e);
+    // Lune au-dessus du plan : l'ombre est sous la Lune (vue de côté, métropole), au-dessus vue de La Réunion (demi-tour)
+    const ombreLune = async () => page.ev(`(async()=>{await __image();const g=STL.parties.eclipses.geoVues().lune;return {h:__lum(__px(g.x,g.y-g.r*0.85)),b:__lum(__px(g.x,g.y+g.r*0.85)),z:STL.parties.eclipses.lune().z};})()`);
+    const oSud = await ombreLune();
+    await tap('#p-eclipses [data-hemisphere=nord]');
+    const oNord = await ombreLune();
+    verifier(`${nav.nom} : éclipse partielle, Lune au-dessus du plan : ombre en bas vue de métropole, en haut vue de La Réunion (image tournée d'un demi-tour)`, oSud.z > 0 && oNord.b < oNord.h - 60 && oSud.h < oSud.b - 60, {oSud, oNord});
+    await tap('#p-eclipses [data-hemisphere=sud]');
+    // nouvelle Lune suivante sans éclipse, Lune au-dessous du plan : flèche « Lune » sous le Soleil, quel que soit l'hémisphère
+    await tap('#ec-nouvelle');
+    const fleche = async () => page.ev(`(async()=>{await __image();const g=STL.parties.eclipses.geoVues();return {e:g.etiquetteLune,s:g.soleil,v:g.vueSoleil,h:g.entetes[1],z:STL.parties.eclipses.lune().z};})()`);
+    const fs = await fleche();
+    await tap('#p-eclipses [data-hemisphere=nord]');
+    const fn = await fleche();
+    await tap('#p-eclipses [data-hemisphere=sud]');
+    const dansVue = f => f.e && f.e.y > f.v.y + f.h + 6 && f.e.y < f.v.y + f.v.h - 8 && f.e.x > f.v.x && f.e.x < f.v.x + f.v.w;
+    verifier(`${nav.nom} : « Le Soleil vu depuis la Terre » n'est pas retourné : Lune au-dessous du plan → flèche sous le Soleil, depuis La Réunion comme depuis la métropole`,
+      fs.z < 0 && fs.e && fn.e && fs.e.y > fs.s.y && Math.abs(fs.e.y - fn.e.y) < 0.5 && Math.abs(fs.e.x - fn.e.x) < 0.5, {fs, fn});
+    verifier(`${nav.nom} : étiquette « Lune » de la vue du Soleil dans la vue, sous l'en-tête`, dansVue(fs), fs);
+    // curseur « Position de la Lune » : la Lune bouge, le temps et l'orbite non
+    const avant = await page.ev(`({j:STL.parties.eclipses.etat.jours,nu:STL.parties.eclipses.etat.nu})`);
+    await page.ev(`(()=>{const r=document.getElementById('ec-age');r.value='150';r.dispatchEvent(new Event('input'));return true;})()`);
+    const apresC = await page.ev(`(async()=>{await __image();return {j:STL.parties.eclipses.etat.jours,nu:STL.parties.eclipses.etat.nu,a:STL.parties.eclipses.etat.alpha,t:__txt('ec-age-txt')};})()`);
+    verifier(`${nav.nom} : curseur « Position de la Lune » à 150° : la Lune bouge, ni le temps ni l'orbite (${apresC.t})`, apresC.a === 150 && apresC.j === avant.j && apresC.nu === avant.nu && apresC.t === '150°', {avant, apresC});
+    // vue de côté : Lune sur un nœud, dessinée sur la bande d'ombre mais devant elle
+    await page.ev(`(STL.parties.eclipses.etat.nu=330,STL.app.demanderDessin(),true)`);
+    const dev = await page.ev(`(async()=>{await __image();const M=STL.parties.eclipses.lune();return {m:STL.parties.eclipses.geoVues().mention,etat:__txt('ec-etat'),y:M.y,z:M.z};})()`);
+    verifier(`${nav.nom} : vue de côté, Lune à 150° sur un nœud : « ${dev.m} », sans éclipse`, dev.m === 'Lune devant l’ombre (plus près de toi)' && dev.etat === 'Aucune' && Math.abs(dev.z) < 1e-6, dev);
+    await page.ev(`(STL.parties.eclipses.etat.alpha=210,STL.parties.eclipses.etat.nu=30,STL.app.demanderDessin(),true)`);
+    const der = await page.ev(`(async()=>{await __image();return STL.parties.eclipses.geoVues().mention;})()`);
+    verifier(`${nav.nom} : vue de côté, Lune à 210° sur un nœud : « ${der} »`, der === 'Lune derrière l’ombre (plus loin de toi)', der);
+    // jours au singulier
+    await tap('#ec-zero');
+    const j0 = await page.ev(`__txt('ec-jours')`);
+    await page.touche('ArrowRight'); const j1 = await page.ev(`(async()=>{await __image();return __txt('ec-jours');})()`);
+    await page.touche('ArrowRight'); const j2 = await page.ev(`(async()=>{await __image();return __txt('ec-jours');})()`);
+    verifier(`${nav.nom} : « ${j0} », « ${j1} », « ${j2} »`, j0 === '0 jour' && j1 === '1 jour' && j2 === '2 jours', [j0, j1, j2]);
+    // reprendre le scénario au départ (Lune 27 jours après la nouvelle Lune, nœud à 8°), relevés à zéro
+    await page.ev(`(Object.assign(STL.parties.eclipses.etat,{alpha:27*360/Astro.LUNAISON,nu:8}),true)`);
+    await tap('#ec-zero');
+    await tap('#ec-nouvelle'); await tap('#ec-pleine');
     for (let k = 0; k < 11; k++) { await tap('#ec-nouvelle'); await tap('#ec-pleine'); }
     e = await lire();
     verifier(`${nav.nom} : sur 12 lunaisons, ${e.es} éclipses de Soleil pour ${e.nl} nouvelles Lunes, ${e.el} éclipses de Lune pour ${e.pl} pleines Lunes`, e.nl === 12 && e.pl === 12 && e.es >= 1 && e.es <= 3 && e.el >= 1 && e.el <= 3, e);
@@ -373,6 +453,25 @@ async function scenarioChrome(nav, srv) {
     const h5 = await page.ev(`({h:${W}.STL.parties['jour-nuit'].etat.heure,v:${W}.STL.app.visibleCadre,l:${W}.STL.app.lecture})`);
     verifier(`${nav.nom} : dans un cadre, l'animation tourne, s'arrête quand le cadre sort de l'écran et reprend à son retour`,
       h2 !== h1 && !h3.v && h4.h === h3.h && h4.i === h3.i && h5.v && h5.l && h5.h !== h4.h, {h1, h2, h3, h4, h5});
+    await page.fermer();
+  }
+  // 8. Dans un cadre de cours : le doigt fait défiler la page, sauf sur un objet à déplacer
+  {
+    const page = await nav.ouvrir(srv.base + '/tests/cadre.html?w=980&h=700&partie=phases', 1024, 768, {tactile: true});
+    const W = `document.querySelector('iframe').contentWindow`;
+    await page.ev(`(async()=>{for(let i=0;i<100;i++){const W=${W};if(W.STL&&W.STL.app&&W.STL.app.images>0)return true;await new Promise(r=>setTimeout(r,50));}return false;})()`);
+    const o = await page.ev(`(()=>{const f=document.querySelector('iframe').getBoundingClientRect(),W=${W},c=W.document.getElementById('toile').getBoundingClientRect(),g=W.STL.parties.phases.geo();
+      const q=W.STL.parties.phases.geoVue();
+      return {x:f.left+c.left,y:f.top+c.top,g:{mx:g.mx,my:g.my},q:{x:q.x,y:q.y,r:q.r},a:W.STL.parties.phases.etat.alpha,s:scrollY};})()`);
+    // zone vide : à côté de la Lune de la vue « La Lune vue depuis la Terre » (rien à y déplacer)
+    const vx = o.x + o.q.x + o.q.r + 15, vy = o.y + o.q.y;
+    await glisserDoigt(page.o, vx, vy, vx, vy - 250, 15); await pause(400);
+    const s1 = await page.ev(`({s:scrollY,a:${W}.STL.parties.phases.etat.alpha})`);
+    await page.ev(`(scrollTo(0,0),true)`); await pause(300);
+    await glisserDoigt(page.o, o.x + o.g.mx, o.y + o.g.my, o.x + o.g.mx, o.y + o.g.my - 150, 15); await pause(400);
+    const s2 = await page.ev(`({s:scrollY,a:${W}.STL.parties.phases.etat.alpha})`);
+    verifier(`${nav.nom} : dans le cadre d'un cours, un doigt glissé sur une zone vide du dessin fait défiler la page ; posé sur la Lune, il la déplace sans faire défiler`,
+      s1.s > 100 && s1.a === o.a && s2.s === 0 && s2.a !== o.a, {o: {s: o.s, a: o.a}, s1, s2});
     await page.fermer();
   }
 }

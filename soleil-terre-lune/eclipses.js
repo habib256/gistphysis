@@ -2,9 +2,13 @@
 // - Vue de dessus (schéma, pas à l'échelle) : ombre et pénombre de la Terre et de la Lune,
 //   limitées par les droites qui joignent les bords du Soleil (source étendue) aux bords de
 //   l'astre, comme en optique.
-// - Vue de côté : vraies dimensions verticales (unité : rayon terrestre) et distances
-//   horizontales raccourcies d'un facteur k. Cette transformation conserve les droites : la Lune
-//   est dans l'ombre sur le dessin exactement quand elle l'est dans le modèle (astro.js).
+// - Vue de côté : projection sur le plan vertical qui contient la direction du Soleil, avec les
+//   vraies dimensions verticales (unité : rayon terrestre) et les distances horizontales
+//   raccourcies d'un facteur k. La profondeur (y : vers l'observateur ou à l'opposé) est écrasée :
+//   une Lune dessinée dans la bande d'ombre peut passer devant ou derrière l'ombre. Dans ce cas
+//   (|y| plus grand que le rayon de la pénombre augmenté de celui de la Lune), une mention
+//   « devant / derrière l'ombre » est affichée. L'éclipse elle-même est calculée en trois
+//   dimensions (astro.js).
 // - Le temps fait avancer la Lune (lunaison 29,53 j) et tourner la ligne des nœuds de son orbite
 //   par rapport au Soleil (retour en 346,62 j).
 (function () {
@@ -150,8 +154,12 @@
     }
     ombres([0, 0], S.RE, 1);
     const tO = Math.max(10, Math.min(12, s * 14));
-    D.etiquette(ctx, 'ombre', ...E(S.DM * 0.62, 0), {taille: tO, fond: 'rgba(0,0,0,0.5)'});
-    D.etiquette(ctx, 'pénombre', ...E(S.DM * 0.62, S.RE + 13), {taille: tO, fond: 'rgba(0,0,0,0.35)'});
+    // étiquettes « ombre » et « pénombre » (au milieu de la pénombre, sous l'axe), sauf si la Lune
+    // et son étiquette sont juste là
+    const pres = (x, y) => Math.hypot(geo.mx - x, geo.my - S.RM * s - 11 - y) < 45;
+    const [ox, oy] = E(S.DM * 0.62, 0), [px, py] = E(S.DM * 0.62, -S.RE * (1 + S.DM * 0.62 / S.DS));
+    if (!pres(ox, oy)) D.etiquette(ctx, 'ombre', ox, oy, {taille: tO, fond: 'rgba(0,0,0,0.5)'});
+    if (!pres(px, py)) D.etiquette(ctx, 'pénombre', px, py, {taille: tO, fond: 'rgba(0,0,0,0.25)'});
     D.sphere(ctx, XE, YE, S.RE * s, [-1, 0, 0], C.terreJour, C.terreNuit, 'rgba(255,255,255,0.6)');
     ombres(m, S.RM, 0.75);
     // orbite de la Lune : trait plein au-dessus du plan de l'orbite de la Terre, pointillés au-dessous
@@ -180,11 +188,10 @@
     ctx.restore();
     D.titreVue(ctx, v, 'Vue de dessus');
     D.pasALEchelle(ctx, v);
-    if (etat.incline && v.h > 140) {
-      const txt = v.w >= 560 ? 'Orbite de la Lune — trait plein : au-dessus du plan de l’orbite de la Terre ; pointillés : au-dessous'
-        : 'Orbite de la Lune — trait plein : au-dessus,\npointillés : au-dessous du plan de l’orbite de la Terre';
-      D.etiquette(ctx, txt, v.x + 6, v.y + v.h - (v.w >= 560 ? 11 : 18), {taille: 10.5, align: 'left', couleur: C.texteDoux, fond: 'rgba(8,12,26,0.7)'});
-    }
+    // légende de l'orbite, seulement si elle tient sur une ligne (elle est aussi dans le panneau)
+    if (etat.incline && v.h > 140 && v.w >= 600)
+      D.etiquette(ctx, 'Orbite de la Lune — trait plein : au-dessus du plan de l’orbite de la Terre ; pointillés : au-dessous',
+        v.x + 6, v.y + v.h - 11, {taille: 10.5, align: 'left', couleur: C.texteDoux, fond: 'rgba(8,12,26,0.7)'});
   }
 
   function dessinerCote(ctx, v, M, ecl) {
@@ -228,6 +235,33 @@
     const teinte = ecl.type !== 'lune' ? C.luneJour : ecl.degre === 'totale' ? C.luneEclipse : ecl.degre === 'partielle' ? '#b9806f' : '#bdb7a8';
     const laLune = () => D.sphere(ctx, ...E(M.x, M.z), Math.max(3, rm * sv), [-1, 0, 0], teinte, '#3a3f4c', 'rgba(255,255,255,0.6)');
     if (M.y < 0) { terre(); laLune(); } else { laLune(); terre(); }
+    // Profondeur écrasée : la Lune (ou son ombre) semble sur l'ombre (ou sur la Terre) sans y être
+    geoVues = geoVues || {};
+    geoVues.mention = '';
+    const [lx, ly] = E(M.x, M.z), rL = Math.max(3, rm * sv);
+    let mention = '';
+    if (Math.abs(M.x) < 1.5) {
+      if (Math.abs(M.z) < 1 + rm) mention = M.y < 0 ? 'Lune devant la Terre\n(plus près de toi)' : 'Lune derrière la Terre\n(plus loin de toi)';
+    } else if (M.x > 0) {
+      const o = A.ombreTerre(M.x);
+      if (Math.abs(M.z) < o.penombre + rm && Math.abs(M.y) > o.penombre + rm)
+        mention = M.y < 0 ? 'Lune devant l’ombre\n(plus près de toi)' : 'Lune derrière l’ombre\n(plus loin de toi)';
+    } else if (M.x < 0) {
+      const o = A.ombreLune(-M.x, Ds + M.x);
+      if (Math.abs(M.z) < 1 + o.penombre && Math.abs(M.y) > 1 + o.penombre)
+        mention = M.y < 0 ? 'Lune et son ombre\ndevant la Terre' : 'Lune et son ombre\nderrière la Terre';
+    }
+    if (mention) {
+      geoVues.mention = mention.replace('\n', ' ');
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(lx, ly, rL + 3, 0, 2 * Math.PI); ctx.stroke();
+      const haut = ly - v.y > v.h / 2;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(lx, ly + (haut ? -rL - 3 : rL + 3)); ctx.lineTo(lx, ly + (haut ? -22 : 22)); ctx.stroke();
+      ctx.font = D.police(11);
+      const lg = Math.max(...mention.split('\n').map(l => ctx.measureText(l).width)) / 2 + 6;
+      D.etiquette(ctx, mention, Math.max(v.x + lg, Math.min(v.x + v.w - lg, lx)), ly + (haut ? -40 : 40), {taille: 11});
+    }
     ctx.restore();
     D.titreVue(ctx, v, 'Vue de côté');
     D.etiquette(ctx, '← vers le Soleil', v.x + 6, Y0 + 12, {taille: 11, align: 'left', couleur: '#ffe39a', fond: false});
@@ -258,47 +292,73 @@
     return {dx: dir[0] * sep, dy: dir[1] * sep, sep, rl: A.R_LUNE / dist / th};
   }
 
-  function dessinerVues(ctx, vL, vS, M) {
-    const sud = STL.reglages.hemisphere === 'sud', k = sud ? -1 : 1;
-    // Lune
+  // En-tête d'une petite vue : titre et sous-titre, ou un seul titre court si la place manque.
+  // Renvoie la hauteur occupée.
+  function enTete(ctx, v, titre, sousTitre, court) {
+    if (v.h >= 120 && v.w >= 170) {
+      D.titreVue(ctx, v, titre, court.replace('\n', ' '));
+      D.etiquette(ctx, sousTitre, v.x + 8, v.y + 33, {taille: 11, align: 'left', fond: false, couleur: C.texteDoux});
+      return 44;
+    }
+    // vue étroite : titre court, sur deux lignes si besoin
+    ctx.font = D.police(12, true);
+    if (ctx.measureText(court.replace('\n', ' ')).width <= v.w - 16) { D.titreVue(ctx, v, court.replace('\n', ' ')); return 26; }
+    D.etiquette(ctx, court, v.x + 8, v.y + 22, {taille: 12, gras: true, align: 'left', fond: false});
+    return 40;
+  }
+
+  function dessinerVues(ctx, vL, vS, M, ecl) {
+    const sud = STL.reglages.hemisphere === 'sud';
+    // La Lune vue depuis la Terre : image tournée d'un demi-tour vue de l'hémisphère Sud
     D.cadreVue(ctx, vL, '#070b18');
-    const rl = Math.max(14, Math.min(vL.w * 0.28, (vL.h - 50) * 0.38));
-    const xl = vL.x + vL.w / 2, yl = vL.y + 28 + (vL.h - 40) / 2;
+    const hL = enTete(ctx, vL, 'La Lune vue depuis la Terre', sud ? 'depuis La Réunion (hémisphère Sud)' : 'depuis la métropole (hémisphère Nord)',
+      sud ? 'Lune vue de\nLa Réunion' : 'Lune vue de\nmétropole');
+    const rl = Math.max(12, Math.min(vL.w * 0.28, (vL.h - hL - 8) * 0.42));
+    const xl = vL.x + vL.w / 2, yl = vL.y + hL + (vL.h - hL) / 2;
     const L = vueLune(M);
-    geoVues = {lune: {x: xl, y: yl, r: rl}};
+    geoVues = {lune: {x: xl, y: yl, r: rl}, mention: geoVues ? geoVues.mention : '', vueLune: vL, entetes: [hL]};
     D.luneVue(ctx, xl, yl, rl, L.s, STL.reglages.hemisphere, L.ombre);
-    D.titreVue(ctx, vL, 'La Lune vue depuis la Terre', 'Lune vue de la Terre');
-    // Soleil
+    // Le Soleil vu depuis l'endroit le mieux placé : jamais retourné, nord (du plan de l'orbite de
+    // la Terre) en haut, comme dans la vue de côté
     D.cadreVue(ctx, vS, '#070b18');
-    const rs = Math.max(12, Math.min(vS.w * 0.2, (vS.h - 50) * 0.3));
-    const xs = vS.x + vS.w / 2, ys = vS.y + 28 + (vS.h - 40) / 2;
+    const hS = enTete(ctx, vS, 'Le Soleil vu depuis la Terre', vS.w >= 260 ? 'depuis le lieu le mieux placé ; nord en haut' : 'lieu le mieux placé ; nord en haut',
+      'Soleil\n(nord en haut)');
+    const rs = Math.max(10, Math.min(vS.w * 0.2, (vS.h - hS - 8) * 0.3));
+    const xs = vS.x + vS.w / 2, ys = vS.y + hS + (vS.h - hS) / 2;
     D.soleil(ctx, xs, ys, rs);
     geoVues.soleil = {x: xs, y: ys, r: rs};
+    geoVues.vueSoleil = vS; geoVues.entetes.push(hS);
     const S2 = vueSoleil(M);
     if (S2) {
-      const mx = xs + k * S2.dx * rs, my = ys - k * S2.dy * rs;
-      const dansCadre = mx > vS.x + 4 && mx < vS.x + vS.w - 4 && my > vS.y + 24 && my < vS.y + vS.h - 4;
+      const mx = xs + S2.dx * rs, my = ys - S2.dy * rs;
+      const dansCadre = mx > vS.x + 4 && mx < vS.x + vS.w - 4 && my > vS.y + hS && my < vS.y + vS.h - 4;
       if (S2.sep < 1 + S2.rl + 0.05 || dansCadre) {
         ctx.save(); ctx.beginPath(); ctx.rect(vS.x, vS.y, vS.w, vS.h); ctx.clip();
         ctx.fillStyle = '#10131b'; ctx.beginPath(); ctx.arc(mx, my, S2.rl * rs, 0, 2 * Math.PI); ctx.fill();
         ctx.setLineDash([3, 3]); ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
         ctx.restore();
       } else {
-        const ang = Math.atan2(-(my - ys), mx - xs), rr = rs * 1.9;
+        // flèche vers la Lune, et étiquette posée à côté de la flèche, dans la vue
+        const ang = Math.atan2(-(my - ys), mx - xs), c = Math.cos(ang), s = -Math.sin(ang);
+        const place = Math.min(Math.abs(c) > 1e-3 ? (c > 0 ? vS.x + vS.w - xs : xs - vS.x) / Math.abs(c) : 1e9,
+          Math.abs(s) > 1e-3 ? (s > 0 ? vS.y + vS.h - ys : ys - vS.y - hS) / Math.abs(s) : 1e9) - 4;
+        const rr = Math.max(rs * 1.35, Math.min(rs * 1.9, place));
         ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5;
-        D.fleche(ctx, xs + Math.cos(ang) * rs * 1.25, ys - Math.sin(ang) * rs * 1.25, xs + Math.cos(ang) * rr, ys - Math.sin(ang) * rr, 7);
-        D.etiquette(ctx, 'Lune', xs + Math.cos(ang) * (rr + 16), ys - Math.sin(ang) * (rr + 12), {taille: 11});
+        D.fleche(ctx, xs + c * rs * 1.15, ys + s * rs * 1.15, xs + c * rr, ys + s * rr, 7);
+        const cote = Math.abs(c) < 0.5 ? (c >= 0 ? 1 : -1) : 0;   // flèche presque verticale : étiquette à côté
+        const ex = cote ? xs + c * rr * 0.75 + cote * 8 : xs + c * (rr + 6);
+        const ey = cote ? ys + s * rr * 0.75 : ys + s * rr * 0.8;
+        D.etiquette(ctx, 'Lune', ex, ey, {taille: 11, align: cote > 0 ? 'left' : cote < 0 ? 'right' : (c > 0 ? 'left' : 'right')});
+        geoVues.etiquetteLune = {x: ex, y: ey};
       }
     }
-    D.titreVue(ctx, vS, 'Le Soleil vu depuis la Terre', 'Soleil vu de la Terre');
-    if (vS.h > 120) D.etiquette(ctx, vS.w >= 210 ? '(depuis l’endroit le mieux placé)' : '(lieu le mieux placé)', xs, vS.y + vS.h - 12, {taille: 10.5, fond: false, couleur: C.texteDoux});
   }
 
   function dessiner(ctx, w, h) {
     const v = dispositions(w, h), M = lune(), ecl = A.eclipse(M);
     dessinerDessus(ctx, v.dessus, M, ecl);
     dessinerCote(ctx, v.cote, M, ecl);
-    dessinerVues(ctx, v.lune, v.soleil, M);
+    dessinerVues(ctx, v.lune, v.soleil, M, ecl);
   }
 
   function majPanneau() {
@@ -308,13 +368,13 @@
     const z = M.z * A.RT_KM;
     ecrire($('ec-hauteur'), Math.abs(z) < 500 ? 'dans le plan' : 'à ' + A.milliers(Math.round(Math.abs(z) / 1000) * 1000) + ' km ' + (z > 0 ? 'au-dessus' : 'au-dessous'));
     for (const c of ['nl', 'es', 'pl', 'el']) ecrire($('ec-' + c), String(etat[c]));
-    ecrire($('ec-jours'), A.milliers(Math.floor(etat.jours + 1e-6)) + ' jours');
+    const nj = Math.floor(etat.jours + 1e-6);
+    ecrire($('ec-jours'), A.milliers(nj) + (nj < 2 ? ' jour' : ' jours'));
     ecrire($('ec-arret'), etat.message);
-    const age = etat.alpha / PAR_JOUR;
-    const ta = A.virgule(age, 1) + ' jour' + (age >= 1.95 ? 's' : '');
+    const ta = Math.round(etat.alpha) % 360 + '°';
     ecrire($('ec-age-txt'), ta);
-    $('ec-age').setAttribute('aria-valuetext', ta);
-    if (Math.abs(+$('ec-age').value - age) > 0.06) $('ec-age').value = String(age);
+    $('ec-age').setAttribute('aria-valuetext', ta + ', ' + A.nomPhase(etat.alpha));
+    if (Math.abs(+$('ec-age').value - etat.alpha) > 0.3) $('ec-age').value = String(etat.alpha);
   }
 
   STL.parties.eclipses = {
@@ -324,7 +384,8 @@
       $('ec-nouvelle').addEventListener('click', () => sauter(0));
       $('ec-pleine').addEventListener('click', () => sauter(180));
       $('ec-vitesse').addEventListener('change', e => { etat.vitesse = +e.target.value; });
-      $('ec-age').addEventListener('input', e => { etat.message = ''; etat.alpha = A.mod(+e.target.value * PAR_JOUR, 360); app.demanderDessin(); });
+      // déplacer la Lune à la main ne fait pas passer le temps (l'orbite ne tourne pas)
+      $('ec-age').addEventListener('input', e => { etat.message = ''; etat.alpha = A.mod(+e.target.value, 360); app.demanderDessin(); });
       $('ec-hypothese').addEventListener('change', e => { etat.incline = !e.target.checked; app.demanderDessin(); });
       $('ec-zero').addEventListener('click', () => { Object.assign(etat, {nl: 0, es: 0, pl: 0, el: 0, jours: 0, message: ''}); app.demanderDessin(); });
       document.querySelectorAll('#p-eclipses .lecture').forEach(b => b.addEventListener('click', () => { if (app.lecture) etat.message = ''; }));
@@ -346,6 +407,7 @@
       glisse = true; this.pointeurDeplace(x, y);
       return true;
     },
+    // glisser la Lune : même chose que le curseur « Position de la Lune » (le temps ne passe pas)
     pointeurDeplace(x, y) {
       if (!glisse || Math.hypot(x - geo.XE, y - geo.YE) < 4) return;
       etat.message = '';
@@ -367,11 +429,13 @@
     ],
     fiche: `<ul>
       <li><strong>Vue de dessus</strong> : schéma pas à l’échelle. Les traits qui limitent l’ombre et la pénombre joignent les bords du Soleil (source étendue) aux bords de la Terre ou de la Lune. Comme cette vue écrase les hauteurs, la Lune peut y sembler dans l’ombre alors qu’elle passe au-dessus ou au-dessous.</li>
-      <li><strong>Vue de côté</strong> : les hauteurs et les tailles de la Terre, de la Lune et des ombres sont à la même échelle, mais les distances horizontales sont raccourcies : l’inclinaison de l’orbite de la Lune paraît plus grande que sa vraie valeur (5,1°).</li>
+      <li><strong>Vue de côté</strong> : les hauteurs et les tailles de la Terre, de la Lune et des ombres sont à la même échelle, mais les distances horizontales sont raccourcies : l’inclinaison de l’orbite de la Lune paraît plus grande que sa vraie valeur (5,1°). Cette vue écrase la profondeur : la Lune peut y sembler dans la bande d’ombre alors qu’elle passe devant ou derrière (une mention l’indique alors).</li>
+      <li><strong>La Lune vue depuis la Terre</strong> : vue depuis La Réunion, l’image est tournée d’un demi-tour par rapport à la vue depuis la métropole (haut et bas, gauche et droite échangés). <strong>Le Soleil vu depuis la Terre</strong> : vu depuis l’endroit de la Terre le mieux placé pour l’éclipse, jamais retourné, avec le nord du plan de l’orbite de la Terre en haut, comme dans la vue de côté.</li>
       <li>Les losanges jaunes de la vue de dessus marquent les deux points où l’orbite de la Lune traverse le plan de l’orbite de la Terre.</li>
       <li>Ombre de la Terre à la distance de la Lune : rayon d’environ 4 600 km (la Lune : 1 737 km) ; pénombre : environ 8 200 km.</li>
       <li>La distance Terre-Lune est prise constante (384 400 km). En réalité elle varie de 356 000 à 407 000 km : selon cette distance, une éclipse centrale de Soleil est totale ou annulaire. L’app ne les distingue pas.</li>
       <li>La couleur rouge sombre de la Lune éclipsée vient de la lumière du Soleil déviée par l’atmosphère de la Terre : elle est seulement imitée ici.</li>
+      <li>Déplacer la Lune à la main (curseur « Position de la Lune » ou doigt) ne fait pas passer le temps : l’orbite de la Lune ne tourne pas et les relevés ne changent pas.</li>
       <li>Le temps fait avancer la Lune (29,53 jours par lunaison) et tourner l’orbite de la Lune par rapport à la direction du Soleil (retour au même nœud en 346,6 jours). Les éclipses sont relevées à l’instant exact de chaque nouvelle ou pleine Lune ; les éclipses de Lune par la pénombre, presque invisibles, ne sont pas comptées.</li>
     </ul>`
   };

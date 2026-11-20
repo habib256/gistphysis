@@ -17,8 +17,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-vi
 #onglets button { padding: 4px 6px; font-weight: 600; }
 #onglets button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 #scene { grid-area: scene; position: relative; background: var(--ciel); min-width: 0; min-height: 0; overflow: hidden; }
-#toile { position: absolute; left: 0; top: 0; display: block; touch-action: none; -webkit-user-select: none; user-select: none; }
-#panneau { grid-area: panneau; overflow: auto; padding: 8px 10px 14px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#toile { position: absolute; left: 0; top: 0; display: block; touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; }
+#panneau { grid-area: panneau; overflow: auto; padding: 8px 10px 14px; -webkit-overflow-scrolling: touch; }
 .groupe { margin: 0 0 8px; }
 .libelle { display: block; font-size: .9rem; color: var(--doux); margin-bottom: 3px; }
 .segments { display: flex; gap: 4px; }
@@ -50,6 +50,8 @@ input[type="range"]::-moz-range-track { height: 6px; background: #b7c6cc; border
 .mesures.une tbody th { width: 52%; }
 .mesures td { font-weight: 700; font-variant-numeric: tabular-nums; }
 .mesures small { font-weight: 400; color: var(--doux); }
+.repere, .evenement { display: block; }
+.repere:empty { display: none; }
 .marque { display: inline-block; width: 11px; height: 11px; margin-right: 5px; border: 2px solid #1d2b30; vertical-align: -1px; }
 .marque.md { background: #3ee0a8; border-radius: 50%; }
 .marque.mp { background: #ff8a8a; border-radius: 2px; }
@@ -61,7 +63,7 @@ input[type="range"]::-moz-range-track { height: 6px; background: #b7c6cc; border
 .note:empty { display: none; }
 #ec-arret { color: #7a3d00; font-weight: 600; }
 .attention { color: #8a2b12; font-weight: 600; }
-.actions { display: flex; gap: 6px; margin-top: 10px; }
+.actions { display: flex; gap: 6px; margin: 0 0 10px; }
 .actions button { flex: 1 1 0; font-weight: 600; }
 .actions .consignes { background: #e4f1e9; border-color: #2c7a59; }
 /* Fenêtre (consignes, valeurs réelles) */

@@ -157,6 +157,15 @@
     if (p.pointeurHaut) p.pointeurHaut();
     demanderDessin();
   };
+  // Défilement de la page au doigt : le dessin laisse la page défiler (touch-action: pan-x pan-y),
+  // sauf quand le doigt s'est posé sur un objet à déplacer (Terre, Lune…). Le pointerdown arrive
+  // avant le touchstart : on annule alors le défilement pour ce seul geste. Ainsi, dans le cadre
+  // d'un cours, l'élève peut faire défiler le cours en posant le doigt ailleurs sur le dessin.
+  const bloquer = e => { if (actif !== null && e.cancelable) e.preventDefault(); };
+  toile.addEventListener('touchstart', bloquer, {passive: false});
+  toile.addEventListener('touchmove', bloquer, {passive: false});
+  // Page ouverte seule (pas dans un cadre) : pas de « tirer pour actualiser » ni de rebond
+  try { if (window.top === window) document.documentElement.style.overscrollBehavior = 'none'; } catch (e) { /* cadre d'une autre origine */ }
   toile.addEventListener('pointerup', fin);
   toile.addEventListener('pointercancel', fin);
   toile.addEventListener('lostpointercapture', fin);

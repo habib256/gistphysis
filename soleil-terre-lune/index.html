@@ -37,6 +37,7 @@
     <!-- ============================================================ Jour et nuit -->
     <section id="p-jour-nuit" class="partie" role="tabpanel" aria-labelledby="onglet-jour-nuit" hidden>
       <h2>Jour et nuit</h2>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
       <div class="groupe">
         <span class="libelle">Vue au-dessus du</span>
         <div class="segments" role="group" aria-label="Point de vue">
@@ -69,20 +70,20 @@
         <button type="button" id="jn-zero">Remettre à zéro</button>
       </div>
       <p class="note">Tu peux aussi faire tourner la Terre avec le doigt, ou avec les flèches du clavier.</p>
-      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
     </section>
 
     <!-- ============================================================ Saisons -->
     <section id="p-saisons" class="partie" role="tabpanel" aria-labelledby="onglet-saisons" hidden>
       <h2>Saisons</h2>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
       <label class="curseur">Date : <output id="sa-date-txt"></output>
         <input type="range" id="sa-date" min="1" max="365" step="1" value="172">
       </label>
       <div class="raccourcis" role="group" aria-label="Aller à une date">
-        <button type="button" data-date="2,21">21 mars</button>
-        <button type="button" data-date="5,21">21 juin</button>
-        <button type="button" data-date="8,23">23 sept.</button>
-        <button type="button" data-date="11,21">21 déc.</button>
+        <button type="button" data-evenement="0">20 mars</button>
+        <button type="button" data-evenement="1">21 juin</button>
+        <button type="button" data-evenement="2">23 sept.</button>
+        <button type="button" data-evenement="3">22 déc.</button>
       </div>
       <div class="ligne">
         <button type="button" class="lecture" aria-pressed="false"></button>
@@ -105,12 +106,12 @@
       </table>
       <p class="mesure-seule">Distance Terre-Soleil : <output id="sa-distance"></output></p>
       <p class="note">Fais glisser la Terre sur son orbite, ou utilise les flèches du clavier.</p>
-      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
     </section>
 
     <!-- ============================================================ Phases -->
     <section id="p-phases" class="partie" role="tabpanel" aria-labelledby="onglet-phases" hidden>
       <h2>Phases de la Lune</h2>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
       <div class="groupe">
         <span class="libelle">La Lune vue depuis</span>
         <div class="segments hemisphere" role="group" aria-label="Lieu de l’observateur">
@@ -134,20 +135,27 @@
       <label class="case"><input type="checkbox" id="ph-moitie"> <span>Montrer la moitié de la Lune tournée vers la Terre</span></label>
       <table class="mesures une">
         <tbody>
-          <tr><th scope="row">Phase</th><td id="ph-nom"></td></tr>
+          <tr><th scope="row">Phase</th><td><span id="ph-nom"></span><small id="ph-repere" class="repere"></small></td></tr>
           <tr><th scope="row">Fraction éclairée</th><td id="ph-fraction"></td></tr>
           <tr><th scope="row">Évolution</th><td id="ph-evolution"></td></tr>
           <tr><th scope="row">Angle Soleil-Terre-Lune</th><td id="ph-angle"></td></tr>
         </tbody>
       </table>
-      <p class="note">Simplification : l’image de la Lune est retournée (gauche et droite échangées) entre les deux hémisphères. En réalité, près des tropiques, le croissant apparaît aussi plus ou moins couché selon l’heure.</p>
+      <p class="note">Simplification : entre les deux hémisphères, l’image de la Lune est tournée d’un demi-tour (haut et bas, gauche et droite échangés). En réalité, près des tropiques, le croissant apparaît aussi plus ou moins couché selon l’heure.</p>
       <p class="note">Déplace la Lune avec le doigt sur son orbite, ou avec les flèches du clavier.</p>
-      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
     </section>
 
     <!-- ============================================================ Éclipses -->
     <section id="p-eclipses" class="partie" role="tabpanel" aria-labelledby="onglet-eclipses" hidden>
       <h2>Éclipses</h2>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
+      <div class="groupe">
+        <span class="libelle">La Lune vue depuis</span>
+        <div class="segments hemisphere" role="group" aria-label="Lieu de l’observateur">
+          <button type="button" data-hemisphere="sud" aria-pressed="true">La Réunion <small>(hémisphère Sud)</small></button>
+          <button type="button" data-hemisphere="nord" aria-pressed="false">la métropole <small>(hémisphère Nord)</small></button>
+        </div>
+      </div>
       <div class="ligne sauts">
         <button type="button" id="ec-nouvelle">Nouvelle Lune suivante</button>
         <button type="button" id="ec-pleine">Pleine Lune suivante</button>
@@ -163,9 +171,10 @@
         </label>
       </div>
       <p class="note" id="ec-arret" role="status"></p>
-      <label class="curseur">Placer la Lune (jours depuis la nouvelle Lune) : <output id="ec-age-txt"></output>
-        <input type="range" id="ec-age" min="0" max="29.5" step="0.05" value="27">
+      <label class="curseur">Position de la Lune (angle Soleil-Terre-Lune) : <output id="ec-age-txt"></output>
+        <input type="range" id="ec-age" min="0" max="359.5" step="0.5" value="329">
       </label>
+      <p class="note">Déplacer la Lune à la main (curseur ou doigt) ne fait pas passer le temps : l’orbite de la Lune ne tourne pas. Pour faire passer le temps : « Lecture », les flèches du clavier ou les deux boutons ci-dessus.</p>
       <label class="case"><input type="checkbox" id="ec-hypothese"> <span>Hypothèse à tester : orbite de la Lune <strong>non inclinée</strong> (0°)</span></label>
       <table class="mesures une">
         <tbody>
@@ -185,15 +194,8 @@
         </tbody>
       </table>
       <div class="ligne"><button type="button" id="ec-zero">Remettre à zéro</button></div>
-      <div class="groupe">
-        <span class="libelle">Vue depuis</span>
-        <div class="segments hemisphere" role="group" aria-label="Lieu de l’observateur">
-          <button type="button" data-hemisphere="sud" aria-pressed="true">La Réunion</button>
-          <button type="button" data-hemisphere="nord" aria-pressed="false">la métropole</button>
-        </div>
-      </div>
+      <p class="note">Vue de dessus : orbite de la Lune en trait plein quand la Lune est au-dessus du plan de l’orbite de la Terre, en pointillés quand elle est au-dessous ; les losanges marquent les deux points où elle traverse ce plan.</p>
       <p class="note attention">Ne regarde jamais le Soleil directement, même pendant une éclipse : c’est dangereux pour les yeux.</p>
-      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
     </section>
   </aside>
 </div>
