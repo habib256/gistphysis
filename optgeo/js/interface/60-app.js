@@ -29,9 +29,12 @@
   /* ================================================================== */
   /* Scène, historique, sauvegarde                                       */
   /* ================================================================== */
+  // 51 états mémorisés = l'état courant + 50 retours en arrière (maxannulation d'OptGeo, SPEC §7)
+  var ETATS_HISTORIQUE = 51;
   app.remplacerScene = function (scene) {
+    if (app.panneau) app.fermerPanneau();               // le panneau ne doit jamais viser un objet d'une autre scène
     app.scene = scene;
-    app.hist = new OptGeo.Historique(scene, 50);       // 50 niveaux comme OptGeo (maxannulation)
+    app.hist = new OptGeo.Historique(scene, ETATS_HISTORIQUE);
     app.selection = null; app.groupeChoisi = null; app.choixGroupe = [];
     app.dessinateur.toutVoir();
     app.majInterface();
@@ -62,28 +65,52 @@
     if (app.groupeChoisi !== null && !app.scene.groupes[app.groupeChoisi]) app.groupeChoisi = null;
     app.choixGroupe = app.choixGroupe.filter(function (id) { return app.scene.objet(id); });
   };
+  /**
+   * Options d'affichage, non annulables dans OptGeo (SPEC §7 : « Changer l'affichage (normales,
+   * grille, zoom) n'est pas annulable ») : Annuler et Refaire ne touchent qu'à la scène, ces
+   * options gardent leur valeur du moment.
+   */
+  var OPTIONS_AFFICHAGE = ['optionnormale', 'optionangles', 'epaisseurnormale', 'pourcentagenormale', 'couleurnormale', 'decimalesangles',
+    'tracergrille', 'attractiongrille', 'grillex', 'grilley', 'afficher_longueurs_segments', 'desactiverControle'];
+  function sansToucherAffichage(f) {
+    var o = app.scene.options, garde = {};
+    OPTIONS_AFFICHAGE.forEach(function (k) { if (o[k] !== undefined) garde[k] = o[k]; });
+    var espace = [o.xxmin, o.xxmax, o.yymin, o.yymax].join();
+    if (!f()) return false;
+    var o2 = app.scene.options, diff = {}, n = 0;
+    // le pas de la grille suit l'espace de travail (mis à l'échelle avec lui) : si l'annulation change
+    // l'espace de travail, on reprend aussi le pas de l'état restauré
+    if ([o2.xxmin, o2.xxmax, o2.yymin, o2.yymax].join() !== espace) { delete garde.grillex; delete garde.grilley; }
+    Object.keys(garde).forEach(function (k) { if (o2[k] !== garde[k]) { diff[k] = garde[k]; n++; } });
+    if (n) { app.scene.modifierOptions(diff); app.hist.pile[app.hist.position] = JSON.stringify(app.scene.versJSON()); }
+    return true;
+  }
   app.annuler = function () {
     if (app.geste) app.annulerGeste();
-    if (app.hist.annuler()) { app.modifie = true; app.verifierSelection(); app.sauvegarderBientot(); app.majInterface(); app.dessinateur.demander(); }
+    if (sansToucherAffichage(function () { return app.hist.annuler(); })) { app.modifie = true; app.verifierSelection(); app.sauvegarderBientot(); app.majInterface(); app.dessinateur.demander(); }
   };
   app.retablir = function () {
-    if (app.hist.retablir()) { app.modifie = true; app.verifierSelection(); app.sauvegarderBientot(); app.majInterface(); app.dessinateur.demander(); }
+    if (sansToucherAffichage(function () { return app.hist.retablir(); })) { app.modifie = true; app.verifierSelection(); app.sauvegarderBientot(); app.majInterface(); app.dessinateur.demander(); }
   };
 
-  var minuterieSauvegarde = null, fondNonGarde = false;
+  /*
+   * Sauvegarde automatique : la scène seule (texte JSON de quelques kilo-octets), jamais l'image
+   * de fond. Le stockage local est partagé par tout le site (favoris des élèves…) : une image de
+   * plusieurs mégaoctets pourrait saturer le quota. Si l'écriture échoue, un message le dit.
+   */
+  var minuterieSauvegarde = null, echecSauvegarde = false;
   app.sauvegarderBientot = function () {
     clearTimeout(minuterieSauvegarde);
     minuterieSauvegarde = setTimeout(app.sauvegarderLocal, 400);
   };
   app.sauvegarderLocal = function () {
     clearTimeout(minuterieSauvegarde);
-    if (!app.scene) return;
-    var d = { v: 1, date: Date.now(), nom: app.nomFichier, modifie: app.modifie, scene: app.scene.versJSON(), fond: null };
-    if (app.imageFondURL && app.imageFondURL.length < 3500000) d.fond = app.imageFondURL;
-    if (!OGW.stockage.ecrire('travail', d) && d.fond) {
-      d.fond = null;
-      if (OGW.stockage.ecrire('travail', d) && !fondNonGarde) { fondNonGarde = true; app.signaler('Image de fond trop grande : elle n’est pas gardée dans la sauvegarde automatique.'); }
-    }
+    if (!app.scene) return false;
+    var d = { v: 2, date: Date.now(), nom: app.nomFichier, modifie: app.modifie, scene: app.scene.versJSON() };
+    var ok = OGW.stockage.ecrire('travail', d);
+    if (!ok && !echecSauvegarde) app.signaler('Sauvegarde automatique impossible sur cet appareil (mémoire du navigateur pleine ou bloquée). Pensez à enregistrer la simulation (Menu › Enregistrer).', 'erreur');
+    echecSauvegarde = !ok;
+    return ok;
   };
 
   app.parametresParDefaut = function (type) {
@@ -94,11 +121,17 @@
   app.ajouterObjet = function (type, p) {
     if (app.scene.objetsDuType(type).length >= MAX_PAR_TYPE) return { ok: false, erreur: 'Nombre maximal de ' + (OGW.NOMS[type] || type).toLowerCase() + ' déjà atteint !' };
     var r = app.scene.ajouter(type, p);
+    if (r.ok && !OGW.valeursFinies(app.scene.geometrie(r.id))) { app.scene.supprimer(r.id); r = { ok: false, erreur: ERREUR_NON_CALCULABLE }; }
     if (r.ok) app.memoriser();
     return r;
   };
+  // garde-fou : un objet accepté par le moteur mais dont la géométrie déborde des nombres
+  // (rayon de courbure de 1e308…) serait impossible à dessiner et finirait dans la sauvegarde
+  var ERREUR_NON_CALCULABLE = 'valeurs trop grandes : l’élément ne peut pas être calculé';
   app.modifierObjet = function (id, p) {
+    var avant = app.scene.versJSON();
     var r = app.scene.modifier(id, p);
+    if (r.ok && !OGW.valeursFinies(app.scene.geometrie(id))) { app.scene.restaurer(avant); r = { ok: false, erreur: ERREUR_NON_CALCULABLE }; }
     if (r.ok) app.memoriser();
     return r;
   };
@@ -142,6 +175,7 @@
   };
   app.ouvrirTexteOpt = function (texte, nom, commentaire, extra) {
     var r;
+    if (!OGW.texteOptValide(texte)) { OGW.message(OGW.MESSAGE_PAS_OPT, 'Fichier non reconnu'); return false; }
     try { r = OptGeo.lireOpt(texte); } catch (e) {
       OGW.message('Fichier endommagé !!! (' + e.message + ')');
       return;
@@ -201,9 +235,12 @@
   app.copiePossible = function () { return !!(window.isSecureContext && navigator.clipboard && navigator.clipboard.write && window.ClipboardItem); };
   app.definirImageFond = function (url, silencieux) {
     app.imageFondURL = url || null;
-    if (!url) { app.imageFond = null; if (!silencieux) { app.sauvegarderBientot(); app.dessinateur.demander(); } return; }
+    if (!url) { app.imageFond = null; if (!silencieux) app.dessinateur.demander(); return; }
     var img = new Image();
-    img.onload = function () { app.imageFond = img; app.dessinateur.demander(); app.sauvegarderBientot(); };
+    img.onload = function () {
+      app.imageFond = img; app.dessinateur.demander();
+      if (!silencieux) app.signaler('Image de fond affichée. Elle n’est enregistrée ni dans le fichier .opt ni sur l’appareil : après un rechargement de la page, il faudra la choisir de nouveau.');
+    };
     img.onerror = function () { app.signaler('Image illisible.', 'erreur'); };
     img.src = url;
   };
@@ -226,6 +263,7 @@
     if (m !== 'selection' && m !== 'grouper' && !app.scene.objets.length) { app.signaler('Aucun élément dans la simulation.'); m = 'selection'; }
     if (app.mode === m && m !== 'selection') m = 'selection';
     if (m === 'grouper') app.choixGroupe = app.selection ? [app.selection] : [];
+    if (m !== app.mode) app.verrouH = app.verrouV = false;
     app.mode = m;
     if (m !== 'selection') app.groupeChoisi = null;
     app.majInterface(); app.dessinateur.demander();
@@ -239,7 +277,7 @@
         OGW.message('Le groupe n° ' + app.scene.groupes.length + ' vient d’être créé. Ses éléments pourront être translatés ensemble.', 'Groupe créé');
       } else if (ids.length) app.signaler('Il faut au moins deux éléments pour faire un groupe.', 'erreur');
     }
-    app.mode = 'selection';
+    app.mode = 'selection'; app.verrouH = app.verrouV = false;
     app.majInterface(); app.dessinateur.demander();
   };
   app.toutGrouper = function () {
@@ -275,12 +313,14 @@
     if (app.scene.objetsDuType(outil.type).length >= MAX_PAR_TYPE) { OGW.message('Nombre maximal de ' + (OGW.NOMS[outil.type] || '').toLowerCase() + ' déjà atteint !'); return; }
     app.changerMode('selection');
     app.selection = null;
+    app.verrouH = app.verrouV = false;           // « Aligner » ne vaut que pour la construction en cours
     var c = new OGW.Creation(app, outil);
     c.preparer(function () { app.creation = c; app.mode = 'creation'; app.majInterface(); app.dessinateur.demander(); },
       function () { app.terminerCreation(); });
   };
   app.terminerCreation = function (silencieux) {
     app.creation = null; app.loupeEtat = null; app.loupe.cacher();
+    app.verrouH = app.verrouV = false;
     if (app.mode === 'creation') app.mode = 'selection';
     if (!silencieux) { app.majInterface(); app.dessinateur.demander(); }
   };
@@ -330,28 +370,30 @@
     p.classList.toggle('large', !!o.large);
     p.hidden = false;
     document.body.classList.add('panneau-ouvert');
+    document.body.classList.toggle('panneau-large', !!o.large);
     app.panneau = o;
     corps.scrollTop = 0;
     app.majRetrait();
     app.majInterface();
   };
-  /** Le dessin se recentre dans la partie que le panneau laisse visible. */
+  /**
+   * Le dessin se recentre dans la partie que le panneau laisse visible. Le bandeau de consigne,
+   * lui, est posé par-dessus le dessin sans le décaler : un point du dessin ne bouge jamais sous
+   * le doigt quand le bandeau apparaît, change de hauteur ou disparaît.
+   */
   app.majRetrait = function () {
-    var p = $('#panneau'), z = $('#zone'), b = $('#bandeau');
-    var haut = b.hidden ? 0 : Math.round(b.getBoundingClientRect().height);
-    var avant = app.dessinateur.retrait.haut || 0;
-    if (haut && avant) haut = Math.max(haut, avant);     // pas de va-et-vient du dessin quand le texte change de longueur
-    if (p.hidden) { app.dessinateur.definirRetrait(0, 0, haut); return; }
+    var p = $('#panneau'), z = $('#zone');
+    if (p.hidden) { app.dessinateur.definirRetrait(0, 0, 0); return; }
     var r = p.getBoundingClientRect(), rz = z.getBoundingClientRect();
-    if (r.top > rz.top + 10) app.dessinateur.definirRetrait(0, Math.max(0, rz.bottom - r.top), haut);
-    else app.dessinateur.definirRetrait(Math.max(0, rz.right - r.left), 0, haut);
+    if (r.top > rz.top + 10) app.dessinateur.definirRetrait(0, Math.max(0, rz.bottom - r.top), 0);
+    else app.dessinateur.definirRetrait(Math.max(0, rz.right - r.left), 0, 0);
   };
   app.fermerPanneau = function () {
     var o = app.panneau;
     if (!o) return;
     app.panneau = null;
     $('#panneau').hidden = true;
-    document.body.classList.remove('panneau-ouvert');
+    document.body.classList.remove('panneau-ouvert', 'panneau-large');
     app.majRetrait();
     OGW.vider($('#panneau-corps'));
     if (o.surFermeture) o.surFermeture();
@@ -384,27 +426,45 @@
     $('#titre-simulation').title = 'Espace de travail : horizontal [' + N(o.xxmin) + ' ; ' + N(o.xxmax) + '], vertical [' + N(o.yymin) + ' ; ' + N(o.yymax) + '] ' + o.unitelongueur;
   };
 
-  /** Bandeau de consigne au-dessus du dessin. */
+  /*
+   * Bandeau de consigne, posé par-dessus le haut du dessin (il ne le décale pas).
+   * Les boutons ne sont recréés que si la liste des boutons change : pendant un glisser,
+   * le texte change à chaque image mais les boutons restent les mêmes éléments, donc un
+   * toucher (appui puis lever sur le même bouton) est toujours reçu.
+   * Petit écran : une ligne, les boutons secondaires derrière « Plus ».
+   */
+  var cleBandeau = null, bandeauDeplie = false;
+  /**
+   * Un deuxième doigt (pointeur non principal, posé pendant qu'un premier doigt glisse) ne produit
+   * pas de « click » : on agit alors à son lever, s'il a été posé sur ce même bouton.
+   */
+  function brancherBoutonBandeau(x) {
+    var fait = 0;
+    x.addEventListener('pointerdown', function (e) { if (!e.isPrimary) x._appui = e.pointerId; });
+    x.addEventListener('pointerup', function (e) {
+      if (e.isPrimary || x._appui !== e.pointerId) return;
+      x._appui = null; fait = performance.now();
+      if (x._action) x._action();
+    });
+    x.addEventListener('click', function () { if (performance.now() - fait < 600) return; if (x._action) x._action(); });
+  }
+  function basculerVerrou(cote) { return function () { if (cote === 'h') app.verrouH = !app.verrouH; else app.verrouV = !app.verrouV; app.majBandeau(); }; }
   app.majBandeau = function () {
-    var b = $('#bandeau'), txt = $('#bandeau-texte'), bt = OGW.vider($('#bandeau-boutons'));
-    var lignes = [], m = app.mode;
-    function bouton(t, f, cls, aria) {
-      var x = el('button', { type: 'button', class: cls || '', texte: t, onclick: f });
-      if (aria !== undefined) x.setAttribute('aria-pressed', String(aria));
-      bt.appendChild(x); return x;
-    }
+    var b = $('#bandeau'), txt = $('#bandeau-texte'), bt = $('#bandeau-boutons');
+    var lignes = [], m = app.mode, items = [];
+    function bouton(t, f, o) { o = o || {}; items.push({ k: 'b', t: t, f: f, cls: o.cls || '', aria: o.aria, sec: !!o.sec }); }
+    var glisser = app.geste && (app.geste.kind === 'poignee' || app.geste.kind === 'corps' || app.geste.kind === 'groupe');
     if (app.geste && app.infoGlisser) lignes.push(app.infoGlisser);
     if (m === 'creation' && app.creation) {
       var c = app.creation;
       lignes.unshift('Mode : ' + c.outil.mode + '. ' + c.consigne());
       if (c.precedent()) {
-        bouton('Aligner horizontalement', function () { app.verrouH = !app.verrouH; app.majBandeau(); }, 'bascule', app.verrouH);
-        bouton('Aligner verticalement', function () { app.verrouV = !app.verrouV; app.majBandeau(); }, 'bascule', app.verrouV);
+        bouton('Aligner horizontalement', basculerVerrou('h'), { cls: 'bascule', aria: app.verrouH, sec: true });
+        bouton('Aligner verticalement', basculerVerrou('v'), { cls: 'bascule', aria: app.verrouV, sec: true });
       }
       if (c.type === 'polyhedre' && c.points.length >= 3) bouton('Fermer le polygone', function () { c.data.n = c.points.length; app.apresEtape(c.terminer()); });
-      var lab = el('label', { class: 'rester' }, [el('input', { type: 'checkbox', checked: app.rester, onchange: function (e) { app.rester = e.target.checked; } }), 'Rester dans ce mode']);
-      bt.appendChild(lab);
-      bouton('Annuler', function () { app.terminerCreation(); }, 'principal');
+      items.push({ k: 'rester', t: 'Rester dans ce mode', sec: true });
+      bouton('Annuler', function () { app.terminerCreation(); }, { cls: 'principal' });
     } else if (m !== 'selection') {
       var consignes = {
         deplacer: 'Faites glisser une poignée : croix verte = déplacer, cercle bleu = déplacer ce point, disque rouge = tourner, croix cyan = foyer ou centre.',
@@ -413,27 +473,69 @@
         grouper: 'Touchez les éléments à grouper (' + app.choixGroupe.length + ' choisi' + (app.choixGroupe.length > 1 ? 's' : '') + '), puis « Terminer ».'
       };
       lignes.unshift(NOMS_MODES[m] + ' ' + consignes[m]);
+      // mode Déplacer : « Bloquer » s'arme avant le glisser (un seul doigt suffit) et vaut pour ce seul glisser
+      if (m === 'deplacer' && !glisser) {
+        bouton('Bloquer horizontalement', basculerVerrou('h'), { cls: 'bascule', aria: app.verrouH, sec: true });
+        bouton('Bloquer verticalement', basculerVerrou('v'), { cls: 'bascule', aria: app.verrouV, sec: true });
+      }
       if (m === 'grouper') bouton('Annuler', function () { app.choixGroupe = []; app.mode = 'selection'; app.majInterface(); app.dessinateur.demander(); });
-      bouton(m === 'dupliquer' || m === 'supprimer' ? 'Annuler' : 'Terminer', function () { app.terminerMode(); }, 'principal');
+      bouton(m === 'dupliquer' || m === 'supprimer' ? 'Annuler' : 'Terminer', function () { app.terminerMode(); }, { cls: 'principal' });
     } else if (app.modeNumeros === 'fantomes') {
       lignes.unshift('Touchez un segment de rayon pour le cacher ou le montrer.');
     } else if (app.derniereTape && app.derniereTape.candidats.length > 1 && app.selection) {
       lignes.unshift((app.derniereTape.index + 1) + ' sur ' + app.derniereTape.candidats.length + ' éléments ici : touchez encore au même endroit pour passer au suivant.');
     }
-    if (app.geste && (app.geste.kind === 'poignee' || app.geste.kind === 'corps' || app.geste.kind === 'groupe')) {
-      bt.appendChild(el('button', { type: 'button', class: 'bascule', 'aria-pressed': String(app.verrouH), texte: 'Bloquer horizontalement', onclick: function () { app.verrouH = !app.verrouH; app.majBandeau(); } }));
-      bt.appendChild(el('button', { type: 'button', class: 'bascule', 'aria-pressed': String(app.verrouV), texte: 'Bloquer verticalement', onclick: function () { app.verrouV = !app.verrouV; app.majBandeau(); } }));
+    if (glisser) {      // pendant le glisser : toujours visibles (un deuxième doigt peut les toucher)
+      bouton('Bloquer horizontalement', basculerVerrou('h'), { cls: 'bascule', aria: app.verrouH });
+      bouton('Bloquer verticalement', basculerVerrou('v'), { cls: 'bascule', aria: app.verrouV });
     }
+    if (app.verrouH || app.verrouV) lignes.push((m === 'creation' ? 'Alignement ' : 'Bloqué : ') + (app.verrouH && app.verrouV ? 'horizontal et vertical' : app.verrouH ? 'horizontal' : 'vertical'));
     if (app.coordTexte && (m === 'creation' || app.geste)) lignes.push(app.coordTexte);
-    txt.textContent = lignes.join(' — ');
-    b.hidden = !lignes.length && !bt.firstChild;
-    // la scène se place sous le bandeau ; on ne la redécale pas pendant un geste (le point resterait sous le doigt)
-    if (!app.geste) app.majRetrait();
+    var texte = lignes.join(' — ');
+    if (txt.textContent !== texte) txt.textContent = texte;
+    // boutons : recréés seulement si leur liste change ; sinon, état et action mis à jour sur place
+    var cle = items.map(function (i) { return i.k + ':' + i.t + ':' + i.cls + ':' + i.sec; }).join('|');
+    if (cle !== cleBandeau) {
+      cleBandeau = cle;
+      OGW.vider(bt);
+      items.forEach(function (i) {
+        var x;
+        if (i.k === 'rester') {
+          x = el('label', { class: 'rester' }, [el('input', { type: 'checkbox', onchange: function (e) { app.rester = e.target.checked; } }), i.t]);
+        } else {
+          x = el('button', { type: 'button', class: i.cls });
+          x.textContent = i.t;
+          brancherBoutonBandeau(x);
+        }
+        if (i.sec) x.classList.add('secondaire');
+        bt.appendChild(x);
+      });
+      var plus = el('button', { type: 'button', class: 'deplier', 'aria-expanded': 'false', texte: 'Plus' });
+      plus.addEventListener('click', function () { bandeauDeplie = !bandeauDeplie; app.majBandeau(); });
+      bt.insertBefore(plus, bt.querySelector('.principal'));
+    }
+    var elems = bt.children, j = 0;
+    items.forEach(function (i) {
+      var x = elems[j++];
+      if (x && x.classList.contains('deplier')) x = elems[j++];
+      if (!x) return;
+      if (i.k === 'rester') { x.querySelector('input').checked = app.rester; return; }
+      x._action = i.f;
+      if (i.aria !== undefined) x.setAttribute('aria-pressed', String(!!i.aria)); else x.removeAttribute('aria-pressed');
+    });
+    var visible = !!(lignes.length || items.length);
+    if (!visible) bandeauDeplie = false;
+    b.classList.toggle('deplie', bandeauDeplie);
+    var bp = bt.querySelector('.deplier');
+    if (bp) { bp.setAttribute('aria-expanded', String(bandeauDeplie)); bp.textContent = bandeauDeplie ? 'Moins' : 'Plus'; }
+    b.hidden = !visible;
   };
 
   /** État des boutons, barre contextuelle, cases d'affichage, titre. */
   app.majInterface = function () {
     if (!app.scene) return;
+    // panneau des propriétés toujours fidèle à la scène (glisser, annuler, refaire…) ; fermé si l'objet n'existe plus
+    if (app.panneau && app.panneau.rafraichir && !app.geste) app.panneau.rafraichir();
     $('[data-action="annuler"]').disabled = !app.hist.peutAnnuler();
     $('[data-action="refaire"]').disabled = !app.hist.peutRetablir();
     OGW.$$('[data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', String(app.mode === b.getAttribute('data-mode'))); });
@@ -503,9 +605,20 @@
       ctx.save(); ctx.strokeStyle = '#e00000'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(app.refus.x, app.refus.y, 18, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
     }
   };
+  /** Objets ignorés au dessin (valeurs aberrantes) : un message, une fois par changement de la liste. */
+  var dernierNonDessines = '';
+  app.signalerNonDessines = function (ids) {
+    var cle = (ids || []).join(',');
+    app.objetsNonDessines = ids || [];
+    if (cle === dernierNonDessines) return;
+    dernierNonDessines = cle;
+    if (!cle) return;
+    var noms = ids.slice(0, 3).map(function (id) { return OGW.nomObjet(app.scene, id); }).join(', ') + (ids.length > 3 ? '…' : '');
+    app.signaler('Impossible de dessiner : ' + noms + ' (valeurs aberrantes). Le reste est dessiné ; corrigez ses propriétés ou supprimez-le.', 'erreur');
+  };
   app.apresDessin = function () {
     var l = app.loupeEtat;
-    if (l) app.loupe.montrer(app.dessinateur.canvas, app.dessinateur.dpr, l.px, l.py, l.texte, app.dessinateur.w);
+    if (l) app.loupe.montrer(app.dessinateur.canvas, app.dessinateur.dpr, l.px, l.py, l.texte, app.dessinateur.w, l.dx, l.dy);
   };
 
   /* ================================================================== */
@@ -607,7 +720,8 @@
   /** Point visé pendant une création : grille, alignements, projection de l'étape. */
   function viser(p, e) {
     var c = app.creation, m = monde(p);
-    if (c.attraction()) m = grille(m);
+    // les points projetés (foyer sur l'axe…) ne sont pas attirés : la projection seule les place (SPEC O02)
+    if (c.attraction() && !c.etapeProjetee()) m = grille(m);
     var prec = c.precedent();
     if (prec) {
       if (app.verrouV || (e && e.altKey)) m.x = prec.x;
@@ -615,10 +729,11 @@
     }
     return c.contraindre(m);
   }
+  /** Loupe : placée d'après le doigt (p, jamais dessous), elle montre le point visé m (projeté s'il le faut). */
   function montrerLoupe(p, m, type) {
     if (type === 'mouse') { app.loupeEtat = null; app.loupe.cacher(); return; }
     var v = app.dessinateur.vue().versEcran(m.x, m.y);
-    app.loupeEtat = { px: v[0], py: v[1], texte: texteCoord(m).replace(', Y', '\nY') };
+    app.loupeEtat = { px: v[0], py: v[1], dx: p.x, dy: p.y, texte: texteCoord(m).replace(', Y', '\nY') };
   }
 
   var rafGlisser = null, dernierPointGlisser = null;
@@ -695,6 +810,8 @@
     var g = app.geste;
     if (!g) return;
     if (g.etatAvant && g.change) app.scene.restaurer(g.etatAvant);
+    if (rafGlisser) { window.cancelAnimationFrame(rafGlisser); rafGlisser = null; }
+    if (g.kind === 'poignee' || g.kind === 'corps' || g.kind === 'groupe') app.verrouH = app.verrouV = false;   // « Bloquer » ne vaut que pour ce geste
     app.geste = null; app.infoGlisser = ''; app.loupeEtat = null; app.loupe.cacher();
     if (app.creation) app.creation.visee = null;
     app.majInterface(); app.dessinateur.demander();
@@ -716,6 +833,7 @@
     }
     if (e.pointerType === 'mouse' && e.button === 1) { app.geste = { kind: 'vue', dernier: p, x0: p.x, y0: p.y, bouge: true }; e.preventDefault(); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    dernierPointGlisser = null;
     var g = app.geste = { kind: 'vide', x0: p.x, y0: p.y, dernier: p, bouge: false, type: e.pointerType };
     if (app.modeNumeros === 'fantomes' && app.basculerFantome) { g.kind = 'segment'; return; }
     if (app.mode === 'creation' && app.creation) {
@@ -791,7 +909,9 @@
     g.dernier = p;
   }
   function surRelache(e, annule) {
-    var p = pos(e);
+    // lostpointercapture sans pointerup : on garde la dernière position connue du doigt
+    var connu = app.pointeurs[e.pointerId];
+    var p = (e.type === 'lostpointercapture' && connu) ? { x: connu.x, y: connu.y } : pos(e);
     delete app.pointeurs[e.pointerId];
     if (app.pincement) {
       if (!Object.keys(app.pointeurs).length) app.pincement = null;
@@ -801,6 +921,33 @@
     var g = app.geste;
     if (!g) return;
     if (annule) { app.annulerGeste(); return; }
+    // glisser très rapide (aucun pointermove reçu au-delà du seuil) : c'est quand même un glisser
+    if (g.kind === 'objet' && !g.bouge && (app.mode === 'selection' || app.mode === 'deplacer') &&
+      Math.hypot(p.x - g.x0, p.y - g.y0) > (g.type === 'mouse' ? 4 : 10)) {
+      g.bouge = true;
+      demarrerGlisserObjet(g.id, '*corps', { x: g.x0, y: g.y0 });
+    }
+    // simple toucher (sans glisser) sur une poignée de l'objet choisi : c'est un toucher, pas un glisser.
+    // L'éventuel tremblement du doigt est annulé et, s'il y a plusieurs éléments à cet endroit, on passe
+    // au suivant (E05 : « touchez encore au même endroit »), même si une poignée est sous le doigt.
+    if ((g.kind === 'poignee' || g.kind === 'corps') && app.mode === 'selection' && !g.bouge &&
+      Math.hypot(p.x - g.x0, p.y - g.y0) <= (g.type === 'mouse' ? 2 : 4)) {
+      if (rafGlisser) { window.cancelAnimationFrame(rafGlisser); rafGlisser = null; }
+      if (g.change && g.etatAvant) app.scene.restaurer(g.etatAvant);
+      app.geste = null; app.infoGlisser = ''; app.verrouH = app.verrouV = false;
+      app.loupeEtat = null; app.loupe.cacher();
+      g.candidats = null;
+      tape(p, g);
+      app.dessinateur.demander();
+      return;
+    }
+    // fin d'un glisser : la position du relâcher est appliquée AVANT de terminer le geste
+    // (sinon la dernière image, ou tout un geste rapide, était perdue)
+    if (g.kind === 'poignee' || g.kind === 'corps' || g.kind === 'groupe') {
+      if (rafGlisser) { window.cancelAnimationFrame(rafGlisser); rafGlisser = null; }
+      dernierPointGlisser = { p: p, alt: e.altKey, ctrl: e.ctrlKey || e.metaKey };
+      appliquerGlisser();
+    }
     app.geste = null;
     app.loupeEtat = null; app.loupe.cacher();
     switch (g.kind) {
@@ -812,8 +959,8 @@
         break;
       }
       case 'poignee': case 'corps': case 'groupe':
-        if (rafGlisser) { window.cancelAnimationFrame(rafGlisser); rafGlisser = null; appliquerGlisser(); }
         app.infoGlisser = '';
+        app.verrouH = app.verrouV = false;          // « Bloquer » ne vaut que pour ce glisser
         if (g.change) app.memoriser(); else app.majInterface();
         break;
       case 'objet':
@@ -851,7 +998,7 @@
     var titres = { proprietes: 'Propriétés de l’objet :', dupliquer: 'Objet à dupliquer :', supprimer: 'Objet à supprimer :', grouper: 'Objet à grouper :' };
     choisirParmi(cands, titres[app.mode] || 'Choix de l’objet :', function (id) {
       switch (app.mode) {
-        case 'proprietes': app.ouvrirProprietes(id); break;          // le mode reste actif (« Fin prop. »)
+        case 'proprietes': app.ouvrirProprietes(id); break;          // le mode Propriétés reste actif : on en sort par « Terminer » du bandeau
         case 'dupliquer': app.mode = 'selection'; app.dupliquer(id); break;
         case 'supprimer': app.mode = 'selection'; app.supprimer(id); break;
         case 'grouper': {
@@ -996,7 +1143,7 @@
       itemMenu('Déplacer un élément', function () { app.changerMode('deplacer'); }, { raccourci: 'Ctrl+M' }),
       itemMenu('Propriétés d’un élément', function () { app.changerMode('proprietes'); }, { raccourci: 'Ctrl+P' }),
       itemMenu('Dupliquer un élément', function () { app.changerMode('dupliquer'); }, { raccourci: 'Ctrl+D' }),
-      itemMenu('Supprimer un élément', function () { app.changerMode('supprimer'); }, { raccourci: 'Suppr' }),
+      itemMenu('Supprimer un élément', function () { app.changerMode('supprimer'); }),
       itemMenu('Supprimer tous les éléments', app.supprimerTout),
       itemMenu('Grouper des éléments à choisir', function () { app.changerMode('grouper'); }, { raccourci: 'Ctrl+G' }),
       itemMenu('Grouper tous les éléments', app.toutGrouper, { raccourci: 'Ctrl+A' }),
@@ -1009,8 +1156,8 @@
       aj('Miroir sphérique convexe (paraxial)', 'mscepa'), aj('Lentille mince convergente', 'lmc'), aj('Lentille mince divergente', 'lmd'),
       aj('Lame semi-réfléchissante', 'lsr'), aj('Écran', 'ecran'), aj('Diaphragme', 'diaphragme'),
       el('h3', { texte: 'Système optique réel' }), aj('Miroir sphérique concave (réel)', 'mscore'), aj('Miroir sphérique convexe (réel)', 'mscere'),
-      aj('Miroir conique', 'miroirconique'), aj('Polyèdre réfractant', 'polyhedre'), aj('Sphère réfractante', 'sphere'), aj('Prisme', 'prisme'),
-      aj('Lentille épaisse', 'lec'), aj('Polysphère réfractante', 'polycercle'),
+      aj('Miroir conique', 'miroirconique'), aj('Polygone réfractant', 'polyhedre'), aj('Sphère réfractante', 'sphere'), aj('Prisme', 'prisme'),
+      aj('Lentille épaisse', 'lec'), aj('Polycercle réfractant', 'polycercle'),
       el('h3', { texte: 'Source' }), aj('Rayon unique', 'rayon'), aj('Objet ponctuel réel ou virtuel', 'sourceponctuelle'), aj('Onde plane (faisceau parallèle)', 'ondeplane'),
       el('h3', { texte: 'Divers' }), aj('Texte sur le dessin', 'texte', { texte: 'Texte' }), itemMenu('Commentaire sur la simulation', function () { OGW.panneauCommentaire(app); }),
       aj('Mesure de distance', 'metre'), aj('Mesure d’angle', 'angle'), itemMenu('Rayons fantômes', function () { OGW.panneauFantomes(app); }),
@@ -1115,7 +1262,7 @@
     app.dessinateur = new OGW.Dessinateur(canvas, app);
     app.loupe = new OGW.Loupe($('#zone'));
     app.scene = new OptGeo.Scene();
-    app.hist = new OptGeo.Historique(app.scene, 50);
+    app.hist = new OptGeo.Historique(app.scene, ETATS_HISTORIQUE);
     construirePalette(); construireMenu(); construireAffichage(); installerPleinEcran(); brancherBoutons();
     canvas.addEventListener('pointerdown', surAppui);
     canvas.addEventListener('pointermove', surMouvement);
@@ -1137,6 +1284,9 @@
     // reprise du travail en cours, exemple demandé par l'adresse, ou boîte de démarrage
     var exemple = /[#&]exemple=([^&]+)/.exec(location.hash);
     var sauve = OGW.stockage.lire('travail');
+    // ménage : les versions précédentes gardaient l'image de fond (jusqu'à plusieurs Mo) dans la sauvegarde
+    if (sauve && sauve.fond) { delete sauve.fond; OGW.stockage.ecrire('travail', sauve); }
+    OGW.stockage.effacer('fond');
     app.nouvelleSimulation(OGW.espaceParDefaut(app), true);     // sans écraser la sauvegarde avant la réponse
     if (exemple) {
       var f = decodeURIComponent(exemple[1]), e = (window.OPTGEO_EXEMPLES || []).filter(function (x) { return x.fichier === f || x.fichier.split('/').pop() === f; })[0];
@@ -1155,7 +1305,6 @@
             app.nomFichier = sauve.nom || null;
             app.remplacerScene(s);
             app.modifie = !!sauve.modifie;
-            if (sauve.fond) app.definirImageFond(sauve.fond, true);
             app.majInterface();
           } catch (x) { OGW.message('Sauvegarde illisible : ' + x.message); }
         } }] });

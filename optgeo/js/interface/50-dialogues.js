@@ -281,6 +281,7 @@
   /** Superposer une simulation : question sur les paramètres, puis groupe des objets importés. */
   OGW.superposerTexte = function (app, texte) {
     if (!app.scene.objets.length) { OGW.message('Pas de simulation en cours…', 'Hélas'); return; }
+    if (!OGW.texteOptValide(texte)) { OGW.message(OGW.MESSAGE_PAS_OPT, 'Fichier non reconnu'); return; }
     OGW.Dialogue({ titre: 'Superposer une simulation', corps: 'Les paramètres de la simulation en cours de chargement doivent-ils écraser les actuels ?', boutons: [
       { texte: 'Annuler', annuler: true },
       { texte: 'Non', action: function () { faire(false); } },
@@ -429,7 +430,7 @@
         el('div', { class: 'boutons-ligne' }, [
           el('button', { type: 'button', texte: 'Choisir une image…', onclick: function () { fichier.click(); } }),
           el('button', { type: 'button', texte: 'Retirer l’image', onclick: function () { app.definirImageFond(null); d.fermer(); } })]),
-        el('p', { class: 'note', texte: 'L’image reste sur cet appareil. Elle n’est pas enregistrée dans le fichier .opt (comme dans OptGeo) ; elle est gardée dans la sauvegarde automatique si sa taille le permet.' }),
+        el('p', { class: 'note', texte: 'L’image reste sur cet appareil. Elle n’est pas enregistrée dans le fichier .opt (comme dans OptGeo) et n’est pas gardée après un rechargement de la page : il faudra la choisir de nouveau.' }),
         fichier])]),
     boutons: [{ texte: 'Annuler', annuler: true }, { texte: 'Valider', principal: true, action: function () {
       if (coul.lire() !== app.scene.options.couleurfondsimulation) app.changerOptions({ couleurfondsimulation: coul.lire() }, true);
@@ -445,7 +446,7 @@
   /** Préférences : couleur, épaisseur et couleur d'axe par défaut des objets créés (stockées sur l'appareil). */
   var TYPES_PREF = [['miroirplan', 'Miroir plan'], ['mscopa', 'Miroir sphérique concave paraxial'], ['mscepa', 'Miroir sphérique convexe paraxial'],
     ['mscore', 'Miroir sphérique concave réel'], ['mscere', 'Miroir sphérique convexe réel'], ['miroirconique', 'Miroir conique'],
-    ['lmc', 'Lentille mince convergente'], ['lmd', 'Lentille mince divergente'], ['lec', 'Lentille épaisse'], ['polyhedre', 'Polyèdre réfractant'],
+    ['lmc', 'Lentille mince convergente'], ['lmd', 'Lentille mince divergente'], ['lec', 'Lentille épaisse'], ['polyhedre', 'Polygone réfractant'],
     ['polycercle', 'Polycercle réfractant'], ['sphere', 'Sphère réfractante'], ['prisme', 'Prisme'], ['rayon', 'Rayon unique'],
     ['ondeplane', 'Onde plane'], ['sourceponctuelle', 'Source ponctuelle'], ['ecran', 'Écran'], ['lsr', 'Lame semi-réfléchissante'],
     ['diaphragme', 'Diaphragme'], ['oeil', 'Œil'], ['fleche', 'Trait, flèche'], ['reseau', 'Réseau'], ['jolipoint', 'Point']];

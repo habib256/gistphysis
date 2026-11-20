@@ -10,31 +10,31 @@
 <body>
 <nav class="haut"><a href="index.html">Sommaire de l'aide</a></nav>
 <main>
-<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03 (version pour ordinateur, à la souris). Dans la version web, on touche ou on clique au lieu de « cliquer deux fois » ; voir <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
+<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03, écrite pour un ordinateur et une souris, adaptée à la version web : les gestes (au doigt ou à la souris), les boutons et les menus décrits sont ceux de cette version. Mode d'emploi détaillé : <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
 <h1>Polycercle réfractant</h1>
 <p class="illustration"><img src="images/polycercle.gif" alt="Polycercle réfractant : côtés droits et arcs de cercle" width="435" height="265"></p>
 <h2>Définition</h2>
 <p>Il est défini par les sommets 1, 2, 3..., le caractère segment ou arc de cercle de chaque côté, et le sommet (ou le rayon de courbure) du côté si c'est un arc de cercle ; et par les indices de réfraction.</p>
-<p>Il ne doit pas y avoir d'intersection entre côtés non consécutifs ; <strong>attention</strong>, le logiciel ne fait pas la vérification, et peut planter si vous ne respectez pas cette condition.</p>
+<p>Il ne doit pas y avoir d'intersection entre côtés non consécutifs ; <strong>attention</strong>, le logiciel ne fait pas la vérification : si vous ne respectez pas cette condition, le résultat n'est pas garanti (OptGeo 3.03 pouvait même planter).</p>
 <p>Le polycercle peut être ajouté :</p>
 <ul>
-<li>en cliquant sur le bouton de la barre d'outils ayant la forme ci-dessus, puis en choisissant le nombre de sommets via une boîte de dialogue, puis en faisant un clic simple pour saisir chacun des sommets (ne pas maintenir le bouton de la souris appuyé entre deux points), puis en saisissant le caractère segment ou arc de cercle de chacun des côtés, et enfin en cliquant pour chacun des sommets des arcs de cercle des côtés (s'il y en a).</li>
+<li>en touchant (ou en cliquant) le bouton « Polycercle » de la palette des objets (famille « Dioptres »), puis en choisissant le nombre de sommets dans la boîte de dialogue qui s'ouvre, puis en plaçant chacun des sommets, puis en choisissant dans la boîte « Relier les points » le caractère segment ou arc de cercle de chacun des côtés, et enfin en plaçant le sommet de chacun des arcs de cercle (s'il y en a) (voir <a href="web.html#placer">Placer un objet</a>).</li>
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>menu « Ajouter » puis « Système optique réel » puis « Polycercle réfractant ». On donne alors le nombre de sommets, puis les coordonnées des sommets, etc.</li>
+<li>menu « Ajouter (par coordonnées) », puis « Polysphère réfractante » (sous « Système optique réel ») : le panneau des propriétés s'ouvre, déjà rempli, et le bouton « Valider » ajoute l'élément. On donne alors les coordonnées des sommets, etc.</li>
 </ul>
 <h2>Options</h2>
 <p>On peut imposer</p>
 <ul>
 <li>la couleur à l'écran du polycercle</li>
-<li>les indices de réfraction dans le bleu, le vert et le rouge ; par défaut, les valeurs 1,8 1,6 et 1,4 sont attribuées. On peut aussi choisir directement un matériau dans une liste qui comprend quelques verres, l'eau, et des plastiques optiques. Plus précisément, les indices sont donnés pour les longueurs d'onde de référence suivantes : 486,1 nm, 587,6 nm et 656,3 nm. Pour modifier la liste des éléments proposés, <a href="materiaux.html">cliquer ici.</a></li>
+<li>les indices de réfraction dans le bleu, le vert et le rouge ; par défaut, les valeurs 1,8 1,6 et 1,4 sont attribuées. On peut aussi choisir directement un matériau dans une liste qui comprend quelques verres, l'eau, et des plastiques optiques. Plus précisément, les indices sont donnés pour les longueurs d'onde de référence suivantes : 486,1 nm, 587,6 nm et 656,3 nm. Voir la <a href="materiaux.html">liste des matériaux</a> et de leurs indices.</li>
 <li>les conditions d'existence d'un rayon réfléchi, dans le sens entrant et dans le sens sortant ; le rayon réfléchi peut exister « toujours », « jamais », « seulement si le réfracté existe », « seulement si le réfracté n'existe pas ». Lorsqu'il y a à la fois un rayon transmis et un rayon réfléchi, le rayon réfléchi est un « rayon enfant », terminologie utilisée dans la définition du <a href="rayon.html">rayon unique</a>, de la <a href="sponct.html">source ponctuelle</a>, et de <a href="op.html">l'onde plane</a>.</li>
 </ul>
 <p>Ces propriétés peuvent être rendues accessibles :</p>
 <ul>
-<li>à la construction du polycercle si on passe par le menu « Ajouter »</li>
-<li>à tout instant en cliquant sur le bouton « Propriétés » de la barre d'outils, puis en cliquant sur un des cercles bleus qui apparaissent sur l'élément dont on veut obtenir les propriétés ; ne pas oublier à la fin de cliquer sur le bouton « Fin prop. » de la barre d'outils pour quitter le mode propriétés.</li>
+<li>à la construction du polycercle si on passe par le menu « Ajouter (par coordonnées) »</li>
+<li>à tout instant en touchant (ou en cliquant) l'élément pour le sélectionner, puis le bouton « Propriétés » de la barre qui apparaît en bas du dessin ; le panneau des propriétés s'ouvre, son bouton « Valider » applique les modifications et « Annuler » les abandonne. On peut aussi toucher le bouton « Propriétés » de la barre du haut, puis l'élément : ce mode reste actif jusqu'au bouton « Terminer » du bandeau de consigne (ou la touche Échap).</li>
 </ul>
 <h2>Divers</h2>
 <p>On peut demander que la normale au polycercle soit tracée à chaque point d'intersection d'un rayon lumineux avec ce polycercle :</p>
@@ -43,7 +43,7 @@
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>dans la barre d'outils, boîte à cocher « Normales »</li>
+<li>bouton « Affichage » de la barre du haut, interrupteur « Normales »</li>
 </ul>
 <p>On peut aussi demander que les angles d'incidence et de réfraction soient affichés (en °) :</p>
 <ul>
@@ -51,12 +51,12 @@
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>dans la barre d'outils, boîte à cocher « Angles d'incidence et de réfraction »</li>
+<li>bouton « Affichage » de la barre du haut, interrupteur « Angles d'incidence et de réfraction »</li>
 </ul>
 <p>L'angle de réflexion n'est pas affiché, afin de ne pas surcharger les représentations.</p>
 <p>Le nombre de décimales sur les angles est fixé dans la boîte de dialogue des options des normales : menu « Options » puis « Options des normales »</p>
 <p class="retour"><a href="optgeo.html">Retour à la page d'accueil</a></p>
 </main>
-<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Portage web des pages : 2026.</p></footer>
+<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Adapté pour la version web (2026) : instructions d'utilisation réécrites pour les gestes, les boutons et les menus de cette version ; explications d'optique inchangées.</p></footer>
 </body>
 </html>

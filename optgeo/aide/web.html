@@ -11,11 +11,12 @@
 <nav class="haut"><a href="index.html">Sommaire de l'aide</a></nav>
 <main>
 <h1>Utiliser OptGeo sur le web</h1>
-<p>OptGeo est un logiciel libre d'optique géométrique écrit par Jean-Marie Biansan. Cette version web s'utilise dans le navigateur, sur une tablette, un téléphone ou un ordinateur. Les autres pages de l'aide reprennent l'aide d'OptGeo 3.03, écrite pour un ordinateur et une souris : cette page explique comment faire dans la version web.</p>
+<p>OptGeo est un logiciel libre d'optique géométrique écrit par Jean-Marie Biansan. Cette version web s'utilise dans le navigateur, sur une tablette, un téléphone ou un ordinateur, sans Internet. Les autres pages de l'aide reprennent l'aide d'OptGeo 3.03, adaptée à cette version ; cette page explique comment s'en servir.</p>
 <ul class="liens sommaire-page">
 <li><a href="#ecran">L'écran</a></li>
 <li><a href="#placer">Placer un objet</a></li>
 <li><a href="#selection">Choisir et modifier un objet</a></li>
+<li><a href="#modes">Les modes d'OptGeo</a></li>
 <li><a href="#vue">Se déplacer dans le dessin</a></li>
 <li><a href="#fichiers">Ouvrir, enregistrer, imprimer</a></li>
 <li><a href="#clavier">Raccourcis clavier</a></li>
@@ -25,93 +26,133 @@
 <h2 id="ecran">L'écran</h2>
 <h3>La barre du haut</h3>
 <ul>
-<li><strong>Menu</strong> : Fichier, Édition, Ajouter par coordonnées, Affichage et options, Aide.</li>
+<li><strong>Menu</strong> : il regroupe les menus d'OptGeo : <strong>Fichier</strong>, <strong>Édition</strong>, <strong>Ajouter (par coordonnées)</strong>, <strong>Options</strong>, <strong>Aide</strong>.</li>
+<li>Le nom de la simulation, suivi de « (modifiée) » tant qu'elle n'est pas enregistrée.</li>
 <li><strong>Annuler</strong> et <strong>Refaire</strong> : reviennent sur la dernière action, ou la refont.</li>
-<li>Les modes d'OptGeo : <strong>Déplacer</strong>, <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper</strong>. Ils marchent comme dans OptGeo (voir l'<a href="optgeo.html">aide générale</a>). Pour sortir d'un mode, touche le bouton <strong>Terminer</strong> dans le bandeau de consigne.</li>
-<li><strong>Affichage</strong> : afficher ou non les normales, les angles, la grille, l'attraction de la grille, les longueurs des segments ; choisir le zoom, de ×1 à ×100.</li>
+<li>Les modes d'OptGeo : <strong>Déplacer</strong>, <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper</strong> (voir <a href="#modes">Les modes d'OptGeo</a>). Sur un écran étroit, ils sont réunis sous le bouton <strong>Modes</strong>.</li>
+<li><strong>Affichage</strong> : interrupteurs <strong>Normales</strong>, <strong>Angles d'incidence et de réfraction</strong>, <strong>Grille</strong>, <strong>Attraction de la grille</strong>, <strong>Longueurs des segments</strong> ; bouton <strong>Coordonnées des segments…</strong> ; zooms de ×1 à ×100.</li>
+<li><strong>Plein écran</strong> : seulement quand l'application est ouverte seule dans le navigateur (dans une page du site, elle remplit déjà son cadre).</li>
 </ul>
 <h3>La palette des objets</h3>
-<p>Elle est à gauche quand l'écran est en paysage (plus large que haut), en bas quand il est en portrait (plus haut que large). Elle range les objets en cinq familles : <strong>Miroirs</strong>, <strong>Écrans</strong>, <strong>Sources</strong>, <strong>Dioptres</strong>, <strong>Divers</strong>.</p>
+<p>Elle est à gauche quand l'écran est en paysage (plus large que haut), en bas quand il est en portrait (plus haut que large). Elle range les objets en cinq familles : <strong>Miroirs</strong>, <strong>Écrans</strong>, <strong>Sources</strong>, <strong>Dioptres</strong>, <strong>Divers</strong>. Touche une famille : ses objets s'affichent dans un volet ; touche de nouveau la famille pour refermer le volet.</p>
+<h3>Le bandeau de consigne</h3>
+<p>En haut du dessin, il dit quoi faire à chaque étape et porte les boutons utiles : <strong>Annuler</strong>, <strong>Terminer</strong>, <strong>Aligner horizontalement</strong>… Sur un petit écran, il tient sur une ligne : touche <strong>Plus</strong> pour voir les boutons secondaires (<strong>Aligner…</strong>, <strong>Bloquer…</strong>, <strong>Rester dans ce mode</strong>), <strong>Moins</strong> pour les cacher.</p>
 
 <h2 id="placer">Placer un objet</h2>
 <ol>
-<li>Choisis un objet dans la palette.</li>
-<li>Lis le bandeau en haut du dessin : il dit quoi faire à chaque étape.</li>
-<li>Place les points de l'objet un par un, comme dans OptGeo :
+<li>Touche une famille de la palette, puis l'objet voulu.</li>
+<li>Lis le bandeau en haut du dessin : il dit quel point placer.</li>
+<li>Place les points de l'objet un par un, dans l'ordre demandé :
 <ul>
-<li><strong>au doigt</strong> : appuie, glisse pour viser (une loupe montre ce qui est sous ton doigt et les coordonnées), puis relâche pour valider le point ;</li>
+<li><strong>au doigt</strong> : appuie, glisse pour viser (une loupe montre ce qui est sous ton doigt, avec les coordonnées), puis relâche : le point est placé quand le doigt se lève ;</li>
 <li><strong>à la souris</strong> : un clic par point ; l'aperçu de l'objet suit la souris.</li>
 </ul></li>
 </ol>
+<p>Certains objets demandent un réglage dans une petite boîte : le nombre de sommets (polygone, polycercle) avant les points ; le nombre de rayons (objet ponctuel, onde plane), le diamètre (lentille épaisse) ou le choix arc ou segment de chaque côté (polycercle) après les points. Le texte et le point demandent d'abord leur réglage ; le réseau et le trait ouvrent le panneau des propriétés après les deux points.</p>
 <p>Pour abandonner : bouton <strong>Annuler</strong> du bandeau, ou touche Échap.</p>
 <p>Pour t'aider :</p>
 <ul>
-<li>la case <strong>Rester dans ce mode</strong> permet de créer plusieurs objets à la suite ;</li>
-<li>les boutons <strong>Aligner horizontalement</strong> et <strong>Aligner verticalement</strong> (ou les touches Ctrl et Alt à l'ordinateur) placent le point sur la même horizontale ou la même verticale que le point précédent ;</li>
-<li>si l'attraction de la grille est activée (bouton <strong>Affichage</strong>), les points se placent sur la grille.</li>
+<li>la case <strong>Rester dans ce mode</strong> du bandeau permet de créer plusieurs objets du même type à la suite ;</li>
+<li>à partir du deuxième point, les boutons <strong>Aligner horizontalement</strong> et <strong>Aligner verticalement</strong> (ou les touches Ctrl et Alt maintenues à l'ordinateur) placent le point sur la même horizontale ou la même verticale que le point précédent ;</li>
+<li>pour un polygone, à partir du 3e sommet, le bouton <strong>Fermer le polygone</strong> (ou un toucher sur le sommet 1) termine l'objet sans placer tous les sommets prévus ;</li>
+<li>si l'attraction de la grille est activée (bouton <strong>Affichage</strong>), les points se placent sur la grille (sauf pour les mesures de distance et d'angle).</li>
 </ul>
+<p>La famille <strong>Divers</strong> contient aussi <strong>Distance</strong> et <strong>Angle</strong> (mesures dont la valeur s'affiche sur le dessin), <strong>Texte</strong>, <strong>Trait, flèche</strong>, <strong>Point</strong>, <strong>Cacher segments</strong> (cacher des segments de rayon en les touchant) et <strong>Commentaire</strong> (texte qui accompagne la simulation).</p>
+<p>Pour placer un objet par ses coordonnées, utilise plutôt le menu <strong>Ajouter (par coordonnées)</strong> : le panneau des propriétés s'ouvre, déjà rempli ; règle les valeurs, puis touche <strong>Valider</strong>.</p>
 
 <h2 id="selection">Choisir et modifier un objet</h2>
-<p>Touche (ou clique) un objet : il est sélectionné et ses poignées apparaissent.</p>
+<p>Touche (ou clique) un objet : il est sélectionné et ses poignées apparaissent. Elles ont la même signification que dans OptGeo :</p>
 <ul class="poignees">
-<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M3 9h12M9 3v12" stroke="#1a9a3a" stroke-width="2.5" stroke-linecap="round"/></svg> <strong>Croix verte</strong> : déplace tout l'objet.</li>
-<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="5.5" fill="none" stroke="#1f5fd1" stroke-width="2.5"/></svg> <strong>Cercle bleu</strong> : déplace ce point seulement (extrémité, sommet, source…).</li>
-<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="6" fill="#d22d2d"/></svg> <strong>Disque rouge</strong> : fait tourner l'objet.</li>
-<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M4 4l10 10M14 4L4 14" stroke="#0aa5b8" stroke-width="2.5" stroke-linecap="round"/></svg> <strong>Croix cyan</strong> : foyer ou centre de courbure ; la déplacer change la focale ou le rayon de courbure.</li>
+<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M4 4l10 10M14 4L4 14" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/><path d="M4 4l10 10M14 4L4 14" stroke="#008000" stroke-width="2.5" stroke-linecap="round"/></svg> <strong>Croix verte</strong> : déplace tout l'objet.</li>
+<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="5.5" fill="#ffffff" stroke="#0000ff" stroke-width="2.2"/></svg> <strong>Cercle bleu</strong> : déplace ce point seulement (extrémité, sommet, source…).</li>
+<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="6" fill="#e00000" stroke="#ffffff" stroke-width="1.5"/></svg> <strong>Disque rouge</strong> : fait tourner l'objet.</li>
+<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M4 4l10 10M14 4L4 14" stroke="#0b3c44" stroke-width="5" stroke-linecap="round"/><path d="M4 4l10 10M14 4L4 14" stroke="#00c8d8" stroke-width="2.5" stroke-linecap="round"/></svg> <strong>Croix cyan</strong> : foyer ou centre de courbure (la déplacer change la focale ou le rayon de courbure) ; pour un diaphragme, bord du trou.</li>
+<li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M4 4l10 10M14 4L4 14" stroke="#5a4a00" stroke-width="5" stroke-linecap="round"/><path d="M4 4l10 10M14 4L4 14" stroke="#ffd400" stroke-width="2.5" stroke-linecap="round"/></svg> <strong>Croix jaune</strong> : sommet d'un arc de cercle d'un polycercle.</li>
 </ul>
-<p>Fais glisser une poignée pour modifier l'objet. Tu peux aussi faire glisser l'objet lui-même pour le déplacer.</p>
-<p>Sous le dessin, une barre propose : <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper</strong> / <strong>Dissocier</strong>, <strong>Désélectionner</strong>.</p>
-<p>Plusieurs objets au même endroit ? Touche de nouveau au même endroit : la sélection passe à l'objet suivant.</p>
+<p>Fais glisser une poignée pour modifier l'objet ; tu peux aussi faire glisser l'objet lui-même pour le déplacer. Pendant le glissement, les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau, touchés avec un autre doigt (ou les touches Ctrl et Alt), limitent le mouvement à une direction, pour ce glissement seulement (en mode Déplacer, on peut aussi les toucher avant de commencer) ; la touche Échap, ou un deuxième doigt posé sur le dessin, remet l'objet à sa place.</p>
+<p>En bas du dessin, une barre propose : <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper avec…</strong>, <strong>Dissocier</strong> (seulement si l'objet fait partie d'un groupe) et <strong>Désélectionner</strong>.</p>
+<ul>
+<li><strong>Propriétés</strong> ouvre le panneau des propriétés (à droite du dessin, ou en bas sur un écran en portrait) : <strong>Valider</strong> applique les changements, <strong>Annuler</strong> les abandonne, <strong>Supprimer</strong> enlève l'objet, <strong>Aide</strong> ouvre la page d'aide de l'objet. Une valeur refusée est signalée sous son champ.</li>
+<li><strong>Dupliquer</strong> crée une copie légèrement décalée, qui reste sélectionnée : fais-la glisser où tu veux.</li>
+<li><strong>Supprimer</strong> enlève l'objet tout de suite ; le bouton <strong>Annuler</strong> du message qui s'affiche le remet.</li>
+</ul>
+<p>Plusieurs objets au même endroit ? Touche de nouveau au même endroit : la sélection passe à l'objet suivant. Touche une zone vide pour tout désélectionner.</p>
+
+<h2 id="modes">Les modes d'OptGeo</h2>
+<p>Les boutons de mode de la barre du haut (et les commandes du menu <strong>Édition</strong>) marchent comme dans OptGeo 3.03, pour qui a l'habitude du logiciel ou suit les consignes d'un exemple :</p>
+<ul>
+<li><strong>Déplacer</strong> : les poignées de tous les objets s'affichent en même temps. On sort du mode avec le bouton <strong>Terminer</strong> du bandeau.</li>
+<li><strong>Propriétés</strong> : touche un objet pour ouvrir son panneau des propriétés. Le mode reste actif jusqu'au bouton <strong>Terminer</strong>.</li>
+<li><strong>Dupliquer</strong> et <strong>Supprimer</strong> : touche l'objet à dupliquer ou à supprimer ; le mode s'arrête tout seul après un objet. Le bouton <strong>Annuler</strong> du bandeau sort du mode sans rien faire.</li>
+<li><strong>Grouper</strong> : touche les objets à grouper (une croix violette marque chaque objet ; toucher de nouveau un objet le retire), puis <strong>Terminer</strong> pour créer le groupe, ou <strong>Annuler</strong> pour abandonner. Un groupe se déplace d'un bloc par sa croix verte marquée « Gr » ; le bouton <strong>Dissocier</strong> le défait.</li>
+</ul>
+<p>Dans tous les modes, la touche Échap, ou un nouveau toucher sur le bouton du mode, ramène au fonctionnement normal. Si plusieurs objets sont sous le doigt, une liste permet de choisir.</p>
 
 <h2 id="vue">Se déplacer dans le dessin</h2>
 <ul>
-<li>Au doigt : pose deux doigts pour zoomer et déplacer la vue.</li>
-<li>À la souris : la molette zoome.</li>
+<li>Au doigt : pose deux doigts pour zoomer (pincer, écarter) et déplacer la vue.</li>
+<li>À la souris : la molette zoome ; Maj + molette, ou le bouton du milieu, déplace la vue.</li>
 <li>Glisser dans une zone vide du dessin déplace la vue.</li>
-<li>Boutons <strong>+</strong>, <strong>−</strong> et <strong>Tout voir</strong>.</li>
+<li>Boutons ronds à droite du dessin : agrandir, réduire, tout voir.</li>
 </ul>
+<p>Le zoom et le déplacement de la vue restent possibles pendant un mode ou pendant qu'on place un objet.</p>
 
 <h2 id="fichiers">Ouvrir, enregistrer, imprimer</h2>
-<p>Avec le bouton <strong>Menu</strong>, tu peux :</p>
+<p>Dans le menu <strong>Fichier</strong>, tu peux :</p>
 <ul>
-<li>ouvrir un fichier <code>.opt</code> de l'appareil ; tu peux choisir en même temps le fichier <code>.txt</code> de son commentaire ;</li>
-<li>ouvrir un des 56 exemples d'OptGeo ;</li>
-<li>superposer une simulation ;</li>
-<li>enregistrer : le navigateur télécharge un fichier <code>.opt</code>, lisible par OptGeo 3.03, et un fichier <code>.txt</code> pour le commentaire ;</li>
-<li>exporter une image PNG ou SVG ;</li>
-<li>imprimer (seul le dessin est imprimé).</li>
+<li>commencer une <strong>Nouvelle simulation…</strong> (dimensions de l'espace de travail, indices du milieu ambiant) ;</li>
+<li><strong>Ouvrir un fichier de l'appareil…</strong> : un fichier <code>.opt</code> ; tu peux choisir en même temps le fichier <code>.txt</code> de son commentaire ;</li>
+<li><strong>Ouvrir un exemple…</strong> : un des 56 exemples d'OptGeo, avec son commentaire ;</li>
+<li><strong>Superposer un fichier…</strong> ou <strong>Superposer un exemple…</strong> : ajouter une simulation à celle qui est ouverte ;</li>
+<li><strong>Enregistrer</strong> ou <strong>Enregistrer sous…</strong> : le navigateur télécharge un fichier <code>.opt</code>, lisible par OptGeo 3.03, et un fichier <code>.txt</code> pour le commentaire s'il y en a un ;</li>
+<li><strong>Exporter l'image (PNG ou SVG)…</strong> ;</li>
+<li><strong>Imprimer…</strong> : le dessin est imprimé avec son titre et son commentaire, sans les boutons ;</li>
+<li>modifier ou ajuster l'espace de travail, et régler les <strong>Préférences…</strong> (couleur et épaisseur par défaut de chaque type d'objet, gardées sur l'appareil).</li>
 </ul>
 <p>Ton travail est gardé automatiquement sur l'appareil : rien n'est envoyé sur Internet. Quand tu rouvres l'application, elle propose de reprendre ce travail.</p>
 
 <h2 id="clavier">Raccourcis clavier (ordinateur)</h2>
+<p>Sur Mac, la touche Cmd remplace Ctrl.</p>
 <table>
 <thead><tr><th scope="col">Touches</th><th scope="col">Action</th></tr></thead>
 <tbody>
-<tr><td><kbd>Échap</kbd></td><td>abandonner ce qui est en cours</td></tr>
+<tr><td><kbd>Échap</kbd></td><td>abandonner ce qui est en cours (objet en construction, glissement, mode, panneau)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>annuler</td></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd> ou <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>Z</kbd></td><td>refaire</td></tr>
-<tr><td><kbd>Suppr</kbd></td><td>supprimer la sélection</td></tr>
-<tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>dupliquer</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Y</kbd> ou <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>Z</kbd></td><td>refaire (attention : <kbd>Ctrl</kbd>+<kbd>R</kbd>, qui refaisait dans OptGeo 3.03, recharge la page dans un navigateur)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>enregistrer (attention : dans OptGeo 3.03, <kbd>Ctrl</kbd>+<kbd>S</kbd> supprimait)</td></tr>
-<tr><td>flèches</td><td>déplacer la sélection</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>S</kbd></td><td>enregistrer sous</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>ouvrir un fichier de l'appareil</td></tr>
+<tr><td><kbd>Suppr</kbd> ou <kbd>Retour arrière</kbd></td><td>supprimer l'objet sélectionné</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>dupliquer l'objet sélectionné (sans sélection : mode Dupliquer)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>propriétés de l'objet sélectionné (sans sélection : mode Propriétés)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>mode Déplacer</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>G</kbd></td><td>mode Grouper (éléments à choisir)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>grouper tous les éléments (après confirmation)</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>E</kbd></td><td>commentaire de la simulation</td></tr>
+<tr><td>flèches</td><td>déplacer l'objet sélectionné d'un pas de grille (grille affichée ou attraction active) ou d'un pixel ; avec <kbd>Maj</kbd>, dix fois plus</td></tr>
 <tr><td><kbd>+</kbd> et <kbd>−</kbd></td><td>zoomer, dézoomer</td></tr>
 <tr><td><kbd>0</kbd></td><td>tout voir</td></tr>
-<tr><td><kbd>Ctrl</kbd> ou <kbd>Alt</kbd> pendant qu'on place un point</td><td>aligner le point horizontalement ou verticalement sur le précédent</td></tr>
+<tr><td><kbd>Ctrl</kbd> ou <kbd>Alt</kbd> maintenue</td><td>pendant qu'on place un point : l'aligner horizontalement ou verticalement sur le précédent ; pendant un glissement : le limiter à l'horizontale ou à la verticale</td></tr>
 </tbody>
 </table>
 
 <h2 id="differences">Ce qui change par rapport à OptGeo 3.03</h2>
 <ul>
-<li>On fait glisser les poignées, au lieu de « cliquer, déplacer, cliquer ».</li>
-<li>Pendant un déplacement, la touche Échap ou un deuxième doigt posé sur le dessin remet l'objet à sa place.</li>
-<li>Dans les propriétés, les angles se saisissent en degrés (le fichier <code>.opt</code> garde les radians).</li>
-<li>Dans les nombres, la virgule et le point sont acceptés (1,5 ou 1.5).</li>
-<li><kbd>Ctrl</kbd>+<kbd>S</kbd> enregistre (dans OptGeo, il supprimait).</li>
-<li>Pas d'export JPG ni PostScript.</li>
-<li>L'impression passe par le navigateur.</li>
+<li>On touche un objet pour faire apparaître ses poignées, et on les fait glisser, au lieu de « cliquer, déplacer, cliquer » dans le mode Déplacer.</li>
+<li>Les boutons <strong>Terminer</strong> et <strong>Annuler</strong> du bandeau remplacent « Fin Dépl. », « Fin prop. », « Fin suppr. », « Fin dupl. » et « Fin ».</li>
+<li>Pendant un glissement, la touche Échap ou un deuxième doigt posé sur le dessin remet l'objet à sa place.</li>
+<li>La suppression d'un objet ne demande pas de confirmation, mais elle s'annule.</li>
+<li>La copie d'un objet dupliqué apparaît décalée, au lieu de suivre la souris.</li>
+<li>Pour un objet ponctuel, les points 1 et 2 sont rangés pour que le faisceau couvre le plus petit des deux secteurs.</li>
+<li>Dans les propriétés, les angles se saisissent en degrés (le fichier <code>.opt</code> garde les radians) ; dans les nombres, la virgule et le point sont acceptés (1,5 ou 1.5).</li>
+<li><kbd>Ctrl</kbd>+<kbd>S</kbd> enregistre (dans OptGeo, il supprimait) ; <kbd>Ctrl</kbd>+<kbd>Y</kbd> refait (dans OptGeo, c'était <kbd>Ctrl</kbd>+<kbd>R</kbd>, qui recharge la page dans un navigateur).</li>
+<li>Le zoom et le déplacement de la vue restent possibles pendant un mode.</li>
+<li>La liste des matériaux est fixe ; les préférences ne portent que sur la couleur et l'épaisseur.</li>
+<li>Pas d'export JPG ni PostScript (PNG et SVG à la place) ; l'impression passe par le navigateur.</li>
+<li>Pas d'association des fichiers <code>.opt</code>, pas de répertoires, pas de menu Langue : les fichiers s'ouvrent depuis l'appareil et s'enregistrent par téléchargement.</li>
 </ul>
 <p class="retour"><a href="index.html">Sommaire de l'aide</a></p>
 </main>
-<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Portage web des pages : 2026.</p></footer>
+<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Pages de la version web : 2026.</p></footer>
 </body>
 </html>

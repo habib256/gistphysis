@@ -10,12 +10,40 @@
 <body>
 <nav class="haut"><a href="index.html">Sommaire de l'aide</a></nav>
 <main>
-<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03 (version pour ordinateur, à la souris). Dans la version web, on touche ou on clique au lieu de « cliquer deux fois » ; voir <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
-<h1>Modification de la liste des matériaux proposés</h1>
+<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03, écrite pour un ordinateur et une souris, adaptée à la version web : les gestes (au doigt ou à la souris), les boutons et les menus décrits sont ceux de cette version. Mode d'emploi détaillé : <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
+<h1>Liste des matériaux proposés</h1>
+<p>Dans la version web, la liste des matériaux est intégrée à l'application et ne peut pas être modifiée. On choisit un matériau dans la liste « Matériau » du panneau des propriétés d'un milieu réfractant (lentille épaisse, sphère, polygone, prisme, polycercle), ou « Saisie libre » pour entrer soi-même les trois indices.</p>
+<h2>Matériaux proposés dans la version web</h2>
+<p>Indices de réfraction pour les longueurs d'onde de référence (bleu : 486,1 nm ; vert : 587,6 nm ; rouge : 656,3 nm), repris du fichier « listen.lst » d'OptGeo 3.03.</p>
+<table>
+<thead><tr><th scope="col">Matériau</th><th scope="col">Indice bleu</th><th scope="col">Indice vert</th><th scope="col">Indice rouge</th></tr></thead>
+<tbody>
+<tr><td>Verre « BK7 »</td><td>1,52238</td><td>1,51680</td><td>1,51432</td></tr>
+<tr><td>Verre « SF10 »</td><td>1,746</td><td>1,728</td><td>1,721</td></tr>
+<tr><td>Verre « SF8 »</td><td>1,705</td><td>1,689</td><td>1,683</td></tr>
+<tr><td>Verre « FK51 »</td><td>1,49056</td><td>1,48656</td><td>1,48480</td></tr>
+<tr><td>Verre « F2 »</td><td>1,63208</td><td>1,62004</td><td>1,61503</td></tr>
+<tr><td>Verre « SFL6 »</td><td>1,82780</td><td>1,80518</td><td>1,79690</td></tr>
+<tr><td>Silice fondue</td><td>1,4630</td><td>1,4584</td><td>1,4565</td></tr>
+<tr><td>Verre au fluorure de calcium</td><td>1,437</td><td>1,434</td><td>1,432</td></tr>
+<tr><td>Verre « Zerodur »</td><td>1,549</td><td>1,542</td><td>1,539</td></tr>
+<tr><td>Eau liquide</td><td>1,34009</td><td>1,33580</td><td>1,32986</td></tr>
+<tr><td>Glace d'eau</td><td>1,31505</td><td>1,31100</td><td>1,30712</td></tr>
+<tr><td>Diamant</td><td>2,44256</td><td>2,42600</td><td>2,41336</td></tr>
+<tr><td>Plexiglas (ou Lucite)</td><td>1,498</td><td>1,492</td><td>1,489</td></tr>
+<tr><td>Lustrex (ou Dylebe ou Tyron)</td><td>1,604</td><td>1,590</td><td>1,585</td></tr>
+<tr><td>NAS (copolymère)</td><td>1,575</td><td>1,567</td><td>1,558</td></tr>
+<tr><td>Lustran (ou Tyril)</td><td>1,578</td><td>1,571</td><td>1,563</td></tr>
+<tr><td>Lexan (ou Merlon)</td><td>1,599</td><td>1,585</td><td>1,580</td></tr>
+<tr><td>TPX</td><td>1,473</td><td>1,467</td><td>1,464</td></tr>
+</tbody>
+</table>
+<h2>Modifier la liste dans OptGeo 3.03 (version pour ordinateur)</h2>
+<p>Ce qui suit ne concerne que le logiciel OptGeo 3.03 installé sur un ordinateur.</p>
 <p><strong><em>Attention, n'effectuez cette manipulation que si c'est nécessaire et que vous êtes sûr de ce que vous faites !</em></strong></p>
 <p>La liste des matériaux et de leurs indices est stockée dans le fichier « listen.lst », qui est situé dans le répertoire d'installation d'OptGeo. C'est un fichier texte que vous pouvez éditer par exemple avec le bloc-notes de Windows. Pour chaque matériau, il y a 4 lignes : une pour le nom du matériau, une pour la valeur de l'indice à la longueur d'onde de 486,1 nm, une pour la valeur de l'indice à la longueur d'onde de 587,6 nm, une pour la valeur de l'indice à la longueur d'onde de 656,3 nm. Vous pouvez les modifier, en supprimer, en rajouter, à condition de respecter cette structure. Pour les valeurs d'indice, la virgule décimale doit être représentée par un point, à la mode anglo-saxonne.</p>
 <p>Si jamais vous perdiez corps et biens ce fichier, il existe une copie de sauvegarde, nommée « listen.sau », située dans le répertoire d'installation d'OptGeo.</p>
 </main>
-<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Portage web des pages : 2026.</p></footer>
+<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Adapté pour la version web (2026) : instructions d'utilisation réécrites pour les gestes, les boutons et les menus de cette version ; explications d'optique inchangées.</p></footer>
 </body>
 </html>

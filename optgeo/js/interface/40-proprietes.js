@@ -56,7 +56,7 @@
     mscepa: { titre: 'miroir convexe (idéal)', champs: msPara() },
     mscore: { titre: 'miroir concave', champs: msReel() },
     mscere: { titre: 'miroir convexe', champs: msReel() },
-    miroirconique: { titre: 'miroir conique', champs: [pt('Foyer F', 'fx', 'fy'), nb('Paramètre P', 'parametre', { unite: true, abs: true }),
+    miroirconique: { titre: 'miroir conique', champs: [pt('Foyer F', 'fx', 'fy'), nb('Paramètre P', 'parametre', { unite: true, abs: true, positif: true }),
       nb('Excentricité e', 'excentricite', { abs: true }), { k: 'nature' },
       ang('Angle polaire de l’axe focal t0', 'theta0'), ang('Angle polaire FM1 (extrémité 1) t1', 'theta1'), ang('Angle polaire FM2 (extrémité 2) t2', 'theta2'),
       choix('Concave ou convexe ?', 'concave', [{ v: true, t: 'Concave' }, { v: false, t: 'Convexe' }]),
@@ -89,7 +89,7 @@
       { k: 'couleurRayon', libelle: 'Couleur des rayons', cle: 'couleur' }, ent('Épaisseur à l’écran (pixels)', 'epaisseur', 1, 20),
       ent('Nombre de rayons', 'nombrederayon', 2, 500)].concat(PROLONGEMENTS,
       [ent('Pour chaque rayon, rayons enfants : nombre maximal', 'maxenfantparrayon', 0, 50), ent('Nombre maximal de segments par rayon', 'maxsegment', 1, 500)], SURFACES) },
-    sphere: { titre: 'sphère', champs: [pt('Centre', 'cx', 'cy'), nb('Rayon de courbure R', 'rayon', { unite: true, abs: true }), coul('Couleur à l’écran', 'couleurfond')].concat(MILIEU) },
+    sphere: { titre: 'sphère', champs: [pt('Centre', 'cx', 'cy'), nb('Rayon de courbure R', 'rayon', { unite: true, abs: true, positif: true }), coul('Couleur à l’écran', 'couleurfond')].concat(MILIEU) },
     polyhedre: { titre: 'polygone', champs: [{ k: 'sommets' }, coul('Couleur à l’écran', 'couleurfond')].concat(MILIEU) },
     polycercle: { titre: 'polycercle', champs: [{ k: 'sommets', arcs: true }, coul('Couleur à l’écran', 'couleurfond')].concat(MILIEU) },
     prisme: { titre: 'prisme', champs: [pt('Centre d’inertie G', 'gx', 'gy'), ang('Angle au sommet A', '_A', { min: 0.01, max: 179.99 }),
@@ -184,11 +184,12 @@
   }
   OGW.normaliserListe = normaliserListe;
   /** Liste de chemins optiques : séparateurs souples, virgule décimale acceptée. */
-  function normaliserChemins(s) {
+  function normaliserChemins(s, max) {
     var m = String(s || '').trim().split(/[\s;]+/).filter(Boolean), res = [];
     for (var i = 0; i < m.length; i++) {
       var x = OGW.lireNombre(m[i]);
       if (!isFinite(x)) return { ok: false, erreur: '« ' + m[i] + ' » n’est pas un nombre.' };
+      if (max !== undefined && Math.abs(x) > max) return { ok: false, erreur: '« ' + m[i] + ' » est trop grand (au plus ' + N(max, 3) + ').' };
       res.push(String(x));
     }
     return { ok: true, v: res.join(' ') };
@@ -285,227 +286,305 @@
    * @param type     type d'objet
    * @param id       objet existant (null : création par le menu Ajouter)
    * @param params   paramètres de départ pour une création
+   *
+   * Le panneau reste fidèle à la scène : si l'objet change pendant qu'il est ouvert (glisser,
+   * Annuler, Refaire…), les champs que l'élève n'a pas touchés prennent les nouvelles valeurs
+   * (ses saisies en cours sont gardées) ; si l'objet disparaît, le panneau se ferme.
    */
   function ouvrir(app, type, id, params) {
-    var scene = app.scene, boite = BOITES[type];
+    var boite = BOITES[type];
     if (!boite) return;
     var creation = !id;
-    var p0 = creation ? params : scene.parametres(id), g0 = creation ? scene.valider(type, params).g : scene.geometrie(id);
-    var v = versChamps(type, p0, g0);
-    var unite = scene.options.unitelongueur || '';
-    var lecteurs = [];
-    var corps = el('div', { class: 'formulaire' });
-    var dependances = [];
+    var holder = el('div', { class: 'formulaire' });
+    var etat = { app: app, type: type, creation: creation, champs: [], general: null, signature: null, supprime: false };
+    etat.majDependances = function () { majDependances(etat, holder); };
 
-    boite.champs.forEach(function (f) {
-      var bloc, c, lecteur = null;
-      switch (f.k) {
-        case 'section':
-          corps.appendChild(el('h3', { texte: f.titre })); return;
-        case 'note':
-          corps.appendChild(el('p', { class: 'note', texte: f.texte })); return;
-        case 'point': {
-          var cx = champTexteNombre(N(v[f.x], 10), unite, null, v[f.x]), cy = champTexteNombre(N(v[f.y], 10), unite, null, v[f.y]);
-          bloc = el('fieldset', { class: 'champ point' }, [el('legend', { texte: f.libelle }),
-            el('label', { for: cx.id, texte: 'x =' }), cx.ligne, el('label', { for: cy.id, texte: 'y =' }), cy.ligne]);
-          lecteur = function (q) {
-            var x = valeurDe(cx.input), y = valeurDe(cy.input);
-            if (!isFinite(x)) return 'Valeur inacceptable pour x.';
-            if (!isFinite(y)) return 'Valeur inacceptable pour y.';
-            q[f.x] = x; q[f.y] = y;
-          };
-          break;
-        }
-        case 'nombre': case 'angle': {
-          var estAngle = f.k === 'angle';
-          var val = v[f.cle];
-          c = champTexteNombre(estAngle ? N(OGW.deg(val), 10) : N(val, 10), estAngle ? '°' : (f.unite ? unite : ''), null, estAngle ? OGW.deg(val) : val);
-          var rad = estAngle ? el('span', { class: 'conversion' }) : null;
-          if (rad) {
-            var majRad = function () { var d = OGW.lireNombre(c.input.value); rad.textContent = isFinite(d) ? '= ' + N(OGW.rad(d), 8) + ' rad' : ''; };
-            c.input.addEventListener('input', majRad); majRad();
-          }
-          bloc = el('div', { class: 'champ' }, [el('label', { for: c.id, texte: f.libelle }), c.ligne, rad]);
-          if (f.siCase) dependances.push({ cle: f.siCase, bloc: bloc });
-          lecteur = function (q) {
-            if (f.siCase && !q[f.siCase]) { q[f.cle] = 0; return; }
-            var inchange = c.input.value === c.input._init;
-            var x = valeurDe(c.input);
-            if (!isFinite(x)) return 'Valeur inacceptable.';
-            if (estAngle) x = inchange ? val : OGW.rad(x);
-            if (f.abs) x = Math.abs(x);
-            if (f.nonNul && x === 0) return 'La valeur doit être non nulle.';
-            if (f.positif && !(x > 0)) return 'La valeur doit être positive.';
-            if (f.min !== undefined && (estAngle ? OGW.deg(x) : x) < f.min) return 'Valeur trop petite (minimum ' + N(f.min) + ').';
-            if (f.max !== undefined && (estAngle ? OGW.deg(x) : x) > f.max) return 'Valeur trop grande (maximum ' + N(f.max) + ').';
-            q[f.cle] = x;
-          };
-          break;
-        }
-        case 'entier': {
-          c = OGW.champEntier(v[f.cle] === undefined ? f.min : v[f.cle], f.min, f.max);
-          bloc = el('div', { class: 'champ' }, [el('label', { for: c.id, texte: f.libelle }), c.element]);
-          lecteur = function (q) { var x = c.lire(); if (!isFinite(x)) return 'Entier de ' + f.min + ' à ' + f.max + '.'; q[f.cle] = x; };
-          break;
-        }
-        case 'couleur': {
-          c = OGW.champCouleur(v[f.cle]);
-          bloc = el('div', { class: 'champ' }, [el('span', { class: 'etiquette', texte: f.libelle }), c.element]);
-          lecteur = function (q) { q[f.cle] = c.lire(); };
-          break;
-        }
-        case 'couleurRayon': {
-          c = champCouleurRayon(v[f.cle]);
-          bloc = el('fieldset', { class: 'champ' }, [el('legend', { texte: f.libelle }), c.element]);
-          lecteur = function (q) { q[f.cle] = c.lire(); };
-          break;
-        }
-        case 'case': {
-          var idc = idChamp(), cb = el('input', { type: 'checkbox', id: idc, checked: !!v[f.cle] });
-          bloc = el('div', { class: 'champ case' }, [el('label', { for: idc, class: 'interrupteur' }, [cb, el('span', { texte: f.libelle })])]);
-          cb.addEventListener('change', function () { majDependances(); });
-          bloc._lire = function () { return cb.checked; };
-          bloc._cle = f.cle;
-          lecteur = function (q) { q[f.cle] = cb.checked; };
-          break;
-        }
-        case 'choix': {
-          var nomg = 'g' + (++compteur), gr = el('div', { class: 'radios', role: 'radiogroup' });
-          f.options.forEach(function (o) {
-            gr.appendChild(el('label', { class: 'radio' }, [el('input', { type: 'radio', name: nomg, value: JSON.stringify(o.v), checked: v[f.cle] === o.v }), o.t]));
-          });
-          bloc = el('fieldset', { class: 'champ' }, [el('legend', { texte: f.libelle }), gr]);
-          gr.addEventListener('change', function () { majDependances(); });
-          bloc._cle = f.cle;
-          bloc._lire = function () { var r = gr.querySelector('input:checked'); return r ? JSON.parse(r.value) : v[f.cle]; };
-          lecteur = function (q) { q[f.cle] = bloc._lire(); };
-          break;
-        }
-        case 'texte': {
-          var idt = idChamp(), t = el('input', { type: 'text', id: idt, value: v[f.cle] || '', maxlength: 255 });
-          bloc = el('div', { class: 'champ' }, [el('label', { for: idt, texte: f.libelle }), t]);
-          lecteur = function (q) { q[f.cle] = t.value; };
-          break;
-        }
-        case 'liste': case 'chemins': {
-          var idl = idChamp(), l = el('input', { type: 'text', id: idl, value: v[f.cle] || '', autocomplete: 'off', spellcheck: 'false' });
-          bloc = el('div', { class: 'champ' }, [el('label', { for: idl, texte: f.libelle }), l]);
-          if (f.k === 'chemins') dependances.push({ cle: 'tracersurfacesonde', bloc: bloc });
-          lecteur = function (q) {
-            var r = f.k === 'liste' ? normaliserListe(l.value) : normaliserChemins(l.value);
-            if (!r.ok) return r.erreur;
-            q[f.cle] = r.v;
-          };
-          break;
-        }
-        case 'indices': {
-          var sel = el('select', { 'aria-label': 'Matériau' }, [el('option', { value: '-1', texte: 'Saisie libre' })].concat(
-            OGW.MATERIAUX.map(function (m, i) { return el('option', { value: String(i), texte: m.nom }); })));
-          var ir = champTexteNombre(N(v.indicerouge, 10), '', null, v.indicerouge), iv = champTexteNombre(N(v.indicevert, 10), '', null, v.indicevert), ib = champTexteNombre(N(v.indicebleu, 10), '', null, v.indicebleu);
-          sel.addEventListener('change', function () {
-            var m = OGW.MATERIAUX[+sel.value]; if (!m) return;
-            ir.input.value = N(m.rouge, 8); iv.input.value = N(m.vert, 8); ib.input.value = N(m.bleu, 8);
-          });
-          [ir, iv, ib].forEach(function (z) { z.input.addEventListener('input', function () { sel.value = '-1'; }); });
-          bloc = el('div', { class: 'champ indices' }, [
-            el('label', { class: 'etiquette', texte: 'Matériau' }), sel,
-            el('div', { class: 'trois' }, [
-              el('label', { for: ir.id }, [pastille(255), 'Rouge']), ir.ligne,
-              el('label', { for: iv.id }, [pastille(32768), 'Vert']), iv.ligne,
-              el('label', { for: ib.id }, [pastille(0xFF0000), 'Bleu']), ib.ligne]),
-            el('p', { class: 'note', texte: 'Matériaux : indices à 656,3 nm (rouge), 587,6 nm (vert) et 486,1 nm (bleu). Trois indices différents : milieu dispersif.' })]);
-          lecteur = function (q) {
-            var a = valeurDe(ir.input), b = valeurDe(iv.input), d = valeurDe(ib.input);
-            if (!(a > 0)) return 'Valeur inacceptable pour l’indice rouge.';
-            if (!(b > 0)) return 'Valeur inacceptable pour l’indice vert.';
-            if (!(d > 0)) return 'Valeur inacceptable pour l’indice bleu.';
-            q.indicerouge = a; q.indicevert = b; q.indicebleu = d;
-          };
-          break;
-        }
-        case 'sommets': {
-          var r = construireSommets(v, f.arcs, unite);
-          bloc = r.element; lecteur = r.lire;
-          break;
-        }
-        case 'police': {
-          var r2 = construirePolice(v);
-          bloc = r2.element; lecteur = r2.lire;
-          break;
-        }
-        case 'nature':
-          bloc = el('p', { class: 'note', texte: 'Nature actuelle : ' + OGW.natureConique(Math.abs(v.excentricite)).replace('Miroir ', 'miroir ') + '.' });
-          break;
-        case 'mesure': {
-          var gm = g0, txt = '';
-          if (type === 'metre') txt = 'Distance : ' + N(Math.sqrt(Math.pow(gm.a2x - gm.a1x, 2) + Math.pow(gm.a2y - gm.a1y, 2)), 6) + ' ' + unite;
-          else {
-            var t1 = Math.atan2(gm.a1y - gm.cy, gm.a1x - gm.cx), t2 = Math.atan2(gm.a2y - gm.cy, gm.a2x - gm.cx), dd = t2 - t1;
-            while (dd < 0) dd += 2 * PI;
-            txt = 'Angle : ' + N(OGW.deg(dd), 6) + '°';
-          }
-          bloc = el('p', { class: 'mesure', texte: txt });
-          break;
-        }
-      }
-      if (!bloc) return;
-      corps.appendChild(bloc);
-      if (lecteur) lecteurs.push({ bloc: bloc, lire: lecteur });
-    });
-
-    function majDependances() {
-      var etat = {};
-      lecteurs.forEach(function (l) { if (l.bloc._cle) etat[l.bloc._cle] = l.bloc._lire(); });
-      dependances.forEach(function (d) {
-        var actif = etat[d.cle] !== undefined ? !!etat[d.cle] : true;
-        d.bloc.classList.toggle('inactif', !actif);
-        OGW.$$('input,select,button', d.bloc).forEach(function (i) { i.disabled = !actif; });
+    /** (Re)construit les champs ; ceux que l'élève a touchés (anciens) sont gardés tels quels. */
+    function remplir(anciens) {
+      var scene = app.scene, o = scene.options;
+      var p0 = creation ? params : scene.parametres(id), g0 = creation ? scene.valider(type, params).g : scene.geometrie(id);
+      etat.p0 = p0; etat.g0 = g0; etat.v = versChamps(type, p0, g0);
+      etat.signature = creation ? null : JSON.stringify(p0);
+      etat.unite = o.unitelongueur || '';
+      etat.diag = Math.sqrt(Math.pow(o.xxmax - o.xxmin, 2) + Math.pow(o.yymax - o.yymin, 2));
+      etat.taillemini = app.pixelsEnMonde(0.2);          // taillemini d'OptGeo : 1/10 de 2 pixels
+      var champs = boite.champs.map(function (f, i) {
+        var a = anciens && anciens[i];
+        if (a && a.lecteur && a.bloc._touche) return a;
+        return construireChamp(f, etat);
       });
-      // source virtuelle : pas de surfaces d'onde
-      if (type === 'sourceponctuelle' && etat.sourcevirtuelle !== undefined) {
-        OGW.$$('.champ', corps).forEach(function (b) {
-          if (b._cle === 'tracersurfacesonde') { var i = b.querySelector('input'); i.disabled = etat.sourcevirtuelle; b.classList.toggle('inactif', etat.sourcevirtuelle); }
-        });
-      }
+      OGW.vider(holder);
+      champs.forEach(function (c) { if (c && c.bloc) holder.appendChild(c.bloc); });
+      etat.general = el('div', { class: 'erreur-generale', role: 'alert', hidden: true });
+      holder.appendChild(etat.general);
+      etat.champs = champs;
+      etat.majDependances();
     }
-    majDependances();
-
-    var general = el('div', { class: 'erreur-generale', role: 'alert', hidden: true });
-    corps.appendChild(general);
+    remplir(null);
 
     function lireTout() {
-      var q = JSON.parse(JSON.stringify(v)), premier = null;
-      general.hidden = true;
-      lecteurs.forEach(function (l) {
-        var e = l.lire(q);
-        erreurChamp(l.bloc, e || '');
-        if (e && !premier) premier = l.bloc;
+      var q = JSON.parse(JSON.stringify(etat.v)), premier = null;
+      etat.general.hidden = true;
+      etat.champs.forEach(function (c) {
+        if (!c || !c.lecteur) return;
+        var e = c.lecteur(q);
+        erreurChamp(c.bloc, e || '');
+        if (e && !premier) premier = c.bloc;
       });
       if (premier) { premier.scrollIntoView({ block: 'center' }); var i = premier.querySelector('input,select,button'); if (i) i.focus(); return null; }
-      return depuisChamps(type, q, v);
+      return depuisChamps(type, q, etat.v);
     }
-    function erreurGenerale(t) { general.textContent = t; general.hidden = false; general.scrollIntoView({ block: 'nearest' }); }
+    function erreurGenerale(t) { etat.general.textContent = t; etat.general.hidden = false; etat.general.scrollIntoView({ block: 'nearest' }); }
 
-    var titre = (creation ? 'Ajout d’un' + (/^[aeéiouœ]/i.test(boite.titre) ? ' ' : (feminin(type) ? 'e ' : ' ')) : 'Propriétés de ' + demonstratif(type)) + boite.titre;
-    if (creation) titre = titreCreation(type, boite.titre);
-    if (!creation && type === 'miroirconique') titre = 'Propriétés de ce ' + OGW.natureConique(Math.abs(p0.excentricite)).toLowerCase();
+    function titre() {
+      if (creation) return titreCreation(type, boite.titre);
+      if (type === 'miroirconique') return 'Propriétés de ce ' + OGW.natureConique(Math.abs(etat.p0.excentricite)).toLowerCase();
+      return 'Propriétés de ' + demonstratif(type) + boite.titre;
+    }
+    function rafraichir() {
+      if (creation || app.panneau !== panneau) return;
+      if (!app.scene.objet(id)) {
+        app.fermerPanneau();
+        if (!etat.supprime) app.signaler('Panneau des propriétés fermé : cet élément n’existe plus.');
+        return;
+      }
+      if (JSON.stringify(app.scene.parametres(id)) === etat.signature) return;
+      var zone = OGW.$('#panneau-corps'), haut = zone ? zone.scrollTop : 0, actif = document.activeElement;
+      remplir(etat.champs);
+      if (zone) zone.scrollTop = haut;
+      if (actif && holder.contains(actif) && document.activeElement !== actif) { try { actif.focus({ preventScroll: true }); } catch (e) { actif.focus(); } }
+      var t = OGW.$('#panneau-titre'); if (t) t.textContent = titre();
+    }
+
     var boutons = [];
-    if (!creation) boutons.push({ texte: 'Supprimer', classe: 'danger', icone: 'supprimer', action: function () { app.supprimer(id); app.fermerPanneau(); } });
+    if (!creation) boutons.push({ texte: 'Supprimer', classe: 'danger', icone: 'supprimer', action: function () { etat.supprime = true; app.supprimer(id); app.fermerPanneau(); } });
     if (OGW.AIDE[type]) boutons.push({ texte: 'Aide', icone: 'aide', action: function () { app.ouvrirAide(OGW.AIDE[type]); return false; } });
     boutons.push({ texte: 'Annuler', action: function () { app.fermerPanneau(); } });
     boutons.push({ texte: 'Valider', principal: true, icone: 'valider', action: function () {
+      if (!creation) { rafraichir(); if (app.panneau !== panneau) return false; }
       var q = lireTout();
       if (!q) return false;
-      if (type === 'mscore' && !scene.options.desactiverControle) {
+      if (type === 'mscore' && !app.scene.options.desactiverControle) {
         var corde = Math.sqrt(Math.pow(q.a2x - q.a1x, 2) + Math.pow(q.a2y - q.a1y, 2));
         if (corde > 2 * q.rayoncourbure) { erreurGenerale('La distance entre les points 1 et 2 doit être inférieure au double du rayon !'); return false; }
       }
+      etat.valide = true;
       var r = creation ? app.ajouterObjet(type, q) : app.modifierObjet(id, q);
+      etat.valide = false;
       if (!r.ok) { erreurGenerale(messageRefus(type) + (r.erreur ? ' (' + r.erreur + ')' : '')); return false; }
       app.fermerPanneau();
       if (creation && r.id) app.selectionner(r.id);
     } });
-    app.ouvrirPanneau({ titre: titre, corps: corps, boutons: boutons, idObjet: id });
+    var panneau = { titre: titre(), corps: holder, boutons: boutons, idObjet: id, rafraichir: function () { if (!etat.valide) rafraichir(); } };
+    app.ouvrirPanneau(panneau);
+  }
+
+  function majDependances(etat, corps) {
+    var vals = {};
+    etat.champs.forEach(function (c) { if (c && c.bloc && c.bloc._cle && c.bloc._lire) vals[c.bloc._cle] = c.bloc._lire(); });
+    etat.champs.forEach(function (c) {
+      if (!c || !c.dep) return;
+      var actif = vals[c.dep] !== undefined ? !!vals[c.dep] : true;
+      c.bloc.classList.toggle('inactif', !actif);
+      OGW.$$('input,select,button', c.bloc).forEach(function (i) { i.disabled = !actif; });
+    });
+    // source virtuelle : pas de surfaces d'onde
+    if (etat.type === 'sourceponctuelle' && vals.sourcevirtuelle !== undefined) {
+      OGW.$$('.champ', corps).forEach(function (b) {
+        if (b._cle === 'tracersurfacesonde') { var i = b.querySelector('input'); i.disabled = vals.sourcevirtuelle; b.classList.toggle('inactif', vals.sourcevirtuelle); }
+      });
+    }
+  }
+
+  /**
+   * Un champ de la boîte : {bloc, lecteur, dep}. Le bloc note s'il a été touché par l'élève
+   * (bloc._touche) : un rafraîchissement du panneau ne le remplace pas.
+   */
+  function construireChamp(f, etat) {
+    var v = etat.v, unite = etat.unite, type = etat.type, bloc, c, lecteur = null, dep = null;
+    switch (f.k) {
+      case 'section':
+        return { bloc: el('h3', { texte: f.titre }) };
+      case 'note':
+        return { bloc: el('p', { class: 'note', texte: f.texte }) };
+      case 'point': {
+        var cx = champTexteNombre(N(v[f.x], 10), unite, null, v[f.x]), cy = champTexteNombre(N(v[f.y], 10), unite, null, v[f.y]);
+        bloc = el('fieldset', { class: 'champ point' }, [el('legend', { texte: f.libelle }),
+          el('label', { for: cx.id, texte: 'x =' }), cx.ligne, el('label', { for: cy.id, texte: 'y =' }), cy.ligne]);
+        lecteur = function (q) {
+          var x = valeurDe(cx.input), y = valeurDe(cy.input);
+          if (!isFinite(x)) return 'Valeur inacceptable pour x.';
+          if (!isFinite(y)) return 'Valeur inacceptable pour y.';
+          q[f.x] = x; q[f.y] = y;
+        };
+        break;
+      }
+      case 'nombre': case 'angle': {
+        var estAngle = f.k === 'angle';
+        var val = v[f.cle];
+        c = champTexteNombre(estAngle ? N(OGW.deg(val), 10) : N(val, 10), estAngle ? '°' : (f.unite ? unite : ''), null, estAngle ? OGW.deg(val) : val);
+        var rad = estAngle ? el('span', { class: 'conversion' }) : null;
+        if (rad) {
+          var majRad = function () { var d = OGW.lireNombre(c.input.value); rad.textContent = isFinite(d) ? '= ' + N(OGW.rad(d), 8) + ' rad' : ''; };
+          c.input.addEventListener('input', majRad); majRad();
+        }
+        bloc = el('div', { class: 'champ' }, [el('label', { for: c.id, texte: f.libelle }), c.ligne, rad]);
+        if (f.siCase) dep = f.siCase;
+        lecteur = function (q) {
+          if (f.siCase && !q[f.siCase]) { q[f.cle] = 0; return; }
+          var inchange = c.input.value === c.input._init;
+          var x = valeurDe(c.input);
+          if (!isFinite(x)) return 'Valeur inacceptable.';
+          if (estAngle) x = inchange ? val : OGW.rad(x);
+          if (f.abs) x = Math.abs(x);
+          if (f.nonNul && x === 0) return 'La valeur doit être non nulle.';
+          if (f.positif && !(x > 0)) return 'La valeur doit être positive.';
+          if (f.min !== undefined && (estAngle ? OGW.deg(x) : x) < f.min) return 'Valeur trop petite (minimum ' + N(f.min) + ').';
+          if (f.max !== undefined && (estAngle ? OGW.deg(x) : x) > f.max) return 'Valeur trop grande (maximum ' + N(f.max) + ').';
+          if (!inchange) {          // bornes de cohérence avec l'espace de travail (une valeur reprise d'un fichier n'est pas rejugée)
+            var b = bornerSaisie(x, f, estAngle, etat);
+            if (b) return b;
+          }
+          q[f.cle] = x;
+        };
+        break;
+      }
+      case 'entier': {
+        c = OGW.champEntier(v[f.cle] === undefined ? f.min : v[f.cle], f.min, f.max);
+        bloc = el('div', { class: 'champ' }, [el('label', { for: c.id, texte: f.libelle }), c.element]);
+        lecteur = function (q) { var x = c.lire(); if (!isFinite(x)) return 'Entier de ' + f.min + ' à ' + f.max + '.'; q[f.cle] = x; };
+        break;
+      }
+      case 'couleur': {
+        c = OGW.champCouleur(v[f.cle]);
+        bloc = el('div', { class: 'champ' }, [el('span', { class: 'etiquette', texte: f.libelle }), c.element]);
+        lecteur = function (q) { q[f.cle] = c.lire(); };
+        break;
+      }
+      case 'couleurRayon': {
+        c = champCouleurRayon(v[f.cle]);
+        bloc = el('fieldset', { class: 'champ' }, [el('legend', { texte: f.libelle }), c.element]);
+        lecteur = function (q) { q[f.cle] = c.lire(); };
+        break;
+      }
+      case 'case': {
+        var idc = idChamp(), cb = el('input', { type: 'checkbox', id: idc, checked: !!v[f.cle] });
+        bloc = el('div', { class: 'champ case' }, [el('label', { for: idc, class: 'interrupteur' }, [cb, el('span', { texte: f.libelle })])]);
+        cb.addEventListener('change', function () { etat.majDependances(); });
+        bloc._lire = function () { return cb.checked; };
+        bloc._cle = f.cle;
+        lecteur = function (q) { q[f.cle] = cb.checked; };
+        break;
+      }
+      case 'choix': {
+        var nomg = 'g' + (++compteur), gr = el('div', { class: 'radios', role: 'radiogroup' }), defaut = v[f.cle];
+        f.options.forEach(function (o) {
+          gr.appendChild(el('label', { class: 'radio' }, [el('input', { type: 'radio', name: nomg, value: JSON.stringify(o.v), checked: v[f.cle] === o.v }), o.t]));
+        });
+        bloc = el('fieldset', { class: 'champ' }, [el('legend', { texte: f.libelle }), gr]);
+        gr.addEventListener('change', function () { etat.majDependances(); });
+        bloc._cle = f.cle;
+        bloc._lire = function () { var r = gr.querySelector('input:checked'); return r ? JSON.parse(r.value) : defaut; };
+        lecteur = function (q) { q[f.cle] = bloc._lire(); };
+        break;
+      }
+      case 'texte': {
+        var idt = idChamp(), t = el('input', { type: 'text', id: idt, value: v[f.cle] || '', maxlength: 255 });
+        bloc = el('div', { class: 'champ' }, [el('label', { for: idt, texte: f.libelle }), t]);
+        lecteur = function (q) { q[f.cle] = t.value; };
+        break;
+      }
+      case 'liste': case 'chemins': {
+        var idl = idChamp(), l = el('input', { type: 'text', id: idl, value: v[f.cle] || '', autocomplete: 'off', spellcheck: 'false' });
+        bloc = el('div', { class: 'champ' }, [el('label', { for: idl, texte: f.libelle }), l]);
+        if (f.k === 'chemins') dep = 'tracersurfacesonde';
+        var initL = l.value;
+        lecteur = function (q) {
+          var r = f.k === 'liste' ? normaliserListe(l.value) : normaliserChemins(l.value, l.value === initL ? Infinity : 1000 * etat.diag);
+          if (!r.ok) return r.erreur;
+          q[f.cle] = r.v;
+        };
+        break;
+      }
+      case 'indices': {
+        var sel = el('select', { 'aria-label': 'Matériau' }, [el('option', { value: '-1', texte: 'Saisie libre' })].concat(
+          OGW.MATERIAUX.map(function (m, i) { return el('option', { value: String(i), texte: m.nom }); })));
+        var ir = champTexteNombre(N(v.indicerouge, 10), '', null, v.indicerouge), iv = champTexteNombre(N(v.indicevert, 10), '', null, v.indicevert), ib = champTexteNombre(N(v.indicebleu, 10), '', null, v.indicebleu);
+        sel.addEventListener('change', function () {
+          var m = OGW.MATERIAUX[+sel.value]; if (!m) return;
+          ir.input.value = N(m.rouge, 8); iv.input.value = N(m.vert, 8); ib.input.value = N(m.bleu, 8);
+        });
+        [ir, iv, ib].forEach(function (z) { z.input.addEventListener('input', function () { sel.value = '-1'; }); });
+        bloc = el('div', { class: 'champ indices' }, [
+          el('label', { class: 'etiquette', texte: 'Matériau' }), sel,
+          el('div', { class: 'trois' }, [
+            el('label', { for: ir.id }, [pastille(255), 'Rouge']), ir.ligne,
+            el('label', { for: iv.id }, [pastille(32768), 'Vert']), iv.ligne,
+            el('label', { for: ib.id }, [pastille(0xFF0000), 'Bleu']), ib.ligne]),
+          el('p', { class: 'note', texte: 'Matériaux : indices à 656,3 nm (rouge), 587,6 nm (vert) et 486,1 nm (bleu). Trois indices différents : milieu dispersif.' })]);
+        lecteur = function (q) {
+          var a = valeurDe(ir.input), b = valeurDe(iv.input), d = valeurDe(ib.input);
+          function mauvais(x, inp) { return !(x > 0) || (inp.value !== inp._init && x > INDICE_MAX); }
+          if (mauvais(a, ir.input)) return 'Valeur inacceptable pour l’indice rouge (nombre positif, au plus ' + INDICE_MAX + ').';
+          if (mauvais(b, iv.input)) return 'Valeur inacceptable pour l’indice vert (nombre positif, au plus ' + INDICE_MAX + ').';
+          if (mauvais(d, ib.input)) return 'Valeur inacceptable pour l’indice bleu (nombre positif, au plus ' + INDICE_MAX + ').';
+          q.indicerouge = a; q.indicevert = b; q.indicebleu = d;
+        };
+        break;
+      }
+      case 'sommets': {
+        var r = construireSommets(v, f.arcs, unite, etat);
+        bloc = r.element; lecteur = r.lire;
+        break;
+      }
+      case 'police': {
+        var r2 = construirePolice(v);
+        bloc = r2.element; lecteur = r2.lire;
+        break;
+      }
+      case 'nature':
+        bloc = el('p', { class: 'note', texte: 'Nature actuelle : ' + OGW.natureConique(Math.abs(v.excentricite)).replace('Miroir ', 'miroir ') + '.' });
+        break;
+      case 'mesure': {
+        var gm = etat.g0, txt = '';
+        if (type === 'metre') txt = 'Distance : ' + N(Math.sqrt(Math.pow(gm.a2x - gm.a1x, 2) + Math.pow(gm.a2y - gm.a1y, 2)), 6) + ' ' + unite;
+        else {
+          var t1 = Math.atan2(gm.a1y - gm.cy, gm.a1x - gm.cx), t2 = Math.atan2(gm.a2y - gm.cy, gm.a2x - gm.cx), dd = t2 - t1;
+          while (dd < 0) dd += 2 * PI;
+          txt = 'Angle : ' + N(OGW.deg(dd), 6) + '°';
+        }
+        bloc = el('p', { class: 'mesure', texte: txt });
+        break;
+      }
+    }
+    if (!bloc) return null;
+    if (lecteur) {
+      // l'élève a-t-il touché ce champ ? (saisie, choix, bouton + / −, nuancier, sommets…)
+      bloc.addEventListener('input', function () { bloc._touche = true; });
+      bloc.addEventListener('change', function () { bloc._touche = true; });
+      bloc.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button')) bloc._touche = true; });
+    }
+    return { bloc: bloc, lecteur: lecteur, dep: dep };
+  }
+
+  /*
+   * Bornes de saisie (écart volontaire : OptGeo n'en met pas, mais un rayon de courbure de 1e308
+   * donne une géométrie qui déborde des nombres et un dessin impossible). Cohérentes avec
+   * l'espace de travail : une longueur est comprise entre taillemini (1/10 de 2 pixels, comme
+   * OptGeo pour les points trop proches) et 1 000 fois la diagonale de l'espace de travail.
+   */
+  var INDICE_MAX = 100, ANGLE_MAX = 3600, NOMBRE_MAX = 1e6;
+  function bornerSaisie(x, f, estAngle, etat) {
+    var a = Math.abs(x);
+    if (estAngle) return OGW.deg(a) > ANGLE_MAX ? 'Angle trop grand (au plus ' + N(ANGLE_MAX) + '° en valeur absolue).' : null;
+    if (f.unite) {
+      var lmax = 1000 * etat.diag;
+      if (a > lmax) return 'Valeur trop grande : au plus ' + N(lmax, 3) + ' ' + etat.unite + ' (1 000 fois la diagonale de l’espace de travail).';
+      if ((f.positif || f.nonNul) && a < etat.taillemini) return 'Valeur trop petite : au moins ' + N(etat.taillemini, 3) + ' ' + etat.unite + '.';
+      return null;
+    }
+    if (f.max === undefined && a > NOMBRE_MAX) return 'Valeur trop grande (au plus ' + N(NOMBRE_MAX) + ').';
+    return null;
   }
 
   function feminin(t) { return ['lmc', 'lmd', 'lec', 'lsr', 'sourceponctuelle', 'ondeplane', 'sphere', 'metre', 'angle'].indexOf(t) >= 0; }
@@ -539,7 +618,7 @@
   }
 
   /** Tableau des sommets (polyèdre, polycercle) : un sommet par ligne, ajout et retrait. */
-  function construireSommets(v, arcs, unite) {
+  function construireSommets(v, arcs, unite, etat) {
     var lignes = [];
     var conteneur = el('fieldset', { class: 'champ sommets' }, [el('legend', { texte: 'Sommets' })]);
     var table = el('div', { class: 'table-sommets' });
@@ -629,6 +708,7 @@
           var R = Math.abs(OGW.lireNombre(c.R.input.value));
           if (!isFinite(R)) return 'Valeur inacceptable pour Ri (côté ' + (i + 1) + ').';
           if (R < d / 2) return 'Ri (côté ' + (i + 1) + ') doit être au moins égal à la moitié de la corde (' + N(d / 2, 5) + ').';
+          if (etat && R > 1000 * etat.diag) return 'Ri (côté ' + (i + 1) + ') trop grand : au plus ' + N(1000 * etat.diag, 3) + ' (1 000 fois la diagonale de l’espace de travail).';
           var racine = Math.sqrt(Math.max(0, R * R - d * d / 4)), h = c.aigu() ? R - racine : R + racine;
           var nn = { x: -(B.y - A.y) / d, y: (B.x - A.x) / d }, sg = c.gauche() ? 1 : -1;
           rect.push(false); mess.push({ x: I.x + sg * h * nn.x, y: I.y + sg * h * nn.y });

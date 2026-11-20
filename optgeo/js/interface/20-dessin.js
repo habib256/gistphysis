@@ -20,8 +20,45 @@
    * Fond (hors espace, couleur de la simulation, image de fond) puis scène du moteur.
    * @param {object} opts {horsEspace, image (HTMLImageElement), numerosSegments, ignorerSegments}
    */
+  /*
+   * Dessin robuste : chaque dessinateur d'objet du moteur est enveloppé (sans toucher au
+   * moteur) ; un objet dont la géométrie contient un nombre non fini, ou dont le dessin lève
+   * une exception, est ignoré et noté, et le reste de la scène est dessiné normalement.
+   */
+  var enCours = null;      // {carte: Map géométrie → id, ids: [] objets non dessinés}
+  function envelopperDessinateurs() {
+    var D = OptGeo.dessinateurs;
+    if (!D || D.__optgeoWebEnveloppe) return;
+    Object.keys(D).forEach(function (t) {
+      var f = D[t];
+      if (typeof f !== 'function') return;
+      D[t] = function (d, g) {
+        if (!OGW.valeursFinies(g)) { noterNonDessine(g, null); return; }
+        try { return f.apply(this, arguments); } catch (e) {
+          noterNonDessine(g, e);
+          try { d.ctx.setLineDash([]); d.ctx.beginPath(); } catch (x) { /* contexte partiel */ }
+        }
+      };
+    });
+    Object.defineProperty(D, '__optgeoWebEnveloppe', { value: true });
+  }
+  function noterNonDessine(g, e) {
+    if (!enCours) return;
+    var id = enCours.carte.get(g);
+    if (id !== undefined && enCours.ids.indexOf(id) < 0) enCours.ids.push(id);
+    if (e && window.console) console.warn('Objet non dessiné :', e);
+  }
+  /** Renvoie la liste des identifiants des objets qui n'ont pas pu être dessinés. */
   function rendreScene(ctx, scene, vue, opts) {
     opts = opts || {};
+    envelopperDessinateurs();
+    var precedent = enCours, carte = new Map();
+    scene.objets.forEach(function (ob) { var g = scene.geometrie(ob.id); if (g) carte.set(g, ob.id); });
+    enCours = { carte: carte, ids: [] };
+    try { rendreFondEtScene(ctx, scene, vue, opts); } finally { var ids = enCours.ids; enCours = precedent; }
+    return ids;
+  }
+  function rendreFondEtScene(ctx, scene, vue, opts) {
     var o = scene.options;
     ctx.save();
     ctx.fillStyle = opts.horsEspace || '#d9dde3';
@@ -121,8 +158,9 @@
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     var vue = this.vue();
     try {
-      rendreScene(ctx, app.scene, vue, { image: app.imageFond, numerosSegments: app.numerosSegmentsVisibles() });
+      var nonDessines = rendreScene(ctx, app.scene, vue, { image: app.imageFond, numerosSegments: app.numerosSegmentsVisibles() });
       app.erreurDessin = null;
+      if (app.signalerNonDessines) app.signalerNonDessines(nonDessines);
     } catch (e) {
       app.erreurDessin = e;
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -247,12 +285,17 @@
     conteneur.appendChild(this.div);
     this.taille = 128; this.grossissement = 2.5;
   }
-  /** Montre la loupe au-dessus du point écran (px, py) de la zone de dessin. */
-  Loupe.prototype.montrer = function (source, dpr, px, py, texte, largeurZone) {
+  /**
+   * Montre la loupe. Elle grossit le voisinage du point écran (px, py) — le point visé, éventuellement
+   * projeté (foyer sur l'axe…) — et se place d'après le doigt (dx, dy) : au-dessus de lui, ou à côté
+   * près du haut, jamais dessous.
+   */
+  Loupe.prototype.montrer = function (source, dpr, px, py, texte, largeurZone, dx, dy) {
     var T = this.taille, c = this.canvas, d = Math.round(T * dpr);
     if (c.width !== d) { c.width = d; c.height = d; c.style.width = T + 'px'; c.style.height = T + 'px'; }
-    var x = px - T / 2, y = py - T - 70;
-    if (y < 4) { y = Math.max(4, py - T / 2); x = px + 60; if (x + T > largeurZone - 4) x = px - 60 - T; }
+    var ax = dx === undefined ? px : dx, ay = dy === undefined ? py : dy;
+    var x = Math.max(4, Math.min(ax - T / 2, largeurZone - T - 4)), y = ay - T - 70;
+    if (y < 4) { y = Math.max(4, ay - T / 2); x = ax + 60; if (x + T > largeurZone - 4) x = ax - 60 - T; }
     this.div.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
     this.div.hidden = false;
     var ctx = c.getContext('2d'), cote = T / this.grossissement;
@@ -403,6 +446,7 @@
   /** Texte SVG de toute la scène. */
   OGW.svgExport = function (scene, image, titre, largeur) {
     var t = tailleExport(scene, largeur || 1000);
+    envelopperDessinateurs();
     var ctx = new ContexteSVG(t[0], t[1]);
     var vue = OptGeo.creerVue(scene.options, t[0], t[1], { marge: 10 });
     var o = scene.options, prefixe = '';

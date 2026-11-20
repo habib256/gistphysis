@@ -66,6 +66,32 @@
     if (s === '-0') s = '0';
     return s.replace('.', ',');
   };
+  /** Vrai si tous les nombres de l'objet (et de ses tableaux, objets imbriqués) sont finis. */
+  OGW.valeursFinies = function (g, profondeur) {
+    profondeur = profondeur || 0;
+    if (g === null || g === undefined || profondeur > 4) return true;
+    if (typeof g === 'number') return isFinite(g);
+    if (typeof g !== 'object') return true;
+    for (var k in g) {
+      if (!Object.prototype.hasOwnProperty.call(g, k)) continue;
+      if (!OGW.valeursFinies(g[k], profondeur + 1)) return false;
+    }
+    return true;
+  };
+  /**
+   * Le texte est-il un fichier .opt d'OptGeo ? Tous les fichiers écrits par OptGeo (depuis
+   * la version 1) commencent par « NE PAS MODIFIER CE FICHIER » puis « VERSION »
+   * (ray1.pas:7565, enregistrer). Un fichier vide, du JSON, du texte ou une image renommée
+   * est refusé avant de toucher à la simulation en cours.
+   */
+  OGW.texteOptValide = function (texte) {
+    var l = String(texte === undefined || texte === null ? '' : texte).replace(/^﻿/, '').split(/\r\n|\r|\n/, 40)
+      .map(function (s) { return s.trim(); }).filter(Boolean);
+    if (l[0] === 'NE PAS MODIFIER CE FICHIER') return l[1] === 'VERSION';
+    return l[0] === 'VERSION';
+  };
+  OGW.MESSAGE_PAS_OPT = 'Ce fichier n’est pas une simulation OptGeo : un fichier .opt commence par « NE PAS MODIFIER CE FICHIER » puis « VERSION ». ' +
+    'Rien n’a été ouvert ; la simulation en cours est conservée.';
   /** Nombre à d décimales fixes, virgule. */
   OGW.fixe = function (x, d) { return isFinite(x) ? x.toFixed(d).replace('.', ',') : ''; };
   OGW.deg = function (rad) { return rad * 180 / Math.PI; };
@@ -115,7 +141,7 @@
     mscore: 'Miroir concave', mscere: 'Miroir convexe', miroirconique: 'Miroir conique', lmc: 'Lentille mince convergente',
     lmd: 'Lentille mince divergente', lec: 'Lentille épaisse', lsr: 'Lame semi-réfléchissante', ecran: 'Écran',
     diaphragme: 'Diaphragme', rayon: 'Rayon', sourceponctuelle: 'Source ponctuelle', ondeplane: 'Onde plane',
-    polyhedre: 'Polyèdre réfractant', polycercle: 'Polycercle réfractant', sphere: 'Sphère réfractante', prisme: 'Prisme',
+    polyhedre: 'Polygone réfractant', polycercle: 'Polycercle réfractant', sphere: 'Sphère réfractante', prisme: 'Prisme',
     oeil: 'Œil', fleche: 'Trait', texte: 'Texte', metre: 'Mesure de distance', angle: 'Mesure d’angle', jolipoint: 'Point'
   };
   /** « Miroir plan n° 2 » : numéro dans la liste du type (ordre du fichier). */

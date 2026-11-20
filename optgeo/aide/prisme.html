@@ -10,37 +10,37 @@
 <body>
 <nav class="haut"><a href="index.html">Sommaire de l'aide</a></nav>
 <main>
-<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03 (version pour ordinateur, à la souris). Dans la version web, on touche ou on clique au lieu de « cliquer deux fois » ; voir <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
+<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03, écrite pour un ordinateur et une souris, adaptée à la version web : les gestes (au doigt ou à la souris), les boutons et les menus décrits sont ceux de cette version. Mode d'emploi détaillé : <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
 <h1>Prisme réfractant</h1>
 <p class="illustration"><img src="images/prismegrand.png" alt="Prisme réfractant" width="100" height="100"></p>
 <h2>Définition</h2>
 <p>Il est défini par son centre d'inertie G, l'angle au sommet, la hauteur, la direction de cette hauteur principale, et par les indices de réfraction.</p>
 <p>Le prisme peut être ajouté :</p>
 <ul>
-<li>en cliquant sur le bouton de la barre d'outils ayant la forme ci-dessus, puis en faisant un clic simple pour saisir le centre d'inertie, puis un clic simple pour saisir le sommet principal (ne pas maintenir le bouton de la souris appuyé entre deux points), puis un dernier clic qui fixe l'angle au sommet (en fixant un des 2 derniers sommets).</li>
+<li>en touchant (ou en cliquant) le bouton « Prisme » de la palette des objets (famille « Dioptres »), puis en plaçant le centre d'inertie, puis le sommet principal, puis un dernier point qui fixe l'angle au sommet (en fixant un des 2 derniers sommets) (voir <a href="web.html#placer">Placer un objet</a>).</li>
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>menu « Ajouter » puis « Système optique réel » puis « Prisme ».</li>
+<li>menu « Ajouter (par coordonnées) », puis « Prisme » (sous « Système optique réel ») : le panneau des propriétés s'ouvre, déjà rempli, et le bouton « Valider » ajoute l'élément.</li>
 </ul>
 <h2>Déplacement</h2>
-<p>On peut déplacer :</p>
+<p>Quand ses poignées sont affichées (prisme sélectionné, ou mode « Déplacer »), on peut faire glisser :</p>
 <ul>
-<li>le sommet principal : le prisme tourne alors autour de son centre d'inertie G, sa forme est inchangée</li>
-<li>le centre d'inertie : translation du prisme</li>
-<li>les 2 autres sommets : avec l'un on modifie uniquement l'angle au sommet, avec l'autre on modifie uniquement la hauteur.</li>
+<li>le sommet principal (disque rouge) : le prisme tourne alors autour de son centre d'inertie G, sa forme est inchangée</li>
+<li>le centre d'inertie (croix verte) : translation du prisme</li>
+<li>les 2 autres sommets (cercles bleus) : avec l'un on modifie uniquement l'angle au sommet, avec l'autre on modifie uniquement la hauteur.</li>
 </ul>
 <h2>Options</h2>
 <p>On peut imposer</p>
 <ul>
 <li>la couleur à l'écran du prisme</li>
-<li>les indices de réfraction dans le bleu, le vert et le rouge ; par défaut, les valeurs 1,8, 1,6 et 1,4 sont attribuées. On peut aussi choisir directement un matériau dans une liste qui comprend quelques verres, l'eau, et des plastiques optiques. Plus précisément, les indices sont donnés pour les longueurs d'onde de référence suivantes : 486,1 nm, 587,6 nm et 656,3 nm. Pour modifier la liste des éléments proposés, <a href="materiaux.html">cliquer ici.</a></li>
+<li>les indices de réfraction dans le bleu, le vert et le rouge ; par défaut, les valeurs 1,8, 1,6 et 1,4 sont attribuées. On peut aussi choisir directement un matériau dans une liste qui comprend quelques verres, l'eau, et des plastiques optiques. Plus précisément, les indices sont donnés pour les longueurs d'onde de référence suivantes : 486,1 nm, 587,6 nm et 656,3 nm. Voir la <a href="materiaux.html">liste des matériaux</a> et de leurs indices.</li>
 <li>les conditions d'existence d'un rayon réfléchi, dans le sens entrant et dans le sens sortant ; le rayon réfléchi peut exister « toujours », « jamais », « seulement si le réfracté existe », « seulement si le réfracté n'existe pas ». Lorsqu'il y a à la fois un rayon transmis et un rayon réfléchi, le rayon réfléchi est un « rayon enfant », terminologie utilisée dans la définition du <a href="rayon.html">rayon unique</a>, de la <a href="sponct.html">source ponctuelle</a>, et de <a href="op.html">l'onde plane</a>.</li>
 </ul>
 <p>Ces propriétés peuvent être rendues accessibles :</p>
 <ul>
-<li>à la construction du prisme si on passe par le menu « Ajouter »</li>
-<li>à tout instant en cliquant sur le bouton « Propriétés » de la barre d'outils, puis en cliquant sur un des cercles bleus qui apparaissent sur l'élément dont on veut obtenir les propriétés ; ne pas oublier à la fin de cliquer sur le bouton « Fin prop. » de la barre d'outils pour quitter le mode propriétés.</li>
+<li>à la construction du prisme si on passe par le menu « Ajouter (par coordonnées) »</li>
+<li>à tout instant en touchant (ou en cliquant) l'élément pour le sélectionner, puis le bouton « Propriétés » de la barre qui apparaît en bas du dessin ; le panneau des propriétés s'ouvre, son bouton « Valider » applique les modifications et « Annuler » les abandonne. On peut aussi toucher le bouton « Propriétés » de la barre du haut, puis l'élément : ce mode reste actif jusqu'au bouton « Terminer » du bandeau de consigne (ou la touche Échap).</li>
 </ul>
 <h2>Divers</h2>
 <p>On peut demander que la normale soit tracée à chaque point d'intersection d'un rayon lumineux avec ce prisme :</p>
@@ -49,7 +49,7 @@
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>dans la barre d'outils, boîte à cocher « Normales »</li>
+<li>bouton « Affichage » de la barre du haut, interrupteur « Normales »</li>
 </ul>
 <p>On peut aussi demander que les angles d'incidence et de réfraction soient affichés (en °) :</p>
 <ul>
@@ -57,12 +57,12 @@
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>dans la barre d'outils, boîte à cocher « Angles d'incidence et de réfraction »</li>
+<li>bouton « Affichage » de la barre du haut, interrupteur « Angles d'incidence et de réfraction »</li>
 </ul>
 <p>L'angle de réflexion n'est pas affiché, afin de ne pas surcharger les représentations.</p>
 <p>Le nombre de décimales sur les angles est fixé dans la boîte de dialogue des options des normales : menu « Options » puis « Options des normales »</p>
 <p class="retour"><a href="optgeo.html">Retour à la page d'accueil</a></p>
 </main>
-<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Portage web des pages : 2026.</p></footer>
+<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Adapté pour la version web (2026) : instructions d'utilisation réécrites pour les gestes, les boutons et les menus de cette version ; explications d'optique inchangées.</p></footer>
 </body>
 </html>

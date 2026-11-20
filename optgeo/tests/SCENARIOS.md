@@ -105,9 +105,9 @@ Par le menu « Ajouter » : les 26 types créés par coordonnées (panneau « Aj
 |---|---|---|
 | E01 | Déplacer | Auto partiel : mode Déplacer, translation d’un groupe par « Gr » au doigt ; Écart : glisser au lieu de « clic, déplacement, clic » |
 | E02 | Rotation (disque rouge) | Auto (longueur conservée) |
-| E03 | Blocage vertical / horizontal en déplacement | Non fait (boutons « Bloquer » et touches Alt / Ctrl présents) |
-| E04 | Alignement à la création | Auto (bouton « Aligner horizontalement ») |
-| E05 | Points confondus | Non fait (toucher de nouveau au même endroit passe à l’objet suivant ; liste nommée dans les modes) |
+| E03 | Blocage vertical / horizontal en déplacement | Auto, au doigt (Chrome et Firefox) : en mode Déplacer, « Bloquer verticalement » touché avant le glisser → déplacement vertical seulement ; pendant un glisser en mode Sélection, un second doigt sur « Bloquer horizontalement » → mouvement horizontal seulement (Chrome ; Firefox avec un second pointeur souris). Le blocage ne vaut que pour ce glisser. Écart : boutons au lieu de Alt / Ctrl maintenus (touches toujours actives au clavier) |
+| E04 | Alignement à la création | Auto, au doigt (Chrome et Firefox) : « Aligner horizontalement » touché, second point aligné ; l’alignement est remis à faux à la fin de la construction |
+| E05 | Points confondus | Auto (Chrome et Firefox, au doigt) : écran et miroir superposés ; le premier toucher choisit l’un et affiche « 1 sur 2 éléments ici » sans décaler le dessin, le second toucher au même endroit choisit l’autre. Écart : toucher de nouveau au lieu d’une liste (liste nommée dans les modes Propriétés, Dupliquer, Supprimer, Grouper) |
 | E06 | Mode Propriétés | Auto partiel : panneau ouvert par la barre contextuelle et par le menu ; mode « toucher pour les propriétés » non essayé |
 | E07 | Mode Supprimer | Auto partiel : suppression et Annuler vérifiés ; mode non essayé au doigt ; Écart : suppression immédiate et annulable |
 | E08 | Supprimer tout | Auto (confirmation, Annuler) |
@@ -116,7 +116,7 @@ Par le menu « Ajouter » : les 26 types créés par coordonnées (panneau « Aj
 | E11 | Grouper tout, translater | Auto |
 | E12 | Supprimer un groupe | Non fait (commande « Dissocier » : les éléments restent) |
 | E13 | Annuler une construction (Échap) | Auto ; aussi Échap pendant un glisser : l’objet revient (Écart voulu) |
-| E14 | Annuler / Refaire | Auto partiel (propriétés, suppression, Ctrl+Z, Ctrl+Y, boutons) ; 50 niveaux non comptés |
+| E14 | Annuler / Refaire | Auto partiel (propriétés, suppression, Ctrl+Z, Ctrl+Y, boutons) ; 50 niveaux comptés (60 modifications → 50 retours en arrière) ; les options d’affichage (normales, grille…) ne sont pas annulées (SPEC §7) |
 | E15 | Coordonnées des segments | Auto partiel : panneau ouvert ; surlignage non vérifié |
 | E16 | Longueurs des segments | Auto partiel : commande essayée ; affichage non vérifié |
 
@@ -125,11 +125,11 @@ Par le menu « Ajouter » : les 26 types créés par coordonnées (panneau « Aj
 | N° | Scénario | État |
 |---|---|---|
 | O01 | Grille | Auto partiel : boîte ouverte ; pas changé non vérifié |
-| O02 | Attraction | Auto (extrémités sur les nœuds) ; foyer non attiré : non vérifié |
+| O02 | Attraction | Auto : extrémités du miroir et bords de la lentille sur les nœuds ; foyer de la lentille non attiré (f = 113 avec une grille de 50, visé au doigt) ; aucun point projeté (foyer, centre de courbure, base du prisme, bord du diaphragme, centres de la lentille épaisse, fin du miroir conique, sommet d’arc) n’est attiré |
 | O03 | Normales | Auto partiel : boîte ouverte |
 | O04 | Angles | Auto partiel (A28) |
 | O05 | Zoom | Auto (deux doigts ×3,25 ; molette ; Tout voir) ; Écart : zoom continu centré sous les doigts |
-| O06 | Fond (couleur, image) | Auto partiel : image chargée, dessinée, gardée dans la sauvegarde locale ; couleur non essayée |
+| O06 | Fond (couleur, image) | Auto partiel : image chargée, dessinée ; un message dit qu’elle n’est gardée ni dans le .opt ni après rechargement (elle n’est plus écrite dans le stockage local, partagé par tout le site) ; couleur non essayée |
 | O07 | Milieu ambiant | Auto partiel : boîte ouverte |
 | O08 | Empennage | Auto partiel : boîte ouverte |
 | O09 | Surfaces d’onde | Non fait (moteur ; champs présents) |
@@ -148,6 +148,22 @@ Par le menu « Ajouter » : les 26 types créés par coordonnées (panneau « Aj
 | F05 | Exports, impression, copie | Auto : PNG (2000 px, signature PNG), SVG bien formé, impression préparée (SVG) ; copie non essayée ; Écart : ni JPG ni PostScript |
 | F06 | Nouvelle simulation | Auto (boîte de démarrage) |
 | F07 | Titre | Auto partiel : nom du fichier dans la barre (captures) |
+
+## Défauts de la relecture indépendante du 20/11/2026 (FAIL) : contrôles ajoutés
+
+Chacun a au moins un contrôle dans `verifier-interface.mjs` (Chrome ; Firefox pour 1, 3, 4, 5 et 12) :
+1. « Aligner » / « Bloquer » remis à faux en fin de construction ou de glisser ; boutons du bandeau stables pendant un glisser (même élément), second doigt reçu ;
+2. panneau des propriétés rafraîchi quand l’objet change (glisser, Annuler), saisie en cours gardée, fermé si l’objet disparaît ;
+3. glisser de 90 px → 90 px à 1 px près, lent ou rapide (un seul mouvement puis lever) ;
+4. bandeau posé par-dessus le dessin : aucun décalage (bandeau « 1 sur 2 », début et fin de construction) ;
+5. loupe au-dessus du doigt, centrée sur le point projeté (foyer, base du prisme, centre de courbure) ;
+6. fichier vide, JSON, texte, PNG renommé refusés (ouvrir et superposer), scène, historique et sauvegarde gardés ;
+7. valeurs bornées dans le panneau (longueurs ≤ 1 000 × la diagonale de l’espace de travail et ≥ taillemini ; angles ≤ 3 600° ; indices ≤ 100 ; autres nombres ≤ 10⁶), garde-fou sur la géométrie, objet impossible à dessiner ignoré et signalé, exports possibles ;
+9. voir O02 ; 10. cibles de 44 px (radios, nuancier, « Insérer après » / « Retirer », bouton de la bulle) ;
+11. bandeau compact (une ligne, « Plus ») sur petit écran, boutons de vue libres, aux six tailles ;
+12. `touch-action: pan-x pan-y` sur la page, pincement sur la palette, la barre ou le bandeau sans zoom de la page ;
+13. sauvegarde automatique sans image, ancienne image nettoyée, message si le stockage est plein ;
+14. 50 niveaux d’annulation ; 15. sphère de rayon 0 refusée ; 16. options d’affichage non annulées ; 17. bulle de message hors du titre et des boutons du panneau, aux six tailles.
 
 ## Hors scénarios, vérifié aussi
 

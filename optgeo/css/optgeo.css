@@ -18,6 +18,9 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--fond); color: var(--texte); }
+/* Pas de zoom de la page au pincement ni au double toucher, où que commence le geste (palette, panneau,
+   bandeau…) : seul le dessin se zoome, à deux doigts. Le défilement des panneaux et des listes reste permis. */
+html, body, #app { touch-action: pan-x pan-y; }
 body { font: 15px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-text-size-adjust: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -112,15 +115,34 @@ button { cursor: pointer; }
 }
 
 /* Bandeau de consigne */
+/* Le bandeau est posé PAR-DESSUS le dessin (il ne le décale pas). Son texte laisse passer les touchers
+   vers le dessin ; seuls ses boutons les reçoivent. */
 #bandeau {
   position: absolute; z-index: 20; left: 0; right: 0; top: 0; max-height: 45%; overflow-y: auto;
   display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 10px;
   background: rgba(255, 255, 255, 0.95); border-bottom: 1px solid var(--bord); box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  pointer-events: none;
 }
+#bandeau.deplie { pointer-events: auto; }
 #bandeau-texte { flex: 1 1 240px; margin: 0; font-size: 15.5px; font-weight: 500; white-space: pre-line; }
 #bandeau-boutons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#bandeau-boutons > * { pointer-events: auto; }
 #bandeau-boutons button, .rester {
   min-height: 44px; padding: 6px 12px; border: 1px solid var(--bord); border-radius: 8px; background: #fff; font-size: 14px;
+}
+#bandeau-boutons .deplier { display: none; }
+/* Petit écran : bandeau compact sur une ligne (consigne abrégée, boutons secondaires derrière « Plus »),
+   qui laisse libres les boutons de zoom à droite. */
+@media (max-width: 560px), (max-height: 420px) {
+  #bandeau { flex-wrap: nowrap; gap: 6px; padding: 4px 6px; right: 58px; }
+  #bandeau-texte { flex: 1 1 0; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #bandeau-boutons { flex: 0 0 auto; flex-wrap: nowrap; gap: 4px; }
+  #bandeau-boutons button, .rester { padding: 4px 8px; font-size: 13.5px; }
+  #bandeau-boutons .deplier { display: inline-block; }
+  #bandeau:not(.deplie) #bandeau-boutons .secondaire { display: none; }
+  #bandeau.deplie { flex-wrap: wrap; max-height: 60%; }
+  #bandeau.deplie #bandeau-texte { flex-basis: 100%; white-space: pre-line; overflow: visible; }
+  #bandeau.deplie #bandeau-boutons { flex-wrap: wrap; }
 }
 #bandeau-boutons button.principal { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 #bandeau-boutons button[aria-pressed="true"] { background: #1b1f24; color: #fff; }
@@ -134,7 +156,10 @@ button { cursor: pointer; }
   background: #1b1f24; color: #fff; box-shadow: var(--ombre); font-size: 14.5px;
 }
 .message.erreur { background: var(--danger); }
-.message button { min-height: 40px; padding: 4px 12px; border: 1px solid #fff; border-radius: 8px; background: transparent; color: #fff; font-weight: 600; }
+/* la bulle laisse passer les touchers vers le dessin (seul son bouton les reçoit) : elle ne bloque jamais un point visé */
+.message { pointer-events: none; }
+.message button { pointer-events: auto; }
+.message button { min-height: 44px; padding: 4px 12px; border: 1px solid #fff; border-radius: 8px; background: transparent; color: #fff; font-weight: 600; }
 
 /* Coordonnées (souris) */
 #coordonnees {
@@ -145,7 +170,7 @@ button { cursor: pointer; }
 @media (pointer: coarse) { #coordonnees { display: none; } }
 
 /* Boutons de vue */
-#vue-boutons { position: absolute; z-index: 15; right: 8px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; }
+#vue-boutons { position: absolute; z-index: 21; right: 8px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; }
 #vue-boutons button {
   width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
   border: 1px solid var(--bord); border-radius: 50%; background: rgba(255,255,255,0.95); box-shadow: 0 1px 4px rgba(0,0,0,0.15);
@@ -245,7 +270,7 @@ textarea { min-height: 200px; resize: vertical; }
 .pas { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid var(--bord); border-radius: 8px; background: #fff; }
 .radios { display: flex; flex-direction: column; }
 .radios.en-ligne { flex-direction: row; flex-wrap: wrap; gap: 0 12px; }
-.radio { display: flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; font-size: 14.5px; }
+.radio { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-size: 14.5px; }
 .radio input { width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
 .note { font-size: 13px; color: var(--doux); margin: 6px 0; }
 .note.avertissement { color: #8a5300; }
@@ -258,7 +283,7 @@ textarea { min-height: 200px; resize: vertical; }
 .trois label { display: flex; align-items: center; gap: 6px; font-size: 14px; }
 .cases { display: flex; flex-wrap: wrap; gap: 0 12px; }
 .boutons-ligne { display: flex; flex-wrap: wrap; gap: 6px; }
-.boutons-ligne button, button.petit { min-height: 40px; padding: 4px 10px; border: 1px solid var(--bord); border-radius: 8px; background: #fff; font-size: 13.5px; }
+.boutons-ligne button, button.petit { min-height: 44px; padding: 4px 10px; border: 1px solid var(--bord); border-radius: 8px; background: #fff; font-size: 13.5px; }
 
 /* Couleurs : pastilles dessinées et nom écrit (jamais d'émoji) */
 .pastille { display: inline-block; width: 18px; height: 18px; flex: none; border-radius: 50%; border: 1px solid #4a5260; vertical-align: middle; }
@@ -266,7 +291,7 @@ textarea { min-height: 200px; resize: vertical; }
 .champ-couleur { position: relative; }
 .nuance-courante { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px; border: 1px solid #aab3be; border-radius: 8px; background: #fff; }
 .nuancier { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 4px; margin-top: 6px; padding: 6px; border: 1px solid var(--bord); border-radius: 8px; background: #fafbfc; }
-.nuance { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 2px 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; font-size: 13px; text-align: left; }
+.nuance { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 2px 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; font-size: 13px; text-align: left; }
 .nuance:hover { border-color: var(--accent); }
 .nuance.autre input { width: 28px; height: 28px; padding: 0; border: 0; background: none; }
 
@@ -336,8 +361,16 @@ table.coordonnees tr.choisi td { background: #dff3df; }
   #panneau-pied button .icone, .dialogue .pied button .icone { display: none; }
 }
 @media (max-aspect-ratio: 1/1) { #panneau, #panneau.large { height: 70%; } }
-/* le message bref ne doit pas cacher les boutons du panneau */
+/* le message bref ne doit cacher ni les boutons ni le titre du panneau */
 body.panneau-ouvert .message { bottom: auto; top: 8px; }
+/* paysage : panneau à droite sur toute la hauteur ; le message va dans la partie libre, à gauche */
+@media (min-aspect-ratio: 1/1) {
+  body.panneau-ouvert:not(.panneau-large) .message { left: 8px; transform: none; max-width: calc(100% - min(410px, 58%) - 24px); }
+  body.panneau-ouvert.panneau-large .message { top: auto; bottom: 74px; }
+}
+@media (min-aspect-ratio: 1/1) and (max-height: 420px) {
+  body.panneau-ouvert:not(.panneau-large) .message { max-width: calc(100% - min(410px, 66%) - 24px); }
+}
 @media (max-width: 560px) {
   #barre-contexte { left: 4px; right: 4px; transform: none; max-width: none; flex-wrap: nowrap; padding: 2px; }
   #contexte-nom { display: none; }

@@ -42,10 +42,10 @@
     lmc: { type: 'lmc', titre: 'Ajouter une lentille mince convergente paraxiale', court: 'Convergente', mode: 'ajout d’une lentille mince convergente', consignes: ['Placez le point 1 (premier bord de la lentille).', 'Placez le point 2 (autre bord de la lentille).', 'Placez un foyer (sur l’axe optique tracé).'], erreur: 'Données aberrantes !' },
     lmd: { type: 'lmd', titre: 'Ajouter une lentille mince divergente paraxiale', court: 'Divergente', mode: 'ajout d’une lentille mince divergente', consignes: ['Placez le point 1 (premier bord de la lentille).', 'Placez le point 2 (autre bord de la lentille).', 'Placez un foyer (sur l’axe optique tracé).'], erreur: 'Données aberrantes !' },
     lec: { type: 'lec', titre: 'Ajouter une lentille épaisse', court: 'Lentille épaisse', mode: 'ajout d’une lentille épaisse', consignes: ['Placez le sommet de la 1re face.', 'Placez le sommet de la 2e face.', 'Placez le centre de courbure de la 1re face (sur l’axe).', 'Placez le centre de courbure de la 2e face (sur l’axe).'], erreur: 'Données aberrantes !' },
-    polyhedre: { type: 'polyhedre', titre: 'Ajouter un polygone réfractant', court: 'Polygone', mode: 'ajout d’un polyèdre réfractant', consignes: [], erreur: 'Points saisis aberrants !' },
+    polyhedre: { type: 'polyhedre', titre: 'Ajouter un polygone réfractant', court: 'Polygone', mode: 'ajout d’un polygone réfractant', consignes: [], erreur: 'Points saisis aberrants !' },
     prisme: { type: 'prisme', titre: 'Ajouter un prisme isocèle', court: 'Prisme', mode: 'ajout d’un prisme isocèle', consignes: ['Placez le centre d’inertie G du prisme.', 'Placez le point A (sommet du prisme).', 'Dernier point pour l’angle au sommet (sur la base tracée).'], erreur: 'Données aberrantes !' },
     sphere: { type: 'sphere', titre: 'Ajouter une sphère réfractante', court: 'Sphère', mode: 'ajout d’une sphère réfractante', consignes: ['Placez le centre de la sphère.', 'Placez un point de la surface.'], erreur: 'Rayon de la sphère trop petit ou trop grand !' },
-    polycercle: { type: 'polycercle', titre: 'Ajouter un polycercle réfractant', court: 'Polycercle', mode: 'ajout d’une polysphère réfractante', consignes: [], erreur: 'Points saisis aberrants !' },
+    polycercle: { type: 'polycercle', titre: 'Ajouter un polycercle réfractant', court: 'Polycercle', mode: 'ajout d’un polycercle réfractant', consignes: [], erreur: 'Points saisis aberrants !' },
     metre: { type: 'metre', titre: 'Mesurer la distance entre deux points', court: 'Distance', mode: 'mesure de distance', consignes: ['Placez l’origine du segment.', 'Placez l’extrémité du segment.'], erreur: 'Points trop proches ou hors de l’espace de travail !', sansGrille: true },
     angle: { type: 'angle', titre: 'Mesurer un angle', court: 'Angle', mode: 'mesure d’angle', consignes: ['Placez le sommet de l’angle (intersection des côtés).', 'Placez un point du 1er côté.', 'Placez un point du 2e côté.'], erreur: 'Points trop proches ou hors de l’espace de travail !', sansGrille: true },
     texte: { type: 'texte', titre: 'Ajouter un texte sur le dessin', court: 'Texte', mode: 'ajout d’un texte', consignes: ['Placez le coin supérieur gauche du texte.'], erreur: 'Valeurs non autorisées pour x ou y !' },
@@ -85,6 +85,22 @@
   Creation.prototype.attraction = function () { return !this.outil.sansGrille; };
   /** Le dernier point validé (pour l'alignement horizontal / vertical). */
   Creation.prototype.precedent = function () { return this.points.length ? this.points[this.points.length - 1] : null; };
+
+  /**
+   * L'étape en cours impose-t-elle une projection (foyer sur l'axe, centre de courbure,
+   * bord extérieur du diaphragme, base du prisme, centres de la lentille épaisse, fin du
+   * miroir conique, sommet d'arc) ? Ces points ne sont pas attirés par la grille (SPEC O02).
+   */
+  Creation.prototype.etapeProjetee = function () {
+    var k = this.points.length;
+    switch (this.type) {
+      case 'lmc': case 'lmd': case 'mscopa': case 'mscepa': case 'mscore': case 'mscere': case 'diaphragme': case 'prisme': return k === 2;
+      case 'lec': return k >= 2;
+      case 'miroirconique': return k === 3;
+      case 'polycercle': return !!(this.data.arcs && k >= this.data.n);
+    }
+    return false;
+  };
 
   /** Contraintes de l'étape en cours : renvoie le point corrigé (projeté). */
   Creation.prototype.contraindre = function (m) {
@@ -331,7 +347,7 @@
     var self = this, t = this.type;
     if (t === 'polyhedre' || t === 'polycercle') {
       var mini = t === 'polyhedre' ? 3 : 2;
-      OGW.demanderNombre({ titre: 'Nombre de sommets', texte: t === 'polyhedre' ? 'Sommets de ce polyèdre' : 'Sommets de cette polysphère',
+      OGW.demanderNombre({ titre: 'Nombre de sommets', texte: t === 'polyhedre' ? 'Sommets de ce polygone' : 'Sommets de ce polycercle',
         min: mini, max: 500, valeur: OGW.stockage.lire('nombreSommets' + t) || 4,
         ok: function (n) {
           OGW.stockage.ecrire('nombreSommets' + t, n);

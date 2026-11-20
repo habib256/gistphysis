@@ -10,7 +10,7 @@
 <body>
 <nav class="haut"><a href="index.html">Sommaire de l'aide</a></nav>
 <main>
-<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03 (version pour ordinateur, à la souris). Dans la version web, on touche ou on clique au lieu de « cliquer deux fois » ; voir <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
+<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03, écrite pour un ordinateur et une souris, adaptée à la version web : les gestes (au doigt ou à la souris), les boutons et les menus décrits sont ceux de cette version. Mode d'emploi détaillé : <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
 <h1 id="hautpage">OptGeo</h1>
 <p class="sous-titre">Logiciel de simulation d'optique géométrique à deux dimensions</p>
 <p>Ce logiciel à but éducatif est disponible sous licence GNU General Public License, dont une copie est fournie avec la distribution. Vous pouvez donc librement l'utiliser, en faire des copies, et le modifier (à condition de respecter la licence). Le code source est disponible sur le site de l'auteur (nécessite Internet).</p>
@@ -18,7 +18,7 @@
 <h2>I Fonctionnement du logiciel</h2>
 <ul class="liens">
 <li><a href="#presentation">Présentation</a></li>
-<li><a href="#souris">Remarque importante : utilisation de la souris</a></li>
+<li><a href="#souris">Remarque importante : placer les points (doigt ou souris)</a></li>
 </ul>
 <p>Comment...</p>
 <ul class="liens">
@@ -72,63 +72,78 @@
 </ul>
 <h2 id="presentation">Présentation</h2>
 <p>Après avoir choisi les dimensions de son espace de travail, on dépose sur celui-ci des miroirs (plans, sphériques, paraboliques, hyperboliques, elliptiques), des lentilles (minces ou épaisses), des volumes réfractants (sphères, prismes, lames, polyèdres), des éléments divers (écrans, diaphragmes, lames semi-réfléchissantes), ainsi que des sources (ponctuelles réelles, ponctuelles virtuelles, ondes planes, rayons uniques). OptGeo trace les rayons lumineux, en utilisant les lois de Descartes. On peut aussi, dans certains cas, tracer des surfaces d'onde.</p>
-<p>Le répertoire « exemples » contient un certain nombre de simulations toutes faites.</p>
-<h2 id="souris">Remarque importante : utilisation de la souris</h2>
-<p>Un élément optique est repéré par au moins 2 points. Lors de la saisie de l'élément à la souris, il ne faut pas maintenir le bouton de la souris enfoncé entre 2 points ; pour un miroir plan par exemple, on fait un clic simple à l'endroit où doit se situer le 1er bord du miroir, on relâche le bouton, on va à l'endroit où doit se situer le 2e bord, on clique et on relâche.</p>
-<p><strong>Remarque :</strong> pour placer 2 points consécutifs sur une même horizontale, faire un clic simple pour le premier point, puis enfoncer la touche « Ctrl » du clavier, la maintenir enfoncée, faire le clic simple pour le second point, puis relâcher la touche « Ctrl ». Pour les placer sur une même verticale, même procédure avec la touche « Alt ».</p>
+<p>Le menu « Fichier », « Ouvrir un exemple… », propose 56 simulations toutes faites.</p>
+<p>Dans la version web, le bouton « Menu » (en haut à gauche) regroupe les menus d'OptGeo : « Fichier », « Édition », « Ajouter (par coordonnées) », « Options » et « Aide ». La barre du haut porte aussi les boutons « Annuler », « Refaire », les modes « Déplacer », « Propriétés », « Dupliquer », « Supprimer », « Grouper » (réunis sous le bouton « Modes » sur un écran étroit) et le bouton « Affichage » (normales, angles, grille, zoom). Les éléments s'ajoutent depuis la palette des objets, à gauche (ou en bas sur un écran tenu en hauteur).</p>
+<h2 id="souris">Remarque importante : placer les points (doigt ou souris)</h2>
+<p>Un élément optique est repéré par au moins 2 points, que l'on place l'un après l'autre en suivant la consigne du bandeau affiché en haut du dessin. Pour un miroir plan par exemple :</p>
+<ul>
+<li>au doigt : on appuie à l'endroit où doit se situer le 1er bord du miroir, on fait glisser le doigt pour viser précisément (une loupe montre ce qui est caché sous le doigt, avec les coordonnées), puis on relâche : le point est placé au moment où le doigt se lève ; on fait de même pour le 2e bord ;</li>
+<li>à la souris : un clic à l'endroit du 1er bord, puis un clic à l'endroit du 2e bord ; entre les deux, l'aperçu du miroir suit la souris.</li>
+</ul>
+<p><strong>Remarque :</strong> pour placer 2 points consécutifs sur une même horizontale, toucher le bouton « Aligner horizontalement » du bandeau avant de placer le second point (à l'ordinateur, on peut aussi maintenir la touche « Ctrl » enfoncée pendant le clic du second point). Pour les placer sur une même verticale, même procédure avec le bouton « Aligner verticalement » (ou la touche « Alt »). Sur un petit écran, ces boutons sont derrière le bouton « Plus » du bandeau.</p>
 <h2 id="ajouter">Ajouter un élément ou une source</h2>
-<p>Pour chaque élément, il existe 2 méthodes d'ajout : à la souris, et au clavier. La saisie à la souris permet une saisie rapide, mais certaines propriétés de l'élément déposé ont des valeurs standard. La saisie au clavier est plus longue mais permet de régler tous les paramètres. On peut aussi utiliser les 2 méthodes : saisie rapide à la souris, puis <a href="#modifier">modification des propriétés au clavier</a>.</p>
-<p>Pour saisir à la souris : il suffit de cliquer sur l'icône de l'élément dans la barre d'outils, puis de saisir les différents points : voir <a href="#souris">remarque importante</a> sur l'utilisation de la souris.</p>
-<p>Pour saisir au clavier, il faut passer par le menu ajouter.</p>
-<p>Remarque : obtention de <strong>miroirs troués</strong> : il peut être utile dans certains cas de trouer les miroirs sphériques en leur centre (combinaisons optiques de certains télescopes par exemple) ; pour cela, commencer par ajouter un miroir normal ; puis <a href="#modifier">modifier</a> le miroir, et choisir dans la boîte des propriétés du miroir de le trouer et la taille du trou.</p>
+<p>Pour chaque élément, il existe 2 méthodes d'ajout : au doigt (ou à la souris), et par coordonnées. L'ajout au doigt est rapide, mais certaines propriétés de l'élément déposé ont des valeurs standard. L'ajout par coordonnées est plus long mais permet de régler tous les paramètres. On peut aussi utiliser les 2 méthodes : ajout rapide au doigt, puis <a href="#modifier">modification des propriétés</a>.</p>
+<p>Pour ajouter au doigt ou à la souris : il suffit de toucher une famille de la palette des objets (« Miroirs », « Écrans », « Sources », « Dioptres », « Divers »), puis le bouton de l'élément, puis de placer les différents points : voir la <a href="#souris">remarque importante</a> sur le placement des points. La case « Rester dans ce mode » du bandeau permet d'ajouter plusieurs éléments du même type à la suite.</p>
+<p>Pour ajouter par coordonnées, il faut passer par le menu « Ajouter (par coordonnées) » : le panneau des propriétés de l'élément s'ouvre, déjà rempli ; on règle les valeurs, puis on touche « Valider ».</p>
+<p>Remarque : obtention de <strong>miroirs troués</strong> : il peut être utile dans certains cas de trouer les miroirs sphériques en leur centre (combinaisons optiques de certains télescopes par exemple) ; pour cela, commencer par ajouter un miroir normal ; puis <a href="#modifier">modifier</a> le miroir, et choisir dans le panneau des propriétés du miroir de le trouer (case « Trouer ») et la taille du trou.</p>
 <h2 id="deplacer">Déplacer un élément ou une source</h2>
-<p>Cliquez sur le bouton « Déplacer » dans la barre d'outils, ou passer par le menu « Édition » puis « Déplacement d'un élément ». Il apparaît un certain nombre de cercles bleus, de croix vertes, et éventuellement de croix cyan sur la simulation, autour des points caractéristiques des éléments présents. Lorsqu'on passe le curseur de la souris au-dessus de ces points, le curseur change de forme, indiquant les opérations possibles. Il est ainsi possible de translater un élément (croix verte), de faire bouger un point sans faire bouger les autres (cercles bleus) (le curseur indique « rotation », bien que le terme soit impropre, le déplacement permettant aussi une dilatation ou rétraction de l'élément), de déplacer un centre de courbure ou un foyer (croix cyan).</p>
-<p>La méthode est la suivante : lorsque le curseur a la forme désirée, on clique et on relâche ; on déplace la souris jusqu'à destination, on clique et on relâche ; l'élément est redessiné « en direct » au fur et à mesure du déplacement.</p>
-<p><strong>Déplacement vertical :</strong> enfoncer la touche « Alt » et la maintenir enfoncée ; cliquer sur le point à déplacer ; l'amener à la position voulue, cliquer pour le poser, et relâcher enfin la touche « Alt ».</p>
-<p><strong>Déplacement horizontal :</strong> enfoncer la touche « Ctrl » et la maintenir enfoncée ; cliquer sur le point à déplacer ; l'amener à la position voulue, cliquer pour le poser, et relâcher enfin la touche « Ctrl ».</p>
-<p><strong>Important :</strong> une fois les modifications effectuées, il faut cliquer sur le bouton « Fin Dépl. » de la barre d'outils pour revenir en mode normal.</p>
-<p><strong>Conseil :</strong> si vous avez du mal à différencier 2 points trop proches, utilisez le zoom de la barre d'outils pour les séparer. Si vous n'y arrivez pas comme ça, passez plutôt par « Propriétés ».</p>
+<p>Le plus simple : toucher (ou cliquer) l'élément ; il est sélectionné et ses poignées apparaissent. On peut aussi toucher le bouton « Déplacer » de la barre du haut, ou passer par le menu « Édition » puis « Déplacer un élément » : les poignées de tous les éléments présents apparaissent alors en même temps. Les poignées sont placées sur les points caractéristiques des éléments :</p>
+<ul>
+<li>croix verte : translater l'élément ;</li>
+<li>cercle bleu : faire bouger un point sans faire bouger les autres (ce déplacement permet aussi une dilatation ou une rétraction de l'élément) ;</li>
+<li>disque rouge : faire tourner l'élément ;</li>
+<li>croix cyan : déplacer un centre de courbure ou un foyer (ou le bord du trou d'un diaphragme) ;</li>
+<li>croix jaune : déplacer le sommet d'un arc de cercle (polycercle).</li>
+</ul>
+<p>La méthode est la suivante : on appuie sur la poignée, on la fait glisser jusqu'à destination, et on relâche ; l'élément est redessiné « en direct » au fur et à mesure du déplacement. On peut aussi faire glisser l'élément lui-même pour le translater. Pendant le glissement, la touche Échap (ou un deuxième doigt posé sur le dessin) remet l'élément à sa place.</p>
+<p><strong>Déplacement vertical :</strong> toucher le bouton « Bloquer verticalement » du bandeau, en mode « Déplacer » avant de commencer le glissement, ou pendant le glissement (avec un autre doigt) ; à l'ordinateur, on peut aussi maintenir la touche « Alt » enfoncée pendant le glissement. Le blocage ne vaut que pour un glissement.</p>
+<p><strong>Déplacement horizontal :</strong> de même avec le bouton « Bloquer horizontalement » (ou la touche « Ctrl »).</p>
+<p><strong>Important :</strong> en mode « Déplacer », une fois les modifications effectuées, on revient au mode normal par le bouton « Terminer » du bandeau de consigne (ou la touche Échap, ou en touchant de nouveau le bouton « Déplacer »).</p>
+<p><strong>Conseil :</strong> si vous avez du mal à différencier 2 points trop proches, zoomez pour les séparer (deux doigts écartés sur le dessin, molette de la souris, boutons ronds à droite du dessin, ou zooms ×1 à ×100 du bouton « Affichage »). Si vous n'y arrivez pas comme ça, passez plutôt par « Propriétés ».</p>
 <h2 id="modifier">Modifier un élément ou une source</h2>
-<p>Cliquez sur le bouton « Propriétés » dans la barre d'outils, ou passer par le menu « Édition » puis « Propriétés d'un élément ». Il apparaît un certain nombre de cercles bleus sur la simulation, autour des points caractéristiques des éléments présents. Lorsqu'on passe le curseur de la souris au-dessus de ces points, le curseur change de forme, indiquant « Propriétés : clic ». Un clic simple lance alors l'ouverture de la fenêtre de propriétés de l'élément considéré. (c'est la même fenêtre que lors d'un ajout d'élément par le menu « Ajout »). On valide les modifications dans la fenêtre par le bouton « OK » ou on abandonne.</p>
-<p><strong>Important :</strong> une fois les modifications effectuées, il faut cliquer sur le bouton « Fin prop. » de la barre d'outils pour revenir en mode normal.</p>
+<p>Toucher (ou cliquer) l'élément pour le sélectionner, puis le bouton « Propriétés » de la barre qui apparaît en bas du dessin. On peut aussi toucher le bouton « Propriétés » de la barre du haut, ou passer par le menu « Édition » puis « Propriétés d'un élément » : un cercle bleu apparaît sur chacun des éléments présents, et il suffit de toucher l'élément voulu (si plusieurs éléments se trouvent à cet endroit, une liste permet de choisir).</p>
+<p>Le panneau des propriétés de l'élément s'ouvre alors (à droite du dessin, ou en bas sur un écran tenu en hauteur) ; c'est le même panneau que lors d'un ajout par le menu « Ajouter (par coordonnées) ». On valide les modifications par le bouton « Valider » du panneau, ou on abandonne par « Annuler ». Une valeur refusée est signalée sous le champ concerné.</p>
+<p><strong>Important :</strong> en mode « Propriétés », une fois les modifications effectuées, on revient au mode normal par le bouton « Terminer » du bandeau de consigne (ou la touche Échap).</p>
 <h2 id="supprimer">Supprimer un élément ou une source</h2>
-<p>Cliquez sur le bouton « Supprimer » dans la barre d'outils, ou passer par le menu « Édition » puis « Suppression d'un élément ». Il apparaît un certain nombre de cercles rouges sur la simulation, autour des points caractéristiques des éléments présents. Lorsqu'on passe le curseur de la souris au-dessus de ces points, le curseur change de forme, prenant la forme d'un marteau. Un clic simple permet, après demande de confirmation, de supprimer l'élément correspondant.</p>
-<p>Une fois la suppression effectuée, le logiciel quitte automatiquement le mode suppression. Si en fin de compte on ne veut rien supprimer, il faut cliquer sur le bouton « Fin suppr. » dans la barre d'outils.</p>
-<p>Remarque : si on veut repartir d'une simulation vierge, passer par le menu « Fichier », puis « Nouvelle simulation ».</p>
+<p>Toucher (ou cliquer) l'élément pour le sélectionner, puis le bouton « Supprimer » de la barre en bas du dessin (à l'ordinateur, touche Suppr). On peut aussi toucher le bouton « Supprimer » de la barre du haut, ou passer par le menu « Édition » puis « Supprimer un élément » : un cercle rouge apparaît sur chacun des éléments présents, et il suffit de toucher l'élément à supprimer.</p>
+<p>La suppression est immédiate, sans demande de confirmation, mais on peut la défaire par le bouton « Annuler » du message qui s'affiche alors, ou par le bouton « Annuler » de la barre du haut. Une fois la suppression effectuée, le logiciel quitte automatiquement le mode suppression. Si en fin de compte on ne veut rien supprimer, il faut toucher le bouton « Annuler » du bandeau de consigne.</p>
+<p>Remarque : pour supprimer tous les éléments, passer par le menu « Édition », puis « Supprimer tous les éléments » (une confirmation est demandée) ; pour repartir d'une simulation vierge, passer par le menu « Fichier », puis « Nouvelle simulation… ».</p>
 <h2 id="grouper">Grouper des éléments</h2>
 <p>On peut grouper des éléments afin de pouvoir les translater ensemble.</p>
 <ul>
-<li>Première méthode : cliquer sur le bouton « Gr. » de la barre d'outils ; sur chacun des éléments présents dans la simulation apparaît une croix violette ; il suffit de cliquer sur cette croix pour ajouter l'élément au groupe ; une boîte de dialogue confirme l'ajout de l'élément ; une fois tous les éléments souhaités ajoutés, cliquer sur le bouton « Fin ». Une boîte de dialogue confirme la création du groupe.</li>
-<li>Deuxième méthode : menu « Édition » puis « Grouper des éléments » puis « Tous les éléments » ou « Éléments à choisir ». Dans le second cas, la saisie des éléments à ajouter se fait comme dans la première méthode. Dans le premier cas, un groupe est créé qui contient tous les éléments présents.</li>
+<li>Première méthode : toucher le bouton « Grouper » de la barre du haut (ou, un élément étant sélectionné, le bouton « Grouper avec… » de la barre en bas du dessin) ; sur chacun des éléments présents dans la simulation apparaît une croix violette ; il suffit de toucher un élément pour l'ajouter au groupe (un message le confirme ; le toucher de nouveau le retire) ; une fois tous les éléments souhaités ajoutés, toucher le bouton « Terminer » du bandeau. Une boîte de dialogue confirme la création du groupe.</li>
+<li>Deuxième méthode : menu « Édition » puis « Grouper tous les éléments » ou « Grouper des éléments à choisir ». Dans le second cas, le choix des éléments se fait comme dans la première méthode. Dans le premier cas, après confirmation, un groupe est créé qui contient tous les éléments présents.</li>
 </ul>
-<p>Déplacement d'un groupe : cliquer sur le bouton « Déplacer » ; le groupe est représenté par une croix verte et des lettres « Gr » ; on peut alors le déplacer comme pour un élément classique. Ce point est l'isobarycentre des points caractéristiques des éléments constitutifs du groupe.</p>
-<p>Destruction d'un groupe : comme pour les autres éléments.</p>
+<p>Déplacement d'un groupe : le groupe est représenté par une croix verte et les lettres « Gr », visibles quand un de ses éléments est sélectionné (et pour tous les groupes en mode « Déplacer ») ; on le déplace en faisant glisser cette croix, comme pour un élément classique. Ce point est l'isobarycentre des points caractéristiques des éléments constitutifs du groupe.</p>
+<p>Destruction d'un groupe : sélectionner un de ses éléments, puis toucher le bouton « Dissocier » de la barre en bas du dessin ; les éléments restent en place.</p>
 <h2 id="dupliquer">Dupliquer un élément ou une source</h2>
-<p>Cliquez sur le bouton « Dupliquer » dans la barre d'outils, ou passer par le menu « Édition » puis « Dupliquer un élément ». Il apparaît un certain nombre de cercles bleus sur la simulation, autour des points caractéristiques des éléments présents. Lorsqu'on passe le curseur de la souris au-dessus de ces points, le curseur change de forme. Un clic simple permet alors de dupliquer l'élément correspondant.</p>
-<p>Une fois la duplication effectuée, le logiciel quitte automatiquement le mode duplication. Si en fin de compte on ne veut rien dupliquer, il faut cliquer sur le bouton « Fin dupl. » dans la barre d'outils.</p>
+<p>Toucher (ou cliquer) l'élément pour le sélectionner, puis le bouton « Dupliquer » de la barre en bas du dessin. On peut aussi toucher le bouton « Dupliquer » de la barre du haut, ou passer par le menu « Édition » puis « Dupliquer un élément » : un cercle bleu apparaît sur chacun des éléments présents, et il suffit de toucher l'élément à dupliquer.</p>
+<p>La copie apparaît légèrement décalée et reste sélectionnée : on la fait glisser où l'on veut. Une fois la duplication effectuée, le logiciel quitte automatiquement le mode duplication. Si en fin de compte on ne veut rien dupliquer, il faut toucher le bouton « Annuler » du bandeau de consigne.</p>
 <h2 id="Annuler">Annuler une opération en cours</h2>
-<p>Pour annuler l'opération en cours, appuyer sur la touche « Esc » du clavier alors que le curseur est au-dessus de l'espace de travail.</p>
+<p>Pour annuler l'opération en cours, toucher le bouton « Annuler » du bandeau de consigne (placement des points d'un nouvel élément ; modes « Dupliquer », « Supprimer » et « Grouper »), ou appuyer sur la touche Échap du clavier, qui fait aussi sortir des modes « Déplacer » et « Propriétés ». Pendant le glissement d'une poignée, la touche Échap ou un deuxième doigt posé sur le dessin remet l'élément à sa place.</p>
 <h2 id="annulerretablir">Annuler/Rétablir les dernières opérations</h2>
-<p>Les dernières opérations (à savoir : ajout ou suppression d'un élément, modification de ses propriétés, déplacement, groupement, duplication) peuvent être annulées (jusqu'à 50 niveaux d'annulation) au moyen de la combinaison de touches Ctrl+Z (ou : menu « Édition », « Annuler »). Et si en fait on ne voulait pas annuler (seuls les sots ne changent jamais d'avis !), on rétablit au moyen de la combinaison de touches Ctrl+R (ou : menu « Édition », « Refaire »).</p>
+<p>Les dernières opérations (à savoir : ajout ou suppression d'un élément, modification de ses propriétés, déplacement, groupement, duplication) peuvent être annulées (jusqu'à 50 niveaux d'annulation) au moyen du bouton « Annuler » de la barre du haut, ou de la combinaison de touches Ctrl+Z (ou : menu « Édition », « Annuler »). Et si en fait on ne voulait pas annuler (seuls les sots ne changent jamais d'avis !), on rétablit au moyen du bouton « Refaire », ou de la combinaison de touches Ctrl+Y (ou Ctrl+Maj+Z ; ou : menu « Édition », « Refaire »).</p>
+<p><strong>Attention :</strong> dans OptGeo 3.03, on rétablissait par Ctrl+R ; dans un navigateur, Ctrl+R recharge la page (le travail est gardé sur l'appareil, mais l'historique des annulations est perdu).</p>
 <h2 id="options">Options</h2>
 <h3>Grille</h3>
-<p>On peut utiliser une grille pour le repérage des points et/ou leur saisie. Pour cela, passer par le menu « Options ».</p>
-<p>Si « Attraction de la grille » est coché, lors de la saisie d'un point, c'est le point le plus proche appartenant à la grille qui est validé. Ceci est vrai lors de l'ajout d'éléments et lors de leur translation.</p>
+<p>On peut utiliser une grille pour le repérage des points et/ou leur saisie. Pour cela, passer par le menu « Options » (« Afficher la grille », « Attraction de la grille », « Options de la grille… »).</p>
+<p>Si « Attraction de la grille » est coché, lors de la saisie d'un point, c'est le point le plus proche appartenant à la grille qui est validé. Ceci est vrai lors de l'ajout d'éléments (sauf pour les mesures de distance et d'angle) et lors de leur translation.</p>
 <p>Dans certaines situations, l'attraction n'est pas appliquée ; c'est le cas par exemple lors de la saisie du foyer d'une lentille : les bords de la lentille étant déjà choisis, l'axe focal est imposé, et le foyer ne peut pas être placé forcément sur un point de la grille.</p>
-<p>L'affichage de la grille peut être activé directement par la case à cocher « Afficher la grille » dans la barre d'outils.</p>
+<p>L'affichage de la grille et son attraction peuvent être activés directement par les interrupteurs « Grille » et « Attraction de la grille » du bouton « Affichage » de la barre du haut.</p>
 <h3>Normales</h3>
-<p>On peut demander à ce que les normales aux dioptres et aux miroirs soient affichées. Pour cela, passer par le menu « Options » puis « Afficher les normales », ou par la case à cocher « Afficher les normales » dans la barre d'outils. Un paramétrage plus fin du tracé peut être obtenu par le menu « Options », puis « Options des normales ».</p>
-<p>On peut aussi demander à ce que les angles d'incidence et de réfraction soient affichés, soit par le menu « Options » puis « Afficher les angles », soit par la case à cocher « Afficher les angles d'incidence et de réfraction » dans la barre d'outils.</p>
+<p>On peut demander à ce que les normales aux dioptres et aux miroirs soient affichées. Pour cela, passer par le menu « Options » puis « Afficher les normales », ou par l'interrupteur « Normales » du bouton « Affichage ». Un paramétrage plus fin du tracé peut être obtenu par le menu « Options », puis « Options des normales… ».</p>
+<p>On peut aussi demander à ce que les angles d'incidence et de réfraction soient affichés, soit par le menu « Options » puis « Afficher les angles », soit par l'interrupteur « Angles d'incidence et de réfraction » du bouton « Affichage ».</p>
 <p>Remarques : 1) l'option affichage des angles impose l'option affichage des normales</p>
 <p>2) les valeurs des angles sont données en ° ; le nombre de décimales affichées peut être réglé en passant par le menu « Options » puis « Options des normales ».</p>
 <p>3) pour les éléments optiques « idéalisés » (lentilles minces, miroirs sphériques paraxiaux), les normales et angles ne sont pas tracés, puisque la représentation symbolique de ces éléments en gomme la forme réelle.</p>
-<h3>Association des fichiers .opt avec OptGeo</h3>
-<p>Si on choisit d'associer les fichiers de simulation .opt avec OptGeo, un double-clic sur un fichier .opt suffira pour l'ouvrir. L'installateur ne force pas ce choix, vous êtes libre d'utiliser ou pas cette possibilité.</p>
+<h3>Ouvrir un fichier .opt</h3>
+<p>L'association des fichiers de simulation .opt avec OptGeo n'existe pas dans la version web : on ouvre un fichier par le menu « Fichier », « Ouvrir un fichier de l'appareil… » (à l'ordinateur : Ctrl+O). Les fichiers enregistrés par la version web restent lisibles par OptGeo 3.03.</p>
 <h3>Couleur de fond</h3>
-<p>Permet de changer la couleur de fond de la simulation.</p>
+<p>Permet de changer la couleur de fond de la simulation : menu « Options », « Couleur de fond ou image de fond… » (la version web permet aussi de mettre en fond une image de l'appareil).</p>
 <h2 id="preferences">Préférences</h2>
-<p>Permet de choisir les attributs par défaut des éléments à la création (couleur, épaisseur, police...).</p>
+<p>Permet de choisir les attributs par défaut des éléments à la création : menu « Fichier », « Préférences… ». Dans la version web, on règle la couleur, la couleur de l'axe et l'épaisseur de chaque type d'élément (pas la police) ; ces réglages sont gardés sur l'appareil.</p>
+
 </main>
-<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Portage web des pages : 2026.</p></footer>
+<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Adapté pour la version web (2026) : instructions d'utilisation réécrites pour les gestes, les boutons et les menus de cette version ; explications d'optique inchangées.</p></footer>
 </body>
 </html>

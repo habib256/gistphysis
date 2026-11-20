@@ -10,7 +10,7 @@
 <body>
 <nav class="haut"><a href="index.html">Sommaire de l'aide</a></nav>
 <main>
-<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03 (version pour ordinateur, à la souris). Dans la version web, on touche ou on clique au lieu de « cliquer deux fois » ; voir <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
+<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03, écrite pour un ordinateur et une souris, adaptée à la version web : les gestes (au doigt ou à la souris), les boutons et les menus décrits sont ceux de cette version. Mode d'emploi détaillé : <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
 <h1>Miroir sphérique réel</h1>
 <p class="sous-titre">(troué ou non)</p>
 <p class="illustration"><img src="images/mscoregrand.gif" alt="Miroir sphérique réel concave" width="100" height="100"> ou <img src="images/msceregrand.gif" alt="Miroir sphérique réel convexe" width="100" height="100"> (concave ou convexe)</p>
@@ -18,11 +18,11 @@
 <p>Il est défini par les points 1 et 2 et le centre de courbure C (ou le rayon de courbure R). L'ordre des points 1 et 2 est important, car il définit quelle est la face réfléchissante, l'autre étant absorbante, comme sur l'image ci-dessus.</p>
 <p>Le miroir peut être ajouté :</p>
 <ul>
-<li>en cliquant sur le bouton de la barre d'outils ayant la forme ci-dessus, puis en faisant un clic simple pour saisir le premier point, puis en faisant un clic simple pour saisir le second, puis un dernier clic pour placer le point C (il est placé automatiquement sur la médiatrice des points 1 et 2) (ne pas maintenir le bouton de la souris enfoncé entre les deux points),</li>
+<li>en touchant (ou en cliquant) le bouton « Concave réel » ou « Convexe réel » de la palette des objets (famille « Miroirs »), puis en plaçant le premier point, puis le second, puis le point C (il est placé automatiquement sur la médiatrice des points 1 et 2) (voir <a href="web.html#placer">Placer un objet</a>).</li>
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>menu « Ajouter » puis « Système optique réel » puis « Miroir sphérique concave » ou « Miroir sphérique convexe ». On donne alors les coordonnées des points 1 et 2, la valeur de rayon de courbure, et le caractère obtus ou non du miroir (en effet, pour 1 et 2 donnés et le rayon de courbure donné, il existe deux miroirs sphériques ; celui appelé « obtus » correspond à un angle d'ouverture (angle entre CM1 et CM2) obtus).</li>
+<li>menu « Ajouter (par coordonnées) », puis « Miroir sphérique concave (réel) » ou « Miroir sphérique convexe (réel) » (sous « Système optique réel ») : le panneau des propriétés s'ouvre, déjà rempli, et le bouton « Valider » ajoute l'élément. On donne alors les coordonnées des points 1 et 2, la valeur du rayon de courbure, et le caractère aigu ou obtus de l'angle d'ouverture du miroir (en effet, pour 1 et 2 donnés et le rayon de courbure donné, il existe deux miroirs sphériques ; celui appelé « obtus » correspond à un angle d'ouverture (angle entre CM1 et CM2) obtus).</li>
 </ul>
 <h2>Options</h2>
 <p>On peut imposer</p>
@@ -35,8 +35,8 @@
 <p>On peut aussi choisir de <strong><em>trouer le miroir en son centre</em></strong> (pratique par exemple pour les télescopes de type Cassegrain).</p>
 <p>Ces propriétés peuvent être rendues accessibles :</p>
 <ul>
-<li>à la construction du miroir si on passe par le menu « Ajouter »</li>
-<li>à tout instant en cliquant sur le bouton « Propriétés » de la barre d'outils, puis en cliquant sur un des cercles bleus qui apparaissent sur l'élément dont on veut obtenir les propriétés ; ne pas oublier à la fin de cliquer sur le bouton « Fin prop. » de la barre d'outils pour quitter le mode propriétés.</li>
+<li>à la construction du miroir si on passe par le menu « Ajouter (par coordonnées) »</li>
+<li>à tout instant en touchant (ou en cliquant) l'élément pour le sélectionner, puis le bouton « Propriétés » de la barre qui apparaît en bas du dessin ; le panneau des propriétés s'ouvre, son bouton « Valider » applique les modifications et « Annuler » les abandonne. On peut aussi toucher le bouton « Propriétés » de la barre du haut, puis l'élément : ce mode reste actif jusqu'au bouton « Terminer » du bandeau de consigne (ou la touche Échap).</li>
 </ul>
 <h2>Divers</h2>
 <p>On peut demander que la normale au miroir soit tracée à chaque point d'intersection d'un rayon lumineux avec ce miroir :</p>
@@ -45,7 +45,7 @@
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>dans la barre d'outils, boîte à cocher « Normales »</li>
+<li>bouton « Affichage » de la barre du haut, interrupteur « Normales »</li>
 </ul>
 <p>On peut aussi demander que les angles d'incidence soient affichés (en °) :</p>
 <ul>
@@ -53,12 +53,12 @@
 </ul>
 <p class="ou">OU</p>
 <ul>
-<li>dans la barre d'outils, boîte à cocher « Angles d'incidence et de réfraction »</li>
+<li>bouton « Affichage » de la barre du haut, interrupteur « Angles d'incidence et de réfraction »</li>
 </ul>
 <p>L'angle de réflexion n'est pas affiché, afin de ne pas surcharger les représentations.</p>
 <p>Le nombre de décimales sur les angles est fixé dans la boîte de dialogue des options des normales : menu « Options » puis « Options des normales »</p>
 <p class="retour"><a href="optgeo.html">Retour à la page d'accueil</a></p>
 </main>
-<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Portage web des pages : 2026.</p></footer>
+<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Adapté pour la version web (2026) : instructions d'utilisation réécrites pour les gestes, les boutons et les menus de cette version ; explications d'optique inchangées.</p></footer>
 </body>
 </html>
