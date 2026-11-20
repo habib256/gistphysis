@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soleil, Terre, Lune</title>
+<meta name="description" content="Jour et nuit, saisons, phases de la Lune et éclipses : observer le système Soleil-Terre-Lune.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<script defer src="astro.js"></script>
+<script defer src="dessin.js"></script>
+<script defer src="jour-nuit.js"></script>
+<script defer src="saisons.js"></script>
+<script defer src="phases.js"></script>
+<script defer src="eclipses.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lecture" viewBox="0 0 16 16"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 16 16"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z" fill="currentColor"/></symbol>
+</svg>
+<div id="app">
+  <header id="barre">
+    <h1>Soleil, Terre, Lune</h1>
+    <nav id="onglets" role="tablist" aria-label="Parties de l’application">
+      <button type="button" role="tab" id="onglet-jour-nuit" data-partie="jour-nuit" aria-controls="p-jour-nuit">Jour et nuit</button>
+      <button type="button" role="tab" id="onglet-saisons" data-partie="saisons" aria-controls="p-saisons">Saisons</button>
+      <button type="button" role="tab" id="onglet-phases" data-partie="phases" aria-controls="p-phases">Phases</button>
+      <button type="button" role="tab" id="onglet-eclipses" data-partie="eclipses" aria-controls="p-eclipses">Éclipses</button>
+    </nav>
+  </header>
+
+  <div id="scene"><canvas id="toile" role="img" tabindex="0" aria-label="Schéma"></canvas></div>
+
+  <aside id="panneau" aria-label="Commandes et mesures">
+    <!-- ============================================================ Jour et nuit -->
+    <section id="p-jour-nuit" class="partie" role="tabpanel" aria-labelledby="onglet-jour-nuit" hidden>
+      <h2>Jour et nuit</h2>
+      <div class="groupe">
+        <span class="libelle">Vue au-dessus du</span>
+        <div class="segments" role="group" aria-label="Point de vue">
+          <button type="button" data-vue="nord" aria-pressed="true">pôle Nord</button>
+          <button type="button" data-vue="sud" aria-pressed="false">pôle Sud</button>
+        </div>
+      </div>
+      <label class="curseur">Heure solaire à Saint-Denis : <output id="jn-heure-txt"></output>
+        <input type="range" id="jn-heure" min="0" max="24" step="0.0833333" value="12">
+      </label>
+      <div class="ligne">
+        <button type="button" class="lecture" aria-pressed="false"></button>
+        <label class="vitesse">Vitesse
+          <select id="jn-vitesse">
+            <option value="1">1 h par seconde</option>
+            <option value="2" selected>2 h par seconde</option>
+            <option value="6">6 h par seconde</option>
+          </select>
+        </label>
+      </div>
+      <table class="mesures">
+        <thead><tr><th scope="col"></th><th scope="col"><span class="marque md"></span>Saint-Denis</th><th scope="col"><span class="marque mp"></span>Paris</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Heure solaire</th><td id="jn-h-sd"></td><td id="jn-h-pa"></td></tr>
+          <tr><th scope="row">Jour ou nuit</th><td id="jn-e-sd"></td><td id="jn-e-pa"></td></tr>
+        </tbody>
+      </table>
+      <div class="ligne chrono">
+        <span>Temps écoulé : <output id="jn-chrono"></output></span>
+        <button type="button" id="jn-zero">Remettre à zéro</button>
+      </div>
+      <p class="note">Tu peux aussi faire tourner la Terre avec le doigt, ou avec les flèches du clavier.</p>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
+    </section>
+
+    <!-- ============================================================ Saisons -->
+    <section id="p-saisons" class="partie" role="tabpanel" aria-labelledby="onglet-saisons" hidden>
+      <h2>Saisons</h2>
+      <label class="curseur">Date : <output id="sa-date-txt"></output>
+        <input type="range" id="sa-date" min="1" max="365" step="1" value="172">
+      </label>
+      <div class="raccourcis" role="group" aria-label="Aller à une date">
+        <button type="button" data-date="2,21">21 mars</button>
+        <button type="button" data-date="5,21">21 juin</button>
+        <button type="button" data-date="8,23">23 sept.</button>
+        <button type="button" data-date="11,21">21 déc.</button>
+      </div>
+      <div class="ligne">
+        <button type="button" class="lecture" aria-pressed="false"></button>
+        <label class="vitesse">Vitesse
+          <select id="sa-vitesse">
+            <option value="8">8 jours par seconde</option>
+            <option value="20" selected>20 jours par seconde</option>
+            <option value="45">45 jours par seconde</option>
+          </select>
+        </label>
+      </div>
+      <label class="case"><input type="checkbox" id="sa-hypothese"> <span>Hypothèse à tester : axe de la Terre <strong>non incliné</strong> (0°)</span></label>
+      <table class="mesures">
+        <thead><tr><th scope="col"></th><th scope="col"><span class="marque md"></span>Saint-Denis<br><small>20,9° S</small></th><th scope="col"><span class="marque mp"></span>Paris<br><small>48,9° N</small></th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Saison (d’après la date)</th><td id="sa-s-sd"></td><td id="sa-s-pa"></td></tr>
+          <tr><th scope="row">Durée du jour</th><td id="sa-d-sd"></td><td id="sa-d-pa"></td></tr>
+          <tr><th scope="row">Hauteur du Soleil à midi</th><td id="sa-h-sd"></td><td id="sa-h-pa"></td></tr>
+        </tbody>
+      </table>
+      <p class="mesure-seule">Distance Terre-Soleil : <output id="sa-distance"></output></p>
+      <p class="note">Fais glisser la Terre sur son orbite, ou utilise les flèches du clavier.</p>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
+    </section>
+
+    <!-- ============================================================ Phases -->
+    <section id="p-phases" class="partie" role="tabpanel" aria-labelledby="onglet-phases" hidden>
+      <h2>Phases de la Lune</h2>
+      <div class="groupe">
+        <span class="libelle">La Lune vue depuis</span>
+        <div class="segments hemisphere" role="group" aria-label="Lieu de l’observateur">
+          <button type="button" data-hemisphere="sud" aria-pressed="true">La Réunion <small>(hémisphère Sud)</small></button>
+          <button type="button" data-hemisphere="nord" aria-pressed="false">la métropole <small>(hémisphère Nord)</small></button>
+        </div>
+      </div>
+      <label class="curseur">Jours depuis la nouvelle Lune : <output id="ph-age-txt"></output>
+        <input type="range" id="ph-age" min="0" max="29.5" step="0.1" value="5">
+      </label>
+      <div class="ligne">
+        <button type="button" class="lecture" aria-pressed="false"></button>
+        <label class="vitesse">Vitesse
+          <select id="ph-vitesse">
+            <option value="1">1 jour par seconde</option>
+            <option value="2" selected>2 jours par seconde</option>
+            <option value="5">5 jours par seconde</option>
+          </select>
+        </label>
+      </div>
+      <label class="case"><input type="checkbox" id="ph-moitie"> <span>Montrer la moitié de la Lune tournée vers la Terre</span></label>
+      <table class="mesures une">
+        <tbody>
+          <tr><th scope="row">Phase</th><td id="ph-nom"></td></tr>
+          <tr><th scope="row">Fraction éclairée</th><td id="ph-fraction"></td></tr>
+          <tr><th scope="row">Évolution</th><td id="ph-evolution"></td></tr>
+          <tr><th scope="row">Angle Soleil-Terre-Lune</th><td id="ph-angle"></td></tr>
+        </tbody>
+      </table>
+      <p class="note">Simplification : l’image de la Lune est retournée (gauche et droite échangées) entre les deux hémisphères. En réalité, près des tropiques, le croissant apparaît aussi plus ou moins couché selon l’heure.</p>
+      <p class="note">Déplace la Lune avec le doigt sur son orbite, ou avec les flèches du clavier.</p>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
+    </section>
+
+    <!-- ============================================================ Éclipses -->
+    <section id="p-eclipses" class="partie" role="tabpanel" aria-labelledby="onglet-eclipses" hidden>
+      <h2>Éclipses</h2>
+      <div class="ligne sauts">
+        <button type="button" id="ec-nouvelle">Nouvelle Lune suivante</button>
+        <button type="button" id="ec-pleine">Pleine Lune suivante</button>
+      </div>
+      <div class="ligne">
+        <button type="button" class="lecture" aria-pressed="false"></button>
+        <label class="vitesse">Vitesse
+          <select id="ec-vitesse">
+            <option value="2">2 jours par seconde</option>
+            <option value="5" selected>5 jours par seconde</option>
+            <option value="15">15 jours par seconde</option>
+          </select>
+        </label>
+      </div>
+      <p class="note" id="ec-arret" role="status"></p>
+      <label class="curseur">Placer la Lune (jours depuis la nouvelle Lune) : <output id="ec-age-txt"></output>
+        <input type="range" id="ec-age" min="0" max="29.5" step="0.05" value="27">
+      </label>
+      <label class="case"><input type="checkbox" id="ec-hypothese"> <span>Hypothèse à tester : orbite de la Lune <strong>non inclinée</strong> (0°)</span></label>
+      <table class="mesures une">
+        <tbody>
+          <tr><th scope="row">Phase</th><td id="ec-phase"></td></tr>
+          <tr><th scope="row">Éclipse</th><td id="ec-etat"></td></tr>
+          <tr><th scope="row">Lune par rapport au plan de l’orbite de la Terre</th><td id="ec-hauteur"></td></tr>
+          <tr><th scope="row">Rayon de l’ombre de la Terre, à la distance de la Lune</th><td>environ 4 600 km</td></tr>
+          <tr><th scope="row">Rayon de la Lune</th><td>1 737 km</td></tr>
+        </tbody>
+      </table>
+      <table class="mesures compteurs">
+        <caption>Relevés depuis la remise à zéro (<output id="ec-jours"></output>)</caption>
+        <thead><tr><th scope="col"></th><th scope="col">Nombre</th><th scope="col">Avec éclipse</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Nouvelles Lunes</th><td id="ec-nl"></td><td id="ec-es"></td></tr>
+          <tr><th scope="row">Pleines Lunes</th><td id="ec-pl"></td><td id="ec-el"></td></tr>
+        </tbody>
+      </table>
+      <div class="ligne"><button type="button" id="ec-zero">Remettre à zéro</button></div>
+      <div class="groupe">
+        <span class="libelle">Vue depuis</span>
+        <div class="segments hemisphere" role="group" aria-label="Lieu de l’observateur">
+          <button type="button" data-hemisphere="sud" aria-pressed="true">La Réunion</button>
+          <button type="button" data-hemisphere="nord" aria-pressed="false">la métropole</button>
+        </div>
+      </div>
+      <p class="note attention">Ne regarde jamais le Soleil directement, même pendant une éclipse : c’est dangereux pour les yeux.</p>
+      <div class="actions"><button type="button" class="consignes">Consignes</button><button type="button" class="fiche">Valeurs réelles</button></div>
+    </section>
+  </aside>
+</div>
+
+<div id="fenetre" class="fenetre" hidden>
+  <div class="boite" role="dialog" aria-modal="true" aria-labelledby="fenetre-titre" tabindex="-1">
+    <h2 id="fenetre-titre"></h2>
+    <div id="fenetre-contenu"></div>
+    <button type="button" id="fenetre-fermer">Fermer</button>
+  </div>
+</div>
+</body>
+</html>

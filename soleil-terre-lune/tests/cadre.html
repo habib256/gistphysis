@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soleil, Terre, Lune dans un cadre (test)</title>
+<link rel="icon" href="data:,">
+<style>html,body{margin:0;background:#eee}iframe{display:block;border:0;margin:20px auto 0}.suite{height:3000px}</style>
+</head>
+<body>
+<!-- Page de test : l'app dans un cadre de taille donnée (?w=900&h=600&partie=phases), comme dans le site,
+     suivie d'une longue page pour faire sortir le cadre de l'écran. -->
+<iframe title="Soleil, Terre, Lune" allow="fullscreen"></iframe>
+<div class="suite"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const f = document.querySelector('iframe');
+  f.style.width = (q.get('w') || 900) + 'px';
+  f.style.height = (q.get('h') || 600) + 'px';
+  f.src = '../index.html#' + (q.get('partie') || 'jour-nuit');
+</script>
+</body>
+</html>
