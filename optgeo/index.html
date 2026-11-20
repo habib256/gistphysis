@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OptGeo — optique géométrique</title>
+<meta name="description" content="Simulation d’optique géométrique à deux dimensions, d’après OptGeo 3.03 de Jean-Marie Biansan (licence GNU GPL).">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/optgeo.css">
+</head>
+<body>
+<!-- OptGeo web : d'après OptGeo 3.03 de Jean-Marie Biansan (GNU GPL v2 ou ultérieure). Aucune ressource extérieure. -->
+<div id="app">
+  <header id="barre">
+    <button type="button" class="bouton-barre" data-action="menu" data-icone="menu" aria-expanded="false" aria-controls="menu" title="Menu (Fichier, Édition, Ajouter, Options, Aide)"><span>Menu</span></button>
+    <div id="titre-simulation" class="titre" aria-live="polite">Nouvelle simulation</div>
+    <div class="groupe">
+      <button type="button" class="bouton-barre" data-action="annuler" data-icone="annuler" title="Annuler (Ctrl+Z)"><span>Annuler</span></button>
+      <button type="button" class="bouton-barre" data-action="refaire" data-icone="refaire" title="Refaire (Ctrl+Y)"><span>Refaire</span></button>
+    </div>
+    <div class="groupe modes">
+      <button type="button" class="bouton-barre" data-mode="deplacer" data-icone="deplacer" aria-pressed="false" title="Déplacer un élément existant : translation, rotation, changement de focale ou de rayon de courbure (Ctrl+M)"><span>Déplacer</span></button>
+      <button type="button" class="bouton-barre" data-mode="proprietes" data-icone="proprietes" aria-pressed="false" title="Propriétés d’un élément existant (Ctrl+P)"><span>Propriétés</span></button>
+      <button type="button" class="bouton-barre" data-mode="dupliquer" data-icone="dupliquer" aria-pressed="false" title="Dupliquer un élément existant (Ctrl+D)"><span>Dupliquer</span></button>
+      <button type="button" class="bouton-barre" data-mode="supprimer" data-icone="supprimer" aria-pressed="false" title="Supprimer un élément existant"><span>Supprimer</span></button>
+      <button type="button" class="bouton-barre" data-mode="grouper" data-icone="grouper" aria-pressed="false" title="Grouper des éléments existants pour les translater ensemble (Ctrl+G)"><span>Grouper</span></button>
+    </div>
+    <button type="button" class="bouton-barre seulement-etroit" data-action="modes" data-icone="deplacer" aria-expanded="false" aria-controls="popover-modes" title="Modes : déplacer, propriétés, dupliquer, supprimer, grouper"><span>Modes</span></button>
+    <button type="button" class="bouton-barre" data-action="affichage" data-icone="affichage" aria-expanded="false" aria-controls="popover-affichage" title="Affichage : normales, angles, grille, zoom"><span>Affichage</span></button>
+    <button type="button" class="bouton-barre" data-action="pleinecran" data-icone="pleinecran" hidden title="Afficher l’application sur tout l’écran"><span>Plein écran</span></button>
+  </header>
+
+  <nav id="palette" aria-label="Objets à ajouter">
+    <div id="palette-onglets"></div>
+  </nav>
+
+  <main id="zone">
+    <canvas id="dessin" role="img" aria-label="Dessin de la simulation d’optique"></canvas>
+    <div id="bandeau" hidden>
+      <p id="bandeau-texte" aria-live="polite"></p>
+      <div id="bandeau-boutons"></div>
+    </div>
+    <div id="message" class="message" role="status" hidden></div>
+    <div id="coordonnees" aria-hidden="true"></div>
+    <div id="vue-boutons">
+      <button type="button" data-action="zoomplus" data-icone="plus" title="Agrandir (+)" aria-label="Agrandir"></button>
+      <button type="button" data-action="zoommoins" data-icone="moins" title="Réduire (−)" aria-label="Réduire"></button>
+      <button type="button" data-action="toutvoir" data-icone="toutvoir" title="Tout voir (0)" aria-label="Tout voir"></button>
+    </div>
+    <div id="barre-contexte" hidden>
+      <span id="contexte-nom"></span>
+      <button type="button" data-ctx="proprietes" data-icone="proprietes"><span>Propriétés</span></button>
+      <button type="button" data-ctx="dupliquer" data-icone="dupliquer"><span>Dupliquer</span></button>
+      <button type="button" data-ctx="supprimer" data-icone="supprimer"><span>Supprimer</span></button>
+      <button type="button" data-ctx="grouper" data-icone="grouper"><span>Grouper avec…</span></button>
+      <button type="button" data-ctx="degrouper" data-icone="degrouper"><span>Dissocier</span></button>
+      <button type="button" data-ctx="deselect" data-icone="deselect"><span>Désélectionner</span></button>
+    </div>
+    <div id="volet" class="volet" hidden></div>
+    <aside id="panneau" hidden aria-labelledby="panneau-titre">
+      <div class="tete">
+        <h2 id="panneau-titre"></h2>
+        <button type="button" class="fermer" data-action="fermer-panneau" data-icone="fermer" aria-label="Fermer le panneau" title="Fermer"></button>
+      </div>
+      <div id="panneau-corps"></div>
+      <div id="panneau-pied"></div>
+    </aside>
+  </main>
+
+  <div id="menu" class="menu" hidden role="dialog" aria-label="Menu"></div>
+  <div id="popover-affichage" class="popover" hidden role="dialog" aria-label="Affichage"></div>
+  <div id="popover-modes" class="popover" hidden role="dialog" aria-label="Modes">
+    <button type="button" class="item" data-mode="deplacer">Déplacer</button>
+    <button type="button" class="item" data-mode="proprietes">Propriétés</button>
+    <button type="button" class="item" data-mode="dupliquer">Dupliquer</button>
+    <button type="button" class="item" data-mode="supprimer">Supprimer</button>
+    <button type="button" class="item" data-mode="grouper">Grouper</button>
+  </div>
+</div>
+<div id="impression"></div>
+
+<noscript><p>OptGeo a besoin de JavaScript.</p></noscript>
+<script src="js/moteur/00-base.js"></script>
+<script src="js/moteur/10-objets.js"></script>
+<script src="js/moteur/20-scene.js"></script>
+<script src="js/moteur/30-trace.js"></script>
+<script src="js/moteur/40-opt.js"></script>
+<script src="js/moteur/50-rendu.js"></script>
+<script src="js/moteur/60-interaction.js"></script>
+<script src="js/interface/exemples-embarques.js"></script>
+<script src="js/interface/00-outils.js"></script>
+<script src="js/interface/10-poignees.js"></script>
+<script src="js/interface/20-dessin.js"></script>
+<script src="js/interface/30-creation.js"></script>
+<script src="js/interface/40-proprietes.js"></script>
+<script src="js/interface/50-dialogues.js"></script>
+<script src="js/interface/60-app.js"></script>
+</body>
+</html>

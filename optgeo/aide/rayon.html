@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Rayon lumineux unique – Aide d'OptGeo</title>
+<link rel="stylesheet" href="aide.css">
+</head>
+<body>
+<nav class="haut"><a href="index.html">Sommaire de l'aide</a></nav>
+<main>
+<p class="encadre">Cette page reprend l'aide d'OptGeo 3.03 (version pour ordinateur, à la souris). Dans la version web, on touche ou on clique au lieu de « cliquer deux fois » ; voir <a href="web.html">Utiliser OptGeo sur le web</a>.</p>
+<h1>Rayon lumineux unique</h1>
+<p class="illustration"><img src="images/rayongrand.gif" alt="Rayon lumineux unique" width="100" height="100"></p>
+<h2>Définition</h2>
+<p>Il est défini par les points 1 et 2.</p>
+<p>Le rayon peut être ajouté :</p>
+<ul>
+<li>en cliquant sur le bouton de la barre d'outils ayant la forme ci-dessus, puis en faisant un clic simple pour saisir le premier point, puis en faisant un clic simple pour saisir le second (ne pas maintenir le bouton de la souris enfoncé entre les deux points)</li>
+</ul>
+<p class="ou">OU</p>
+<ul>
+<li>menu « Ajouter » puis « Source » puis « Rayon unique ».</li>
+</ul>
+<h2>Options</h2>
+<p>On peut imposer</p>
+<ul>
+<li>l'épaisseur du trait représentant le rayon à l'écran</li>
+<li>la couleur du rayon ; <em>ce n'est pas simplement la couleur représentée à l'écran, mais aussi la couleur qui détermine l'indice de réfraction pour les milieux réfractants dispersifs ; un rayon de lumière blanche est composé de trois rayons rouge, vert et bleu.</em></li>
+<li><em>le nombre maximal de rayons enfants ; lorsque le rayon arrive sur un dioptre, il donne en général naissance à un rayon réfléchi et à un rayon transmis ; le rayon réfléchi est appelé ici « rayon enfant » (sauf dans le cas de la</em> <a href="lsr.html"><em>lame semi-réfléchissante idéale</em></a><em>) ; par défaut, le nombre maximal d'enfants est de 10. Remarque : un enfant peut avoir lui aussi des enfants, mais son nombre maximal d'enfants est celui de son rayon parent diminué de 1.</em></li>
+<li>le fait qu'il existe ou pas un rayon réfléchi en plus du rayon réfracté est une propriété de chaque élément réfractant</li>
+<li>s'il n'y a pas de réfraction (angle d'incidence plus grand que l'angle limite), le rayon réfléchi est un rayon simple, pas un enfant</li>
+<li><em>on peut demander à ce que les prolongements des différents segments qui composent le trajet du rayon soient tracés en pointillés</em>, vers l'avant ou vers l'arrière ; il suffit de préciser la liste des segments concernés (segments numérotés dans l'ordre de propagation du rayon) ; ainsi, si le cheminement du rayon est le suivant :</li>
+</ul>
+<p class="illustration"><img src="images/segment1.gif" alt="Trajet d'un rayon formé de quatre segments numérotés de 1 à 4" width="599" height="149"></p>
+<p>et qu'on demande le prolongement (1,2,4) vers l'avant et (3,4) vers l'arrière,</p>
+<p>alors on obtient :</p>
+<p class="illustration"><img src="images/segment2.gif" alt="Le même trajet avec les prolongements en pointillés : segments 1, 2 et 4 vers l'avant, 3 et 4 vers l'arrière" width="674" height="274"></p>
+<p>Ces propriétés peuvent être rendues accessibles :</p>
+<ul>
+<li>à la construction du rayon si on passe par le menu « Ajouter »</li>
+<li>à tout instant en cliquant sur le bouton « Propriétés » de la barre d'outils, puis en cliquant sur un des cercles bleus qui apparaissent sur l'élément dont on veut obtenir les propriétés ; ne pas oublier à la fin de cliquer sur le bouton « Fin prop. » de la barre d'outils pour quitter le mode propriétés.</li>
+</ul>
+<p class="retour"><a href="optgeo.html">Retour à la page d'accueil</a></p>
+</main>
+<footer><p>Aide d'origine : OptGeo 3.03, Jean-Marie Biansan, licence GNU GPL v2 ou ultérieure. Portage web des pages : 2026.</p></footer>
+</body>
+</html>
