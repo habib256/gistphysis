@@ -28,7 +28,7 @@
 <ul>
 <li><strong>Menu</strong> : il regroupe les menus d'OptGeo : <strong>Fichier</strong>, <strong>Édition</strong>, <strong>Ajouter (par coordonnées)</strong>, <strong>Options</strong>, <strong>Aide</strong>.</li>
 <li>Le nom de la simulation, suivi de « (modifiée) » tant qu'elle n'est pas enregistrée.</li>
-<li><strong>Annuler</strong> et <strong>Refaire</strong> : reviennent sur la dernière action, ou la refont.</li>
+<li><strong>Annuler</strong> et <strong>Refaire</strong> : reviennent sur la dernière action, ou la refont. Les options d'affichage (normales, angles, grille, attraction de la grille, longueurs des segments, contrôle des points trop proches, zoom) n'en dépendent pas : elles gardent leur valeur du moment.</li>
 <li>Les modes d'OptGeo : <strong>Déplacer</strong>, <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper</strong> (voir <a href="#modes">Les modes d'OptGeo</a>). Sur un écran étroit, ils sont réunis sous le bouton <strong>Modes</strong>.</li>
 <li><strong>Affichage</strong> : interrupteurs <strong>Normales</strong>, <strong>Angles d'incidence et de réfraction</strong>, <strong>Grille</strong>, <strong>Attraction de la grille</strong>, <strong>Longueurs des segments</strong> ; bouton <strong>Coordonnées des segments…</strong> ; zooms de ×1 à ×100.</li>
 <li><strong>Plein écran</strong> : seulement quand l'application est ouverte seule dans le navigateur (dans une page du site, elle remplit déjà son cadre).</li>
@@ -36,7 +36,8 @@
 <h3>La palette des objets</h3>
 <p>Elle est à gauche quand l'écran est en paysage (plus large que haut), en bas quand il est en portrait (plus haut que large). Elle range les objets en cinq familles : <strong>Miroirs</strong>, <strong>Écrans</strong>, <strong>Sources</strong>, <strong>Dioptres</strong>, <strong>Divers</strong>. Touche une famille : ses objets s'affichent dans un volet ; touche de nouveau la famille pour refermer le volet.</p>
 <h3>Le bandeau de consigne</h3>
-<p>En haut du dessin, il dit quoi faire à chaque étape et porte les boutons utiles : <strong>Annuler</strong>, <strong>Terminer</strong>, <strong>Aligner horizontalement</strong>… Sur un petit écran, il tient sur une ligne : touche <strong>Plus</strong> pour voir les boutons secondaires (<strong>Aligner…</strong>, <strong>Bloquer…</strong>, <strong>Rester dans ce mode</strong>), <strong>Moins</strong> pour les cacher.</p>
+<p>En haut du dessin, il dit quoi faire à chaque étape et porte les boutons utiles : <strong>Annuler</strong>, <strong>Terminer</strong>, <strong>Aligner horizontalement</strong>, <strong>Bloquer horizontalement</strong>… Quand un de ces boutons est actif, le bandeau le rappelle : <strong>Alignement horizontal</strong> (ou vertical) pendant qu'on place un objet, <strong>Bloqué : horizontal</strong> (ou vertical) en mode Déplacer et pendant un glissement.</p>
+<p>Sur un petit écran (largeur de 560 pixels au plus, ou hauteur de 420 pixels au plus, par exemple un téléphone), il tient sur une ligne : touche <strong>Plus</strong> pour voir toute la consigne et les boutons secondaires (<strong>Aligner…</strong>, <strong>Bloquer…</strong>, <strong>Rester dans ce mode</strong>), <strong>Moins</strong> pour les cacher.</p>
 
 <h2 id="placer">Placer un objet</h2>
 <ol>
@@ -53,7 +54,7 @@
 <p>Pour t'aider :</p>
 <ul>
 <li>la case <strong>Rester dans ce mode</strong> du bandeau permet de créer plusieurs objets du même type à la suite ;</li>
-<li>à partir du deuxième point, les boutons <strong>Aligner horizontalement</strong> et <strong>Aligner verticalement</strong> (ou les touches Ctrl et Alt maintenues à l'ordinateur) placent le point sur la même horizontale ou la même verticale que le point précédent ;</li>
+<li>à partir du deuxième point, les boutons <strong>Aligner horizontalement</strong> et <strong>Aligner verticalement</strong> (ou les touches Ctrl et Alt maintenues à l'ordinateur) placent le point sur la même horizontale ou la même verticale que le point précédent, pour l'objet en cours de construction seulement (ils sont relâchés à l'objet suivant) ;</li>
 <li>pour un polygone, à partir du 3e sommet, le bouton <strong>Fermer le polygone</strong> (ou un toucher sur le sommet 1) termine l'objet sans placer tous les sommets prévus ;</li>
 <li>si l'attraction de la grille est activée (bouton <strong>Affichage</strong>), les points se placent sur la grille (sauf pour les mesures de distance et d'angle).</li>
 </ul>
@@ -69,7 +70,7 @@
 <li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M4 4l10 10M14 4L4 14" stroke="#0b3c44" stroke-width="5" stroke-linecap="round"/><path d="M4 4l10 10M14 4L4 14" stroke="#00c8d8" stroke-width="2.5" stroke-linecap="round"/></svg> <strong>Croix cyan</strong> : foyer ou centre de courbure (la déplacer change la focale ou le rayon de courbure) ; pour un diaphragme, bord du trou.</li>
 <li><svg class="poignee" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M4 4l10 10M14 4L4 14" stroke="#5a4a00" stroke-width="5" stroke-linecap="round"/><path d="M4 4l10 10M14 4L4 14" stroke="#ffd400" stroke-width="2.5" stroke-linecap="round"/></svg> <strong>Croix jaune</strong> : sommet d'un arc de cercle d'un polycercle.</li>
 </ul>
-<p>Fais glisser une poignée pour modifier l'objet ; tu peux aussi faire glisser l'objet lui-même pour le déplacer. Pendant le glissement, les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau, touchés avec un autre doigt (ou les touches Ctrl et Alt), limitent le mouvement à une direction, pour ce glissement seulement (en mode Déplacer, on peut aussi les toucher avant de commencer) ; la touche Échap, ou un deuxième doigt posé sur le dessin, remet l'objet à sa place.</p>
+<p>Fais glisser une poignée pour modifier l'objet ; tu peux aussi faire glisser l'objet lui-même pour le déplacer. Les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau (ou les touches Ctrl et Alt maintenues) limitent le mouvement à une direction : on les touche avec un autre doigt pendant le glissement, ou, en mode Déplacer, avant de commencer le glissement (un seul doigt suffit alors). Ils ne valent que pour ce glissement : ils sont relâchés quand le doigt se lève. La touche Échap, ou un deuxième doigt posé sur le dessin, remet l'objet à sa place.</p>
 <p>En bas du dessin, une barre propose : <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper avec…</strong>, <strong>Dissocier</strong> (seulement si l'objet fait partie d'un groupe) et <strong>Désélectionner</strong>.</p>
 <ul>
 <li><strong>Propriétés</strong> ouvre le panneau des propriétés (à droite du dessin, ou en bas sur un écran en portrait) : <strong>Valider</strong> applique les changements, <strong>Annuler</strong> les abandonne, <strong>Supprimer</strong> enlève l'objet, <strong>Aide</strong> ouvre la page d'aide de l'objet. Une valeur refusée est signalée sous son champ.</li>
@@ -81,7 +82,7 @@
 <h2 id="modes">Les modes d'OptGeo</h2>
 <p>Les boutons de mode de la barre du haut (et les commandes du menu <strong>Édition</strong>) marchent comme dans OptGeo 3.03, pour qui a l'habitude du logiciel ou suit les consignes d'un exemple :</p>
 <ul>
-<li><strong>Déplacer</strong> : les poignées de tous les objets s'affichent en même temps. On sort du mode avec le bouton <strong>Terminer</strong> du bandeau.</li>
+<li><strong>Déplacer</strong> : les poignées de tous les objets s'affichent en même temps ; les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau peuvent être touchés avant de faire glisser une poignée, pour ce seul glissement. On sort du mode avec le bouton <strong>Terminer</strong> du bandeau.</li>
 <li><strong>Propriétés</strong> : touche un objet pour ouvrir son panneau des propriétés. Le mode reste actif jusqu'au bouton <strong>Terminer</strong>.</li>
 <li><strong>Dupliquer</strong> et <strong>Supprimer</strong> : touche l'objet à dupliquer ou à supprimer ; le mode s'arrête tout seul après un objet. Le bouton <strong>Annuler</strong> du bandeau sort du mode sans rien faire.</li>
 <li><strong>Grouper</strong> : touche les objets à grouper (une croix violette marque chaque objet ; toucher de nouveau un objet le retire), puis <strong>Terminer</strong> pour créer le groupe, ou <strong>Annuler</strong> pour abandonner. Un groupe se déplace d'un bloc par sa croix verte marquée « Gr » ; le bouton <strong>Dissocier</strong> le défait.</li>
@@ -110,6 +111,7 @@
 <li>modifier ou ajuster l'espace de travail, et régler les <strong>Préférences…</strong> (couleur et épaisseur par défaut de chaque type d'objet, gardées sur l'appareil).</li>
 </ul>
 <p>Ton travail est gardé automatiquement sur l'appareil : rien n'est envoyé sur Internet. Quand tu rouvres l'application, elle propose de reprendre ce travail.</p>
+<p>Seule exception : l'image de fond (menu <strong>Options</strong>, <strong>Couleur de fond ou image de fond…</strong>) reste sur l'appareil mais n'est pas gardée après un rechargement de la page, ni enregistrée dans le fichier <code>.opt</code> : il faut la choisir de nouveau.</p>
 
 <h2 id="clavier">Raccourcis clavier (ordinateur)</h2>
 <p>Sur Mac, la touche Cmd remplace Ctrl.</p>
@@ -122,7 +124,7 @@
 <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>enregistrer (attention : dans OptGeo 3.03, <kbd>Ctrl</kbd>+<kbd>S</kbd> supprimait)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>S</kbd></td><td>enregistrer sous</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>ouvrir un fichier de l'appareil</td></tr>
-<tr><td><kbd>Suppr</kbd> ou <kbd>Retour arrière</kbd></td><td>supprimer l'objet sélectionné</td></tr>
+<tr><td><kbd>Suppr</kbd> ou <kbd>Retour arrière</kbd></td><td>supprimer l'objet sélectionné (le mode Supprimer, lui, n'a pas de raccourci)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>dupliquer l'objet sélectionné (sans sélection : mode Dupliquer)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>propriétés de l'objet sélectionné (sans sélection : mode Propriétés)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>mode Déplacer</td></tr>

@@ -328,6 +328,12 @@ ADAPTATIONS_COMMUNES = [
     ("<li>dans la barre d'outils, boîte à cocher « Angles d'incidence et de réfraction »</li>",
      "<li>bouton « Affichage » de la barre du haut, interrupteur « Angles d'incidence et de "
      "réfraction »</li>"),
+    # choix du panneau des propriétés (40-proprietes.js, REFLECHI), cités avec leur majuscule
+    ("le rayon réfléchi peut exister « toujours », « jamais », « seulement si le réfracté existe », "
+     "« seulement si le réfracté n'existe pas ».",
+     "le rayon réfléchi peut exister « Toujours », « Jamais », « Seulement si le réfracté existe », "
+     "« Seulement si le réfracté n'existe pas » (choix de la partie « Rayon réfléchi » du panneau "
+     "des propriétés)."),
     ('Pour modifier la liste des éléments proposés, <a href="materiaux.html">cliquer ici.</a>',
      'Voir la <a href="materiaux.html">liste des matériaux</a> et de leurs indices.'),
 ]
@@ -364,8 +370,11 @@ ADAPTATIONS = {
          "le bouton « Aligner horizontalement » du bandeau avant de placer le second point (à "
          "l'ordinateur, on peut aussi maintenir la touche « Ctrl » enfoncée pendant le clic du second "
          "point). Pour les placer sur une même verticale, même procédure avec le bouton « Aligner "
-         "verticalement » (ou la touche « Alt »). Sur un petit écran, ces boutons sont derrière le "
-         "bouton « Plus » du bandeau.</p>\n"),
+         "verticalement » (ou la touche « Alt »). Ces boutons ne valent que pour l'élément en cours de "
+         "construction ; tant que l'un d'eux est actif, le bandeau affiche « Alignement horizontal » "
+         "(ou « Alignement vertical »). Sur un petit écran (largeur de 560 pixels au plus, ou hauteur "
+         "de 420 pixels au plus), le bandeau tient sur une ligne et ces boutons sont derrière son "
+         "bouton « Plus » (« Moins » les cache de nouveau).</p>\n"),
         ("AVANT", '<h2 id="ajouter">', '<h2 id="deplacer">',
          '<h2 id="ajouter">Ajouter un élément ou une source</h2>\n'
          "<p>Pour chaque élément, il existe 2 méthodes d'ajout : au doigt (ou à la souris), et par "
@@ -410,9 +419,12 @@ ADAPTATIONS = {
          "<p><strong>Déplacement vertical :</strong> toucher le bouton « Bloquer verticalement » du "
          "bandeau, en mode « Déplacer » avant de commencer le glissement, ou pendant le glissement (avec "
          "un autre doigt) ; à l'ordinateur, on peut aussi maintenir la touche « Alt » enfoncée pendant le "
-         "glissement. Le blocage ne vaut que pour un glissement.</p>\n"
+         "glissement. Le blocage ne vaut que pour ce glissement : il est relâché quand le doigt (ou le "
+         "bouton de la souris) se lève. Tant que le bouton est actif, le bandeau affiche « Bloqué : "
+         "vertical ».</p>\n"
          "<p><strong>Déplacement horizontal :</strong> de même avec le bouton « Bloquer "
-         "horizontalement » (ou la touche « Ctrl »).</p>\n"
+         "horizontalement » (ou la touche « Ctrl ») ; le bandeau affiche alors « Bloqué : "
+         "horizontal ».</p>\n"
          "<p><strong>Important :</strong> en mode « Déplacer », une fois les modifications effectuées, "
          "on revient au mode normal par le bouton « Terminer » du bandeau de consigne (ou la touche "
          "Échap, ou en touchant de nouveau le bouton « Déplacer »).</p>\n"
@@ -437,10 +449,11 @@ ADAPTATIONS = {
         ("AVANT", '<h2 id="supprimer">', '<h2 id="grouper">',
          '<h2 id="supprimer">Supprimer un élément ou une source</h2>\n'
          "<p>Toucher (ou cliquer) l'élément pour le sélectionner, puis le bouton « Supprimer » de la "
-         "barre en bas du dessin (à l'ordinateur, touche Suppr). On peut aussi toucher le bouton "
+         "barre en bas du dessin (à l'ordinateur, touche Suppr, qui supprime l'élément sélectionné). On "
+         "peut aussi toucher le bouton "
          "« Supprimer » de la barre du haut, ou passer par le menu « Édition » puis « Supprimer un "
-         "élément » : un cercle rouge apparaît sur chacun des éléments présents, et il suffit de "
-         "toucher l'élément à supprimer.</p>\n"
+         "élément » (ce mode n'a pas de raccourci clavier) : un cercle rouge apparaît sur chacun des "
+         "éléments présents, et il suffit de toucher l'élément à supprimer.</p>\n"
          "<p>La suppression est immédiate, sans demande de confirmation, mais on peut la défaire par le "
          "bouton « Annuler » du message qui s'affiche alors, ou par le bouton « Annuler » de la barre du "
          "haut. Une fois la suppression effectuée, le logiciel quitte automatiquement le mode "
@@ -496,6 +509,9 @@ ADAPTATIONS = {
          "touches Ctrl+Z (ou : menu « Édition », « Annuler »). Et si en fait on ne voulait pas annuler "
          "(seuls les sots ne changent jamais d'avis !), on rétablit au moyen du bouton « Refaire », ou de "
          "la combinaison de touches Ctrl+Y (ou Ctrl+Maj+Z ; ou : menu « Édition », « Refaire »).</p>\n"
+         "<p>Les options d'affichage (normales et angles, grille et son attraction, longueurs des "
+         "segments, contrôle des points trop proches, zoom) ne sont pas touchées par « Annuler » et "
+         "« Refaire » : elles gardent leur valeur du moment.</p>\n"
          "<p><strong>Attention :</strong> dans OptGeo 3.03, on rétablissait par Ctrl+R ; dans un "
          "navigateur, Ctrl+R recharge la page (le travail est gardé sur l'appareil, mais l'historique "
          "des annulations est perdu).</p>\n"),
@@ -532,7 +548,9 @@ ADAPTATIONS = {
          "<h3>Couleur de fond</h3>\n"
          "<p>Permet de changer la couleur de fond de la simulation : menu « Options », « Couleur de "
          "fond ou image de fond… » (la version web permet aussi de mettre en fond une image de "
-         "l'appareil).</p>\n"
+         "l'appareil, par le bouton « Choisir une image… »). Cette image reste sur l'appareil : elle "
+         "n'est pas enregistrée dans le fichier .opt (comme dans OptGeo) et n'est pas gardée après un "
+         "rechargement de la page ; il faut alors la choisir de nouveau.</p>\n"
          '<h2 id="preferences">Préférences</h2>\n'
          "<p>Permet de choisir les attributs par défaut des éléments à la création : menu « Fichier », "
          "« Préférences… ». Dans la version web, on règle la couleur, la couleur de l'axe et "
@@ -594,7 +612,7 @@ ADAPTATIONS = {
                     " On donne alors les coordonnées des points 1 et 2, la valeur du rayon de courbure, et "
                     "le caractère aigu ou obtus de l'angle d'ouverture du miroir (en effet, pour 1 et 2 "
                     "donnés et le rayon de courbure donné, il existe deux miroirs sphériques ; celui appelé "
-                    "« obtus » correspond à un angle d'ouverture (angle entre CM1 et CM2) obtus).")),
+                    "« Obtus » correspond à un angle d'ouverture (angle entre CM1 et CM2) obtus).")),
     ],
     "miroirconique": [
         ("BLOC", DEBUT_PALETTE, "</li>",
@@ -636,12 +654,13 @@ ADAPTATIONS = {
     "polyhedre": [
         ("BLOC", DEBUT_PALETTE, "</li>",
          ajout_palette("« Polygone »", "Dioptres",
-                       "en choisissant le nombre de sommets dans la boîte de dialogue qui s'ouvre, puis en "
-                       "plaçant chacun des sommets",
+                       "en choisissant le nombre de sommets dans la boîte « Nombre de sommets » qui s'ouvre "
+                       "(champ « Sommets de ce polygone »), puis en plaçant chacun des sommets ; le bandeau "
+                       "indique le mode « ajout d'un polygone réfractant »",
                        " On peut aussi fermer le polygone plus tôt, à partir du 3e sommet, en touchant le "
                        "sommet 1 ou le bouton « Fermer le polygone » du bandeau.")),
         ("BLOC", DEBUT_MENU, "</li>",
-         ajout_menu("« Polyèdre réfractant »", "Système optique réel",
+         ajout_menu("« Polygone réfractant »", "Système optique réel",
                     " On donne alors les coordonnées des sommets (les boutons « Insérer après » et "
                     "« Retirer » ajoutent ou enlèvent un sommet).")),
     ],
@@ -652,12 +671,14 @@ ADAPTATIONS = {
          "cette condition, le résultat n'est pas garanti (OptGeo 3.03 pouvait même planter)."),
         ("BLOC", DEBUT_PALETTE, "</li>",
          ajout_palette("« Polycercle »", "Dioptres",
-                       "en choisissant le nombre de sommets dans la boîte de dialogue qui s'ouvre, puis en "
-                       "plaçant chacun des sommets, puis en choisissant dans la boîte « Relier les points » "
+                       "en choisissant le nombre de sommets dans la boîte « Nombre de sommets » qui s'ouvre "
+                       "(champ « Sommets de ce polycercle »), puis en plaçant chacun des sommets (le bandeau "
+                       "indique le mode « ajout d'un polycercle réfractant »), puis en choisissant dans la "
+                       "boîte « Relier les points » "
                        "le caractère segment ou arc de cercle de chacun des côtés, et enfin en plaçant le "
                        "sommet de chacun des arcs de cercle (s'il y en a)")),
         ("BLOC", DEBUT_MENU, "</li>",
-         ajout_menu("« Polysphère réfractante »", "Système optique réel",
+         ajout_menu("« Polycercle réfractant »", "Système optique réel",
                     " On donne alors les coordonnées des sommets, etc.")),
     ],
     "prisme": [
@@ -1356,8 +1377,8 @@ SOMMAIRE = [
         ("lmc.html", "Lentilles minces (convergente ou divergente)"),
         ("lentille.html", "Lentille épaisse"),
         ("sphere.html", "Sphère réfractante"),
-        ("polyhedre.html", "Polyèdre (polygone réfractant : prisme, lame à faces parallèles…)"),
-        ("polysphere.html", "Polysphère (polycercle réfractant)"),
+        ("polyhedre.html", "Polygone réfractant (polyèdre : prisme, lame à faces parallèles…)"),
+        ("polysphere.html", "Polycercle réfractant (polysphère)"),
         ("prisme.html", "Prisme réfractant"),
     ]),
     ("Écrans et divers", [
@@ -1428,7 +1449,7 @@ def page_web():
 <ul>
 <li><strong>Menu</strong>{n}: il regroupe les menus d'OptGeo{n}: <strong>Fichier</strong>, <strong>Édition</strong>, <strong>Ajouter (par coordonnées)</strong>, <strong>Options</strong>, <strong>Aide</strong>.</li>
 <li>Le nom de la simulation, suivi de «{n}(modifiée){n}» tant qu'elle n'est pas enregistrée.</li>
-<li><strong>Annuler</strong> et <strong>Refaire</strong>{n}: reviennent sur la dernière action, ou la refont.</li>
+<li><strong>Annuler</strong> et <strong>Refaire</strong>{n}: reviennent sur la dernière action, ou la refont. Les options d'affichage (normales, angles, grille, attraction de la grille, longueurs des segments, contrôle des points trop proches, zoom) n'en dépendent pas{n}: elles gardent leur valeur du moment.</li>
 <li>Les modes d'OptGeo{n}: <strong>Déplacer</strong>, <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper</strong> (voir <a href="#modes">Les modes d'OptGeo</a>). Sur un écran étroit, ils sont réunis sous le bouton <strong>Modes</strong>.</li>
 <li><strong>Affichage</strong>{n}: interrupteurs <strong>Normales</strong>, <strong>Angles d'incidence et de réfraction</strong>, <strong>Grille</strong>, <strong>Attraction de la grille</strong>, <strong>Longueurs des segments</strong>{n}; bouton <strong>Coordonnées des segments…</strong>{n}; zooms de ×1 à ×100.</li>
 <li><strong>Plein écran</strong>{n}: seulement quand l'application est ouverte seule dans le navigateur (dans une page du site, elle remplit déjà son cadre).</li>
@@ -1436,7 +1457,8 @@ def page_web():
 <h3>La palette des objets</h3>
 <p>Elle est à gauche quand l'écran est en paysage (plus large que haut), en bas quand il est en portrait (plus haut que large). Elle range les objets en cinq familles{n}: <strong>Miroirs</strong>, <strong>Écrans</strong>, <strong>Sources</strong>, <strong>Dioptres</strong>, <strong>Divers</strong>. Touche une famille{n}: ses objets s'affichent dans un volet{n}; touche de nouveau la famille pour refermer le volet.</p>
 <h3>Le bandeau de consigne</h3>
-<p>En haut du dessin, il dit quoi faire à chaque étape et porte les boutons utiles{n}: <strong>Annuler</strong>, <strong>Terminer</strong>, <strong>Aligner horizontalement</strong>… Sur un petit écran, il tient sur une ligne{n}: touche <strong>Plus</strong> pour voir les boutons secondaires (<strong>Aligner…</strong>, <strong>Bloquer…</strong>, <strong>Rester dans ce mode</strong>), <strong>Moins</strong> pour les cacher.</p>
+<p>En haut du dessin, il dit quoi faire à chaque étape et porte les boutons utiles{n}: <strong>Annuler</strong>, <strong>Terminer</strong>, <strong>Aligner horizontalement</strong>, <strong>Bloquer horizontalement</strong>… Quand un de ces boutons est actif, le bandeau le rappelle{n}: <strong>Alignement horizontal</strong> (ou vertical) pendant qu'on place un objet, <strong>Bloqué{n}: horizontal</strong> (ou vertical) en mode Déplacer et pendant un glissement.</p>
+<p>Sur un petit écran (largeur de 560{n}pixels au plus, ou hauteur de 420{n}pixels au plus, par exemple un téléphone), il tient sur une ligne{n}: touche <strong>Plus</strong> pour voir toute la consigne et les boutons secondaires (<strong>Aligner…</strong>, <strong>Bloquer…</strong>, <strong>Rester dans ce mode</strong>), <strong>Moins</strong> pour les cacher.</p>
 
 <h2 id="placer">Placer un objet</h2>
 <ol>
@@ -1453,7 +1475,7 @@ def page_web():
 <p>Pour t'aider{n}:</p>
 <ul>
 <li>la case <strong>Rester dans ce mode</strong> du bandeau permet de créer plusieurs objets du même type à la suite{n};</li>
-<li>à partir du deuxième point, les boutons <strong>Aligner horizontalement</strong> et <strong>Aligner verticalement</strong> (ou les touches Ctrl et Alt maintenues à l'ordinateur) placent le point sur la même horizontale ou la même verticale que le point précédent{n};</li>
+<li>à partir du deuxième point, les boutons <strong>Aligner horizontalement</strong> et <strong>Aligner verticalement</strong> (ou les touches Ctrl et Alt maintenues à l'ordinateur) placent le point sur la même horizontale ou la même verticale que le point précédent, pour l'objet en cours de construction seulement (ils sont relâchés à l'objet suivant){n};</li>
 <li>pour un polygone, à partir du 3e sommet, le bouton <strong>Fermer le polygone</strong> (ou un toucher sur le sommet 1) termine l'objet sans placer tous les sommets prévus{n};</li>
 <li>si l'attraction de la grille est activée (bouton <strong>Affichage</strong>), les points se placent sur la grille (sauf pour les mesures de distance et d'angle)."""
     corps += f"""</li>
@@ -1470,7 +1492,7 @@ def page_web():
 <li>{poignee("croix-cyan")} <strong>Croix cyan</strong>{n}: foyer ou centre de courbure (la déplacer change la focale ou le rayon de courbure){n}; pour un diaphragme, bord du trou.</li>
 <li>{poignee("croix-jaune")} <strong>Croix jaune</strong>{n}: sommet d'un arc de cercle d'un polycercle.</li>
 </ul>
-<p>Fais glisser une poignée pour modifier l'objet{n}; tu peux aussi faire glisser l'objet lui-même pour le déplacer. Pendant le glissement, les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau, touchés avec un autre doigt (ou les touches Ctrl et Alt), limitent le mouvement à une direction, pour ce glissement seulement (en mode Déplacer, on peut aussi les toucher avant de commencer){n}; la touche Échap, ou un deuxième doigt posé sur le dessin, remet l'objet à sa place.</p>
+<p>Fais glisser une poignée pour modifier l'objet{n}; tu peux aussi faire glisser l'objet lui-même pour le déplacer. Les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau (ou les touches Ctrl et Alt maintenues) limitent le mouvement à une direction{n}: on les touche avec un autre doigt pendant le glissement, ou, en mode Déplacer, avant de commencer le glissement (un seul doigt suffit alors). Ils ne valent que pour ce glissement{n}: ils sont relâchés quand le doigt se lève. La touche Échap, ou un deuxième doigt posé sur le dessin, remet l'objet à sa place.</p>
 <p>En bas du dessin, une barre propose{n}: <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper avec…</strong>, <strong>Dissocier</strong> (seulement si l'objet fait partie d'un groupe) et <strong>Désélectionner</strong>.</p>
 <ul>
 <li><strong>Propriétés</strong> ouvre le panneau des propriétés (à droite du dessin, ou en bas sur un écran en portrait){n}: <strong>Valider</strong> applique les changements, <strong>Annuler</strong> les abandonne, <strong>Supprimer</strong> enlève l'objet, <strong>Aide</strong> ouvre la page d'aide de l'objet. Une valeur refusée est signalée sous son champ.</li>
@@ -1482,7 +1504,7 @@ def page_web():
 <h2 id="modes">Les modes d'OptGeo</h2>
 <p>Les boutons de mode de la barre du haut (et les commandes du menu <strong>Édition</strong>) marchent comme dans OptGeo 3.03, pour qui a l'habitude du logiciel ou suit les consignes d'un exemple{n}:</p>
 <ul>
-<li><strong>Déplacer</strong>{n}: les poignées de tous les objets s'affichent en même temps. On sort du mode avec le bouton <strong>Terminer</strong> du bandeau.</li>
+<li><strong>Déplacer</strong>{n}: les poignées de tous les objets s'affichent en même temps{n}; les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau peuvent être touchés avant de faire glisser une poignée, pour ce seul glissement. On sort du mode avec le bouton <strong>Terminer</strong> du bandeau.</li>
 <li><strong>Propriétés</strong>{n}: touche un objet pour ouvrir son panneau des propriétés. Le mode reste actif jusqu'au bouton <strong>Terminer</strong>.</li>
 <li><strong>Dupliquer</strong> et <strong>Supprimer</strong>{n}: touche l'objet à dupliquer ou à supprimer{n}; le mode s'arrête tout seul après un objet. Le bouton <strong>Annuler</strong> du bandeau sort du mode sans rien faire.</li>
 <li><strong>Grouper</strong>{n}: touche les objets à grouper (une croix violette marque chaque objet{n}; toucher de nouveau un objet le retire), puis <strong>Terminer</strong> pour créer le groupe, ou <strong>Annuler</strong> pour abandonner. Un groupe se déplace d'un bloc par sa croix verte marquée «{n}Gr{n}»{n}; le bouton <strong>Dissocier</strong> le défait.</li>
@@ -1511,6 +1533,7 @@ def page_web():
 <li>modifier ou ajuster l'espace de travail, et régler les <strong>Préférences…</strong> (couleur et épaisseur par défaut de chaque type d'objet, gardées sur l'appareil).</li>
 </ul>
 <p>Ton travail est gardé automatiquement sur l'appareil{n}: rien n'est envoyé sur Internet. Quand tu rouvres l'application, elle propose de reprendre ce travail.</p>
+<p>Seule exception{n}: l'image de fond (menu <strong>Options</strong>, <strong>Couleur de fond ou image de fond…</strong>) reste sur l'appareil mais n'est pas gardée après un rechargement de la page, ni enregistrée dans le fichier <code>.opt</code>{n}: il faut la choisir de nouveau.</p>
 
 <h2 id="clavier">Raccourcis clavier (ordinateur)</h2>
 <p>Sur Mac, la touche Cmd remplace Ctrl.</p>
@@ -1523,7 +1546,7 @@ def page_web():
 <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>enregistrer (attention{n}: dans OptGeo 3.03, <kbd>Ctrl</kbd>+<kbd>S</kbd> supprimait)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>S</kbd></td><td>enregistrer sous</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>ouvrir un fichier de l'appareil</td></tr>
-<tr><td><kbd>Suppr</kbd> ou <kbd>Retour arrière</kbd></td><td>supprimer l'objet sélectionné</td></tr>
+<tr><td><kbd>Suppr</kbd> ou <kbd>Retour arrière</kbd></td><td>supprimer l'objet sélectionné (le mode Supprimer, lui, n'a pas de raccourci)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>dupliquer l'objet sélectionné (sans sélection{n}: mode Dupliquer)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>propriétés de l'objet sélectionné (sans sélection{n}: mode Propriétés)</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>M</kbd></td><td>mode Déplacer</td></tr>
