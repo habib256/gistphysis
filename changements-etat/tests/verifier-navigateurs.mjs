@@ -411,7 +411,25 @@ async function controler(nav, base) {
       await p.cpu(1);
       await p.fermer();
     }
-    verifier(`${N} processeur ralenti 4 fois, 1024×768 : le code de l’app coûte au plus 33 ms par image (pas de simulation + dessin), soit au moins 30 images/s possibles`,
+    {
+      // cycle avec beaucoup de nuages et les noms affichés (le cas le plus chargé à dessiner)
+      const p = await ouvrir('/index.html#cycle', 1024, 768);
+      await pause(300);
+      const nb = await p.ev(`(()=>{const e=Changements.etat, m=Changements.monde(); e.enMarche=false; let n=0;
+        for (let k = 0; k < 30000; k++) { m.avancer(); if (k % 100) continue; n = 0; for (let i = 0; i < m.n; i++) if (m.typ[i] === 0 && m.d[i] > 0.0008) n++; if (n > 600 && k > 2000) break; }
+        e.noms = true; Changements.dessiner(); return n;})()`);
+      await p.cpu(4);
+      mesures['cycle, nuages et noms'] = await p.ev(`(()=>{
+        const m = Changements.monde();
+        let t0 = performance.now(); for (let k = 0; k < 30; k++) m.avancer(); const pas = (performance.now() - t0) / 30;
+        t0 = performance.now(); for (let k = 0; k < 15; k++) Changements.dessiner(); const dessin = (performance.now() - t0) / 15;
+        return {ms_par_pas: +pas.toFixed(1), ms_dessin: +dessin.toFixed(1), ms_par_image: +(2 * pas + dessin).toFixed(1)};
+      })()`);
+      mesures['cycle, nuages et noms'].cases_de_nuage = nb;
+      await p.cpu(1);
+      await p.fermer();
+    }
+    verifier(`${N} processeur ralenti 4 fois, 1024×768 (aussi le cycle avec ${mesures['cycle, nuages et noms'].cases_de_nuage} cases de nuage et les noms) : le code de l’app coûte au plus 33 ms par image (pas de simulation + dessin), soit au moins 30 images/s possibles`,
       Object.values(mesures).every(m => m.ms_par_image <= 33), mesures);
   }
 }

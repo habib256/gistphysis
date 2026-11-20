@@ -151,6 +151,7 @@
     flottaison: 0.3,      // probabilité par pas qu'un grain de glace sous l'eau remonte
     dispersion: 8,        // distance d'étalement d'un liquide vers un endroit plus bas
     agitation: false, zoneAgitation: null,
+    melangeLiquide: 0,    // brassage de chaque masse d'eau liquide (par °C d'écart entre la plus chaude et la plus froide)
     glissementNeige: false, // cycle : la glace épaisse sur le relief glisse en grains vers le bas
     sortieHaut: 0,        // > 0 : la vapeur au-delà de cette quantité part dans le reste de la pièce
     aeration: 0.003,      // part de l'excès de vapeur qui part à chaque pas (0,5 dans la ligne du haut)
@@ -161,7 +162,7 @@
     ocean: null,          // masque des cases « océan » (réservoir à température ambiante)
     sol: false,           // eau dans le sol (infiltration, écoulement souterrain, retour à l'océan)
     capaciteSol: 0.4, kInfiltration: 0.05, kSolBas: 0.06, kSolCote: 0.02, kSortieSol: 0.05, kEvapSol: 0.01,
-    kNappe: 0.05, kSource: 0.2, kReservoir: 0, hautSol: null,   // nappe : écoulement vers le bas de la pente, sortie par les sources
+    kNappe: 0.05, kSource: 0.2, kReservoir: 0, kProfond: 0, exutoire: -1, hautSol: null,   // nappe : écoulement vers le bas de la pente, sortie par les sources
     graine: 20261120,
   };
 
@@ -208,6 +209,7 @@
       this.etiq = new Int32Array(n);    // blocs de glace (composantes connexes)
       this.pile = new Int32Array(n);
       this.membres = new Int32Array(n);
+      this.marqueEau = new Uint32Array(n); this.tamponEau = 0;
       this.finX = new Int32Array(Math.max(nx, ny));
       this.infiltrationRecente = new Float32Array(n);   // eau entrée dans le sol récemment (affichage « Infiltration »)
       this.debitColonne = new Float32Array(nx);         // eau liquide passée d'une colonne à l'autre récemment (débit)
@@ -348,18 +350,20 @@
       if (this.pas % 3 === 0) this.blocs();
       if (this.r.glissementNeige && this.pas % 10 === 0) this.glisserNeige();
       if (this.r.convection > 0 || this.r.convectionLiquide > 0) this.convection();
-      // Cycle (option « alterner ») : les transformations lentes et régulières (vent, brassage,
-      // gouttelettes, chaleur, eau du sol, regroupement) sont faites un pas sur deux, avec des taux
-      // doublés, en deux groupes qui alternent : chaque pas coûte moitié moins. Bac à sable et
-      // expérience de fusion : tout à chaque pas.
+      // Cycle (option « alterner ») : les transformations lentes et régulières (brassage, gouttelettes,
+      // eau du sol, regroupement) sont faites un pas sur deux, avec des taux doublés, en deux groupes
+      // qui alternent ; le vent est appliqué deux fois de suite (au taux normal) un pas sur deux ; la
+      // chaleur est calculée à chaque pas. Bac à sable et expérience de fusion : tout à chaque pas.
       const alt = this.r.alterner, f = alt ? 2 : 1, pair = (this.pas & 1) === 0, A = !alt || pair, B = !alt || !pair;
-      if (this.r.vent && A) this.advecter(f);
+      // vent : deux fois avec le taux normal (un seul transport au taux doublé emporterait la vapeur sur plusieurs cases d’un coup)
+      if (this.r.vent && A) { this.advecter(1); if (alt) this.advecter(1); }
       if (B) this.brasserVapeur(f);
       if (this.r.sortieHaut) this.aerer();
       if (A) this.gouttelettes(f);
       this.pluie();
       this.chaleur(1);   // la chaleur à chaque pas (la conduction eau-eau ne peut pas être doublée sans devenir instable)
       if (this.r.agitation && this.r.zoneAgitation) this.agiter();
+      if (this.r.melangeLiquide > 0) this.melangerLiquides();
       this.etats(f, A);
       if (this.r.sol && B) this.eauDuSol(f);
       if (A) this.regrouper();
@@ -372,21 +376,24 @@
     // comme l'air du vent : les deux mers restent au même niveau (masse comptée, rien ne se perd).
     egaliserMers() {
       const {nx, ny, typ, m, h, T} = this, ocean = this.r.ocean;
-      const surface = b => {   // ligne du haut de la mer (médiane des colonnes du bassin)
-        const ys = [];
+      // niveau d'une mer : hauteur moyenne de sa surface, d'après la masse d'eau de la case du haut de
+      // chaque colonne (une case à moitié pleine compte pour une demi-ligne) : pas de saut d'une ligne
+      const niveau = b => {
+        let s = 0, k = 0;
         for (let x = b.x0; x <= b.x1; x++) {
           let y = 0;
           while (y < ny && !(ocean[y * nx + x] && typ[y * nx + x] === EAU)) y++;
-          if (y < ny) ys.push(y);
+          if (y < ny) { s += y + 1 - Math.min(1, m[y * nx + x]); k++; }
         }
-        ys.sort((a, c) => a - c);
-        return ys.length ? ys[Math.floor(ys.length / 2)] : ny;
+        return k ? s / k : ny;
       };
       const [g, d] = this.r.mers;
-      const yG = surface(g), yD = surface(d);
-      if (Math.abs(yG - yD) < 1) return;
+      const yG = niveau(g), yD = niveau(d), ecart = Math.abs(yG - yD);
+      if (ecart < 0.3) return;
       const haut = yG < yD ? g : d, bas = yG < yD ? d : g;   // « haut » : la mer la plus haute
-      let reste = Math.min(Math.abs(yG - yD) * (Math.min(g.x1 - g.x0, d.x1 - d.x0) + 1) * 0.25, 4);
+      const wH = haut.x1 - haut.x0 + 1, wB = bas.x1 - bas.x0 + 1;
+      // la moitié de l'eau qu'il faudrait déplacer pour égaliser (pas d'aller-retour)
+      let reste = Math.min(0.5 * ecart * wH * wB / (wH + wB), 4);
       // prendre l'eau du haut de la mer la plus haute…
       let H = 0, M = 0;
       for (let y = 0; y < ny && reste > 1e-12; y++) for (let x = haut.x0; x <= haut.x1 && reste > 1e-12; x++) {
@@ -962,6 +969,42 @@
       }
     }
 
+    // Courants de convection dans chaque masse d'eau liquide (aussi de côté) : l'eau chauffée d'un côté
+    // monte, l'eau froide descend, et toute la masse d'eau se mélange, d'autant plus vite que l'écart
+    // de température y est grand. Seule la partie « sensible » de l'énergie est mélangée (les réserves
+    // d'ébullition restent dans leur case) ; l'énergie totale ne change pas.
+    melangerLiquides() {
+      const {nx, n, typ, m, h, T, marqueEau: marque, pile, membres} = this, L = this.actifs();
+      const kM = this.r.melangeLiquide, stamp = ++this.tamponEau;
+      const liquide = i => typ[i] === EAU && h[i] >= L_F;
+      for (let kk = 0; kk < L.length; kk++) {
+        const i0 = L[kk];
+        if (marque[i0] === stamp || !liquide(i0)) continue;
+        let sp = 0, nb = 0, sm = 0, sh = 0, hMin = Infinity, hMax = -Infinity;
+        pile[sp++] = i0; marque[i0] = stamp;
+        while (sp > 0) {
+          const i = pile[--sp], x = i % nx;
+          membres[nb++] = i;
+          const sens = Math.min(h[i], H_EBU);
+          sm += m[i]; sh += m[i] * sens; if (sens < hMin) hMin = sens; if (sens > hMax) hMax = sens;
+          if (x > 0 && marque[i - 1] !== stamp && liquide(i - 1)) { marque[i - 1] = stamp; pile[sp++] = i - 1; }
+          if (x < nx - 1 && marque[i + 1] !== stamp && liquide(i + 1)) { marque[i + 1] = stamp; pile[sp++] = i + 1; }
+          if (i >= nx && marque[i - nx] !== stamp && liquide(i - nx)) { marque[i - nx] = stamp; pile[sp++] = i - nx; }
+          if (i + nx < n && marque[i + nx] !== stamp && liquide(i + nx)) { marque[i + nx] = stamp; pile[sp++] = i + nx; }
+        }
+        if (nb < 2 || sm <= 0) continue;
+        const ecart = (hMax - hMin) / C_EAU;   // en °C
+        const a = Math.min(0.3, kM * ecart);
+        if (a < 1e-4) continue;
+        const moy = sh / sm;
+        for (let k = 0; k < nb; k++) {
+          const i = membres[k], sens = Math.min(h[i], H_EBU), reserve = h[i] - sens;
+          h[i] = sens + a * (moy - sens) + reserve;
+          T[i] = temperatureDe(EAU, h[i]);
+        }
+      }
+    }
+
     // Agitateur (expérience de fusion) : l'eau liquide et la glace pilée sont mélangées.
     // Le brassage échange des cases voisines et égalise la partie « sensible » de l'énergie de
     // l'eau liquide (les réserves d'ébullition restent dans leur case). L'énergie totale ne change pas.
@@ -1070,25 +1113,30 @@
             if (q < 0) cpt.sublimation -= q; else cpt.condensationSolide += q;
           }
         }
-        // au contact de l'eau liquide (et juste au-dessus), la vapeur se condense sur l'eau (voir surface) :
-        // l'air très chaud au ras de l'eau qui bout reste clair, la brume se forme plus haut
+        // au contact de l'eau liquide, la vapeur se condense sur l'eau (voir surface). Au-dessus de l'eau
+        // qui bout, l'air est réchauffé par la vapeur chaude : il n'est pas saturé et reste clair ; la
+        // brume se forme plus haut, là où cet air se mélange à l'air plus froid. (Les gouttelettes qui
+        // arrivent dans cet air non saturé s'y évaporent, comme partout ailleurs.)
         if (liquide) {
-          // au ras de l'eau très chaude, les gouttelettes qui arrivent s'évaporent (l'air y reste clair)
-          if (i + nx < n && typ[i + nx] === EAU && T[i + nx] > 80 && d[i] > 0) { const q = d[i]; d[i] = 0; v[i] += q; T[i] -= L_V * q / cAir; cpt.evaporation += q; }
+          const ecart = v[i] - sL;
+          if (d[i] > 0 && ecart < 0) {
+            let q = -0.8 * ecart / (1 + L_V / cAir * penteTable(TAB_L, Ti));
+            if (q >= d[i] || d[i] < 1e-12) q = d[i];
+            d[i] -= q; v[i] += q; T[i] -= L_V * q / cAir; cpt.evaporation += q;
+          }
           continue;
         }
-        const auRasDeLEau = i + 2 * nx < n && typ[i + 2 * nx] === EAU && T[i + 2 * nx] > 80;
         if (solide && d[i] > 0) {   // les gouttelettes se déposent sur une paroi (buée) puis ruissellent
           const q = depot * d[i];
           d[i] -= q; p[i] += q;
         }
         const ecart = v[i] - sL;
-        if (ecart > 0 && !auRasDeLEau) {
+        if (ecart > 0) {
           const q = 0.8 * ecart / (1 + L_V / cAir * penteTable(TAB_L, Ti));
           v[i] -= q; d[i] += q; T[i] += L_V * q / cAir; cpt.condensationLiquide += q;
         } else if (d[i] > 0) {
           let q = -0.8 * ecart / (1 + L_V / cAir * penteTable(TAB_L, Ti));
-          if (q >= d[i] || d[i] < 1e-12 || auRasDeLEau) q = d[i];
+          if (q >= d[i] || d[i] < 1e-12) q = d[i];
           d[i] -= q; v[i] += q; T[i] -= L_V * q / cAir; cpt.evaporation += q;
         }
       }
@@ -1150,12 +1198,15 @@
         let q = (liquide ? kL : r.kSubl) * (ecart < plafond ? ecart : plafond);
         if (q > mi) q = mi;
         // L'énergie de vaporisation est prise à l'eau (sans la refroidir de plus de 3 °C par pas,
-        // ni geler de l'eau liquide) et, pour le reste, à l'air (au plus 3 °C par pas).
-        const parCase = liquide ? Math.max(0, Math.min(3 * C_EAU, h[i] - L_F)) : 3 * C_GLACE;
-        let E = q * L, eCase = Math.min(phi * E, (mi - q) * parCase), eAir = E - eCase;
+        // ni geler de l'eau liquide) et, pour le reste, à l'air (au plus 3 °C par pas). Une eau chaude
+        // fournit elle-même toute cette énergie (c'est elle qui chauffe l'air, pas l'inverse).
+        const chaude = liquide && Ti > 30 ? Math.min(1, (Ti - 30) / 30) : 0;
+        const phiE = phi + (1 - phi) * chaude;
+        const parCase = liquide ? Math.max(0, Math.min((3 + 5 * chaude) * C_EAU, h[i] - L_F)) : 3 * C_GLACE;
+        let E = q * L, eCase = Math.min(phiE * E, (mi - q) * parCase), eAir = E - eCase;
         if (eAir > 3 * r.cAir) {
           q *= 3 * r.cAir / eAir;
-          E = q * L; eCase = Math.min(phi * E, (mi - q) * parCase); eAir = E - eCase;
+          E = q * L; eCase = Math.min(phiE * E, (mi - q) * parCase); eAir = E - eCase;
         }
         if (q <= 0) return;
         const reste = mi - q;
@@ -1174,6 +1225,9 @@
         m[i] = reste;
         T[i] = temperatureDe(typ[i], h[i]);
         T[j] -= eAir / r.cAir;
+        // la vapeur sort à la température de l'eau : en se mélangeant à l'air, elle le réchauffe
+        // (ou le refroidit) — l'énergie est comptée : la vapeur est ensuite à la température de l'air
+        if (liquide) T[j] += q * C_EAU * (Ti - T[j]) / (r.cAir + q * C_EAU);
       } else if (ecart < 0) {
         // condensation sur l'eau (ou la glace)
         const q = Math.min(v[j], -ecart * (liquide ? r.kEvap : r.kSubl) * 2, -0.5 * ecart);
@@ -1254,6 +1308,22 @@
             permisSource -= q;
             m[i] -= q; p[j] += q; cpt.source += q;
             this.accumulerPluie(j);
+          }
+        }
+        // écoulement profond : là où la nappe a plus de 2 cases d'épaisseur, une partie de son eau
+        // passe dans la roche, en profondeur, et rejoint l'océan (sources sous-marines, comme sur la
+        // côte de La Réunion) ; la nappe ne remplit donc pas toute la couche de sol
+        if (r.kProfond > 0 && m[i] > plein && b < n && typ[b] !== SOL && i - 2 * nx >= 0
+            && typ[i - nx] === SOL && m[i - nx] > plein && typ[i - 2 * nx] === SOL && m[i - 2 * nx] > plein && r.exutoire >= 0) {
+          let ep = 3;   // épaisseur saturée de la colonne (en cases)
+          while (ep < 8 && i - ep * nx >= 0 && typ[i - ep * nx] === SOL && m[i - ep * nx] > plein) ep++;
+          const q = Math.min(m[i] - plein, (r.kProfond * fac) * (ep - 2) * cap);   // la case du fond reste saturée
+          const j = r.exutoire;
+          if (q > 0 && typ[j] === EAU) {
+            const mj = m[j];
+            h[j] = (h[j] * mj + q * hLiquide(Math.max(0, T[i]))) / (mj + q);
+            m[j] = mj + q; T[j] = temperatureDe(EAU, h[j]);
+            m[i] -= q; cpt.versOcean += q; cpt.profond = (cpt.profond || 0) + q;
           }
         }
         // l'eau du sol rejoint l'océan là où le sol le touche

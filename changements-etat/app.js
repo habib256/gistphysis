@@ -29,7 +29,7 @@
     neige: 'Fais tomber de la neige : des grains de glace à −5 °C.',
     eau: 'Verse de l’eau liquide à 20 °C.',
     verre: 'Construis une paroi ou un récipient en verre.',
-    chaud: 'Pose une plaque chauffante (160 °C).',
+    chaud: 'Pose une plaque chauffante (170 °C).',
     froid: 'Pose une plaque froide (−25 °C).',
     thermometre: 'Touche la scène pour poser un thermomètre (4 au plus). Un thermomètre se déplace en le faisant glisser, quel que soit l’outil (sauf la gomme, qui l’efface).',
     gomme: 'Efface ce que tu touches : eau, glace, parois, plaques, brume, thermomètres.',
@@ -139,7 +139,7 @@
   // saturé (nappe phréatique : foncé, teinté de bleu). L'eau libre (rivière, cavité) est bleu vif.
   const COUL = {
     eau: [44, 122, 212], glace: [196, 230, 252], grain: [230, 243, 255], verre: [150, 190, 210],
-    solSec: [226, 196, 140], solHumide: [118, 70, 34], solSature: [44, 52, 100], roche: [92, 78, 66],
+    solSec: [226, 196, 140], solHumide: [118, 70, 34], solSature: [56, 46, 82], roche: [92, 78, 66],
     rocheVolcanique: [132, 128, 124], grotte: [26, 22, 20], paillasse: [118, 104, 90],
     froid: [104, 132, 158], gouttelettes: [242, 246, 250], givre: [250, 253, 255], pluie: [12, 46, 128],
     vapeur: [196, 124, 255], glaceTerre: [206, 222, 236],
@@ -226,7 +226,8 @@
             r += (COUL.vapeur[0] - r) * a; g += (COUL.vapeur[1] - g) * a; b += (COUL.vapeur[2] - b) * a;
           }
           if (d[i] > 0) {
-            a = 0.97 * (1 - Math.exp(-d[i] / (cycle ? 0.0012 : 0.0025)));
+            // (cycle : le nuage est surtout dessiné par-dessus, flou : voir dessinerNuages)
+            a = cycle ? 0.35 * (1 - Math.exp(-d[i] / 0.0012)) : 0.97 * (1 - Math.exp(-d[i] / 0.0025));
             // cycle : un nuage épais (chargé de pluie) est gris, son bord est blanc
             const gris = cycle ? Math.min(0.55, d[i] / 0.012) : 0;
             const cr = COUL.gouttelettes[0] - 105 * gris, cg = COUL.gouttelettes[1] - 100 * gris, cb = COUL.gouttelettes[2] - 92 * gris;
@@ -273,14 +274,17 @@
           const k = (fissure ? 0.45 : 1) * (1 - 0.25 * Math.min(1, m[i] / capSol)) * (1 + 0.05 * bruit[i]);
           r = COUL.rocheVolcanique[0] * k; g = COUL.rocheVolcanique[1] * k; b = COUL.rocheVolcanique[2] * k;
         } else if (t === SOL) {
-          if (m[i] > plein) { r = COUL.solSature[0]; g = COUL.solSature[1]; b = COUL.solSature[2]; }
+          if (m[i] > plein) {   // sol gorgé d'eau : le sol mouillé, foncé et bleuté, avec ses grains
+            r = COUL.solSature[0]; g = COUL.solSature[1]; b = COUL.solSature[2];
+            if (((x * 7 + y * 13) % 5) === 0) { r += 20; g += 16; b += 10; }   // grains plus clairs
+          }
           else {
             a = Math.min(1, m[i] / plein);
             r = COUL.solSec[0] + (COUL.solHumide[0] - COUL.solSec[0]) * a;
             g = COUL.solSec[1] + (COUL.solHumide[1] - COUL.solSec[1]) * a;
             b = COUL.solSec[2] + (COUL.solHumide[2] - COUL.solSec[2]) * a;
           }
-          const k = 1 + 0.08 * bruit[i]; r *= k; g *= k; b *= k;   // grain du sol, mouillé ou non
+          const k = 1 + (m[i] > plein ? 0.16 : 0.08) * bruit[i]; r *= k; g *= k; b *= k;   // grain du sol, mouillé ou non
         } else if (t === ROCHE) {
           const base = fusion ? COUL.paillasse : cycle ? COUL.rocheVolcanique : COUL.roche, k = 1 + 0.05 * bruit[i];
           r = base[0] * k; g = base[1] * k; b = base[2] * k;
@@ -403,42 +407,75 @@
     }
   }
 
-  // Le plus grand nuage : la plus grande zone d'air voisine de gouttelettes (pour placer « Nuage »)
-  function plusGrandNuage(monde) {
-    const {nx, ny, typ, d} = monde, vu = new Uint8Array(nx * ny), pile = [];
+  // La plus grande zone d'un seul tenant (nuage, averse) : pour placer son nom au bon endroit
+  // (masque calculé une fois, tableaux réutilisés : peu de calcul à chaque image)
+  const groupes = {vu: null, pile: null, masque: null};
+  function plusGrandGroupe(monde, dedans) {
+    const {nx, ny} = monde, n = nx * ny;
+    if (!groupes.vu || groupes.vu.length !== n) { groupes.vu = new Uint8Array(n); groupes.pile = new Int32Array(n); groupes.masque = new Uint8Array(n); }
+    const vu = groupes.vu, pile = groupes.pile, M = groupes.masque;
+    let nb = 0;
+    for (let i = 0; i < n; i++) { M[i] = dedans(i) ? 1 : 0; vu[i] = 0; nb += M[i]; }
     let best = {n: 0, x: 0, y: 0};
-    const nuage = i => typ[i] === AIR && d[i] > 0.0015 && !souterrain[i];
-    for (let i0 = 0; i0 < nx * ny; i0++) {
-      if (vu[i0] || !nuage(i0)) continue;
-      const g = {n: 0, x: 0, y: 0};
-      pile.push(i0); vu[i0] = 1;
-      while (pile.length) {
-        const i = pile.pop(), x = i % nx, y = (i / nx) | 0;
-        g.n++; g.x += x; g.y += y;
-        for (const j of [x > 0 ? i - 1 : -1, x < nx - 1 ? i + 1 : -1, i - nx, i + nx]) if (j >= 0 && j < nx * ny && !vu[j] && nuage(j)) { vu[j] = 1; pile.push(j); }
+    if (nb === 0) return best;
+    for (let i0 = 0; i0 < n; i0++) {
+      if (vu[i0] || !M[i0]) continue;
+      let gn = 0, gx = 0, gy = 0, sp = 0;
+      pile[sp++] = i0; vu[i0] = 1;
+      while (sp > 0) {
+        const i = pile[--sp], x = i % nx;
+        gn++; gx += x; gy += (i - x) / nx;
+        if (x > 0 && !vu[i - 1] && M[i - 1]) { vu[i - 1] = 1; pile[sp++] = i - 1; }
+        if (x < nx - 1 && !vu[i + 1] && M[i + 1]) { vu[i + 1] = 1; pile[sp++] = i + 1; }
+        if (i >= nx && !vu[i - nx] && M[i - nx]) { vu[i - nx] = 1; pile[sp++] = i - nx; }
+        if (i + nx < n && !vu[i + nx] && M[i + nx]) { vu[i + nx] = 1; pile[sp++] = i + nx; }
       }
-      if (g.n > best.n) best = g;
+      if (gn > best.n) best = {n: gn, x: gx, y: gy};
     }
     return best;
   }
 
-  // Les nuages : autour de chaque case de gouttelettes, une tache blanche floue (dessin seulement :
-  // le nuage reste là où sont les gouttelettes, mais il a l'air d'un nuage et non d'une rangée de cases)
+  // Les nuages : une image floue de la taille de la grille (une case = un pixel), agrandie avec
+  // lissage par-dessus la scène (dessin seulement : le nuage reste là où sont les gouttelettes, mais il
+  // a l'air d'un nuage et non d'une rangée de cases). L'image n'est recalculée que toutes les
+  // 3 images affichées : peu de calcul, même avec beaucoup de nuages.
+  const nuages = {toile: null, ctx: null, image: null, a: null, b: null, compte: 0};
   function dessinerNuages() {
-    const monde = etat.monde, {nx, ny, typ, d} = monde, s = vue.s, inf = etat.infos;
-    ctx.save();
-    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-      const i = y * nx + x;
-      if (typ[i] !== AIR || d[i] < 0.0008 || y > inf.haut[x]) continue;
-      const [sx, sy] = versEcran(x + 0.5, y + 0.2), rayon = s * (1.6 + Math.min(1.4, d[i] / 0.004));
-      const a = Math.min(0.55, 0.18 + d[i] / 0.006), gris = Math.min(1, d[i] / 0.012);
-      const c = Math.round(248 - 70 * gris);
-      const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, rayon);
-      grad.addColorStop(0, `rgba(${c},${c + 2},${c + 5},${a})`);
-      grad.addColorStop(1, `rgba(${c},${c + 2},${c + 5},0)`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(sx - rayon, sy - rayon, 2 * rayon, 2 * rayon);
+    const monde = etat.monde, {nx, ny, typ, d} = monde, inf = etat.infos, n = nx * ny;
+    if (!nuages.toile || nuages.toile.width !== nx || nuages.toile.height !== ny) {
+      nuages.toile = document.createElement('canvas'); nuages.toile.width = nx; nuages.toile.height = ny;
+      nuages.ctx = nuages.toile.getContext('2d');
+      nuages.image = nuages.ctx.createImageData(nx, ny);
+      nuages.a = new Float32Array(n); nuages.b = new Float32Array(n); nuages.g = new Float32Array(n);
+      nuages.compte = 0;
     }
+    if (nuages.compte++ % 3 === 0) {
+      const A = nuages.a, B = nuages.b, Gr = nuages.g, px = nuages.image.data;
+      for (let i = 0; i < n; i++) {
+        const x = i % nx, y = (i / nx) | 0;
+        const dd = typ[i] === AIR && y <= inf.haut[x] ? d[i] : 0;
+        A[i] = dd < 0.0008 ? 0 : Math.min(0.8, 0.25 + dd / 0.004);
+        Gr[i] = Math.min(1, dd / 0.012);
+      }
+      // deux passes de flou (moyenne 3 × 3) : le bord du nuage s'adoucit et déborde un peu
+      for (let passe = 0; passe < 2; passe++) {
+        const src = passe === 0 ? A : B, dst = passe === 0 ? B : A;
+        for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+          let sum = 0, k = 0;
+          for (let yy = y - 1; yy <= y + 1; yy++) { if (yy < 0 || yy >= ny) continue; for (let xx = x - 1; xx <= x + 1; xx++) { if (xx < 0 || xx >= nx) continue; sum += src[yy * nx + xx]; k++; } }
+          dst[y * nx + x] = sum / k;
+        }
+      }
+      for (let i = 0; i < n; i++) {
+        const a = Math.min(0.85, 1.4 * A[i]), c = 248 - 70 * Gr[i];
+        px[4 * i] = c; px[4 * i + 1] = c + 2; px[4 * i + 2] = Math.min(255, c + 5); px[4 * i + 3] = Math.round(255 * a);
+      }
+      nuages.ctx.putImageData(nuages.image, 0, 0);
+    }
+    const [x0, y0] = versEcran(0, 0), [x1, y1] = versEcran(nx, ny);
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(nuages.toile, x0, y0, x1 - x0, y1 - y0);
     ctx.restore();
   }
 
@@ -505,11 +542,11 @@
     // Ce qui se voit : nuage, pluie, rivières, sources, nappe, cavité, sol, roche, givre, glace
     const plein = 0.95 * monde.r.capaciteSol, rec = monde.infiltrationRecente, cav = inf.cavite;
     const groupe = () => ({n: 0, x: 0, y: 0, ajouter(xx, yy, w = 1) { this.n += w; this.x += xx * w; this.y += yy * w; }});
-    const N = plusGrandNuage(monde), P = groupe(), RV = groupe(), RA = groupe(), NA = groupe(), CV = groupe(), GV = groupe(), GL = groupe(), IN = groupe(), FI = groupe();
+    const N = plusGrandGroupe(monde, i => typ[i] === AIR && d[i] > 0.0015 && !souterrain[i]);
+    const P = plusGrandGroupe(monde, i => typ[i] === AIR && p[i] > 0.0005 && !souterrain[i]), RV = groupe(), RA = groupe(), NA = groupe(), CV = groupe(), GV = groupe(), GL = groupe(), IN = groupe(), FI = groupe();
     for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
       const i = y * nx + x, t = typ[i];
       if (t === AIR) {
-        if (p[i] > 0.0005 && !souterrain[i]) P.ajouter(x, y);
       } else if (t === EAU) {
         if (x >= cav.x0 && x <= cav.x1 && y >= cav.y0 && y <= cav.y1) CV.ajouter(x, y);
         else if (y <= inf.ySea && x > inf.xCote + 1 && x <= inf.xSourceVent) RV.ajouter(x, y);
@@ -529,12 +566,13 @@
     centre(RV, 'Rivière', -3, 2);
     centre(RA, 'Rivière', -3, 2);
     placer('Source', inf.xSourceVent - 3, inf.haut[inf.xSourceVent + 1] + 3);
-    centre(CV, 'Poche d’eau souterraine (cavité)', 4, 1);
+    const petit = s < 3.2;   // scène petite (téléphone) : noms plus courts, hors de ce qu'ils nomment
+    centre(CV, petit ? 'Cavité' : 'Poche d’eau souterraine (cavité)', petit ? 7 : 4, 1);
     placer('Source (résurgence)', inf.xResurgence + 7, inf.sortieCavite + 2);
     centre(NA, 'Nappe phréatique', 6, 5);
     const xs = Math.round((inf.xSourceVent + inf.xSommet) / 2);
     placer('Sol perméable', xs - 4, inf.haut[xs - 4] + 1);
-    centre(FI, 'Roche fissurée', 0, 1);
+    if (!petit) centre(FI, 'Roche fissurée', 0, 1);
     placer('Roche imperméable', xs + 2, inf.haut[xs + 2] + 24);
     placer('Piton des Neiges', inf.xSommet, inf.ySommet - 6);
     centre(N, 'Nuage', 0, 40);
