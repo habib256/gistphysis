@@ -40,6 +40,6 @@ Test : `node tests/verifier.mjs` (Chrome sans écran) ; `node --experimental-web
 
 ## Licence et inspiration
 
-Licence : MIT, comme annoncé par le README du dépôt gistphysis (le fichier `LICENSE` à la racine du dépôt contient toutefois le texte de la GNU GPL v2 : à harmoniser).
+Licence : GNU GPL v3 ou ultérieure. Auteur : M. VERHILLE Arnaud, collège Thérésien Cadet (La Réunion).
 
 Inspiration : idée des animations Flash « Eclipse », « Test_phases » et « Test_saisons » de sciences.colleges.free.fr ; aucun code ni dessin repris.
