@@ -15,6 +15,7 @@
 //   3. vapeur invisible : une zone d'air humide (90 % de la saturation) et une zone d'air sec, à
 //      la même température, donnent exactement les mêmes pixels ; avec « Montrer la vapeur »,
 //      elles diffèrent ;
+//   3 bis. cycle : contraste sol sec / sol saturé, pluie sur le ciel, rivière visible à l'écran ;
 //   4. tactile émulé : choisir l'outil au doigt, verser de l'eau d'un trait, poser puis faire
 //      glisser un thermomètre ;
 //   5. expérience de fusion : « Démarrer », relevé toutes les 30 s, tableau et fichier CSV
@@ -183,9 +184,11 @@ const VAPEUR = `(()=>{
   Changements.dessiner();
   const px = Changements.pixelsGrille();
   let paires = 0, differences = 0;
+  // air libre seulement (dans la coupe du cycle, l'air d'une cavité souterraine est dessiné dans le noir)
+  const libre = i => !(e.partie === 'cycle' && ((i / nx) | 0) > e.infos.surface[i % nx]);
   for (let y = 0; y < ny; y++) for (let x = 0; x < nx / 2 - 1; x++) {
     const i = y * nx + x, j = y * nx + (nx - 1 - x);
-    if (m.typ[i] === CE.AIR && m.typ[j] === CE.AIR) { paires++; if (px[i] !== px[j]) differences++; }
+    if (m.typ[i] === CE.AIR && m.typ[j] === CE.AIR && libre(i) && libre(j)) { paires++; if (px[i] !== px[j]) differences++; }
   }
   const v = Changements.vue(), toile = document.getElementById('scene'), ctx = toile.getContext('2d');
   // deux points de l'écran sans dessin par-dessus (Soleil, thermomètres, étiquettes), dans l'air
@@ -251,6 +254,43 @@ async function controler(nav, base) {
     await p.fermer();
   }
 
+  // 3 bis. Cycle : ce qui doit se voir franchement (sol sec / sol saturé, pluie, rivières)
+  await nav.relancer();
+  {
+    const p = await ouvrir('/index.html#cycle', 1024, 768);
+    const r = await p.ev(`(()=>{
+      const CE = window.ChangementsEtat, m = Changements.monde(), inf = Changements.etat.infos, e = Changements.etat;
+      e.enMarche = false;
+      Changements.avancer(2500); e.enMarche = false;
+      const lum = px => { const c = [px & 255, (px >>> 8) & 255, (px >>> 16) & 255].map(v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+      const rapport = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      // deux cases de sol voisines : l'une sèche, l'autre saturée
+      const x = Math.round((inf.xSourceVent + inf.xSommet) / 2), i1 = (inf.haut[x] + 1) * m.nx + x, i2 = i1 + m.nx;
+      m.m[i1] = 0.02; m.m[i2] = m.r.capaciteSol;
+      // une goutte de pluie dans le ciel, au-dessus de l'océan
+      const ip = 20 * m.nx + 20, iciel = 20 * m.nx + 24;
+      m.p[ip] = 0.003; m.d[ip] = 0; m.d[iciel] = 0; m.p[iciel] = 0;
+      Changements.dessiner();
+      const px = Changements.pixelsGrille();
+      const sol = rapport(lum(px[i1]), lum(px[i2])), pluie = rapport(lum(px[ip]), lum(px[iciel]));
+      // le ruban de la rivière à l'écran : des pixels bleu d'eau le long du lit de gauche
+      const v = Changements.vue(), toile = document.getElementById('scene'), ctx = toile.getContext('2d');
+      let bleus = 0, testes = 0;
+      for (let xx = inf.xCote + 4; xx < inf.xSourceVent - 2; xx += 2) {
+        const X = Math.round((v.x + (xx + 0.5) * v.s) * v.dpr);
+        for (let dy = -3; dy <= 0; dy++) {
+          const Y = Math.round((v.y + (inf.haut[xx] + dy) * v.s) * v.dpr), d = ctx.getImageData(X, Y, 1, 1).data;
+          testes++; if (d[2] > 150 && d[2] > d[0] + 80) { bleus++; break; }
+        }
+      }
+      return {sol: +sol.toFixed(2), pluie: +pluie.toFixed(2), bleus, colonnes: Math.ceil((inf.xSourceVent - 2 - inf.xCote - 4) / 2)};
+    })()`);
+    verifier(`${N} cycle : sol sec et sol saturé nettement différents (rapport de luminance ${r.sol}, au moins 4) ; pluie visible sur le ciel (rapport ${r.pluie}, au moins 3)`, r.sol >= 4 && r.pluie >= 3);
+    verifier(`${N} cycle : la rivière de gauche se voit à l’écran tout le long de son lit (${r.bleus} colonnes sur ${r.colonnes} avec de l’eau bleue)`, r.bleus >= 0.8 * r.colonnes, r);
+    await p.capture(path.join(SORTIE, `${nav.chrome ? 'chrome' : 'firefox'}-cycle-riviere.png`));
+    await p.fermer();
+  }
+
   // 4. Tactile émulé
   await nav.relancer();
   {
@@ -284,11 +324,11 @@ async function controler(nav, base) {
     await p.ev(`(document.getElementById('b-demarrer').click(), Changements.avancer(3000), true)`);
     const r = await p.ev(`({lignes: document.querySelectorAll('#tableau tbody tr').length, mesures: Changements.etat.fusion.mesures.length, temps: Changements.monde().temps, csv: Changements.csv(), bouton: document.getElementById('b-demarrer').textContent})`);
     const lignes = r.csv.trim().split('\r\n');
-    const attendu = Math.floor(r.temps / 30 + 1e-6) + 1;
-    verifier(`${N} fusion : une mesure toutes les 30 s (${r.mesures} mesures pour ${Math.round(r.temps)} s), autant de lignes dans le tableau`,
+    const attendu = Math.floor(r.temps / 15 + 1e-6) + 1;
+    verifier(`${N} fusion : une mesure toutes les 15 s (${r.mesures} mesures pour ${Math.round(r.temps)} s), autant de lignes dans le tableau`,
       r.mesures === attendu && r.lignes === r.mesures && r.bouton === 'Pause', {lignes: r.lignes, attendu});
     verifier(`${N} fusion : CSV pour le tableur (« ${lignes[0]} », puis « ${lignes[1]} », « ${lignes[2]} »…)`,
-      lignes[0] === 'Temps (min);Température (°C)' && lignes[1] === '0,0;-10,0' && lignes.slice(1).every(l => /^\d+,\d;-?\d+,\d$/.test(l)) && lignes.length === r.mesures + 1);
+      lignes[0] === 'Temps (min);Température (°C)' && lignes[1] === '0,00;-18,0' && lignes.slice(1).every(l => /^\d+,\d\d;-?\d+,\d$/.test(l)) && lignes.length === r.mesures + 1);
     propre(p, 'fusion');
     await p.fermer();
   }

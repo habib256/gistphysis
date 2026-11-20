@@ -1,7 +1,7 @@
 // Les changements d'état de l'eau — interface, affichage, saisie au doigt et à la souris
-// Version 1.0 — 20/11/2026
-// VERHILLE Arnaud
-// Copyleft GPL2
+// Version 1.1 — 20/11/2026
+// M. VERHILLE Arnaud
+// Licence GNU GPL v3 (voir README.md)
 //
 // Trois parties, ouvrables par l'adresse : #bac-a-sable (par défaut), #cycle, #fusion.
 // Rien n'est envoyé, aucune ressource n'est chargée depuis Internet.
@@ -18,20 +18,20 @@
 
   const PARTIES = ['bac-a-sable', 'cycle', 'fusion'];
   const CASES_BAC = 15000;                       // taille de la grille du bac à sable
-  const PAS_PAR_IMAGE = {'bac-a-sable': 2, cycle: 2, fusion: 4};
-  const VITESSES = [1, 2, 4];
+  const PAS_PAR_IMAGE = {'bac-a-sable': 1, cycle: 2, fusion: 4};
+  const VITESSES = [0.25, 0.5, 1, 2, 4];
   const BUDGET_MS = 14;                          // au-delà, la simulation ralentit au lieu de figer l'écran
-  const SOLEIL = 4;                              // énergie du Soleil par pas et par colonne d'océan
+  const SOLEIL = 3;                              // énergie du Soleil par pas et par colonne d'océan
   const RAYONS_PINCEAU = [1, 2.5, 4.5], NOMS_PINCEAU = ['petit', 'moyen', 'grand'];
   const MAX_THERMOS = {'bac-a-sable': 4, cycle: 3, fusion: 1};
   const AIDE_OUTILS = {
-    glace: 'Dessine un bloc de glace à −10 °C. Il garde sa forme.',
+    glace: 'Dessine un bloc de glace à −10 °C.',
     neige: 'Fais tomber de la neige : des grains de glace à −5 °C.',
     eau: 'Verse de l’eau liquide à 20 °C.',
     verre: 'Construis une paroi ou un récipient en verre.',
-    chaud: 'Pose une plaque chauffante (160 °C).',
+    chaud: 'Pose une plaque chauffante (130 °C).',
     froid: 'Pose une plaque froide (−25 °C).',
-    thermometre: 'Touche la scène pour poser un thermomètre (4 au plus). Fais-le glisser pour le déplacer.',
+    thermometre: 'Touche la scène pour poser un thermomètre (4 au plus). Un thermomètre se déplace en le faisant glisser, quel que soit l’outil (sauf la gomme, qui l’efface).',
     gomme: 'Efface ce que tu touches : eau, glace, parois, plaques, brume, thermomètres.',
   };
 
@@ -41,7 +41,7 @@
     vapeur: false, repartition: false, noms: false, soleil: true, vent: true, thermoCycle: false,
     tAir: 20, tMer: 20,
     fusion: {masse: 150, niveau: 3, agitation: true, statut: 'pret', mesures: [], prochaine: 0, t0: 0},
-    dansLEcran: true, image: 0,
+    dansLEcran: true, image: 0, reste: 0,
   };
 
   // ---- Nombres à la française ----------------------------------------------
@@ -132,13 +132,17 @@
   let courbeARefaire = true;   // la courbe n'est redessinée qu'après une nouvelle mesure ou un changement de taille
   let image = null, pixels = null, dpr = 1;
   let vue = {s: 1, x: 0, y: 0};
-  let fond = null, bruit = null;
+  let fond = null, bruit = null, souterrain = null;
+  let placees = [];   // étiquettes déjà placées dans l'image en cours (pour éviter les chevauchements)
 
+  // Le sol perméable change franchement de couleur avec l'eau qu'il contient : sec (clair), humide,
+  // saturé (nappe phréatique : foncé, teinté de bleu). L'eau libre (rivière, cavité) est bleu vif.
   const COUL = {
     eau: [44, 122, 212], glace: [196, 230, 252], grain: [230, 243, 255], verre: [150, 190, 210],
-    solSec: [140, 108, 70], solMouille: [78, 58, 38], roche: [92, 78, 66], paillasse: [118, 104, 90],
-    froid: [104, 132, 158], gouttelettes: [242, 246, 250], givre: [248, 252, 255], pluie: [116, 182, 255],
-    vapeur: [196, 124, 255],
+    solSec: [226, 196, 140], solHumide: [118, 70, 34], solSature: [44, 52, 100], roche: [92, 78, 66],
+    rocheVolcanique: [132, 128, 124], grotte: [26, 22, 20], paillasse: [118, 104, 90],
+    froid: [104, 132, 158], gouttelettes: [242, 246, 250], givre: [250, 253, 255], pluie: [12, 46, 128],
+    vapeur: [196, 124, 255], glaceTerre: [206, 222, 236],
   };
 
   function preparerAffichage() {
@@ -158,6 +162,9 @@
       else c = [30, 42, 54];
       fond[3 * y] = c[0]; fond[3 * y + 1] = c[1]; fond[3 * y + 2] = c[2];
     }
+    // dans la coupe du cycle : l'air sous la surface (cavité, galerie) est dans le noir
+    souterrain = new Uint8Array(n);
+    if (etat.partie === 'cycle') for (let i = 0; i < n; i++) if (((i / nx) | 0) > etat.infos.surface[i % nx]) souterrain[i] = 1;
     bruit = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       let a = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b);
@@ -190,7 +197,7 @@
   function rendreGrille() {
     const monde = etat.monde, {nx, ny, typ, drap, m, h, T, v, d, c, p} = monde;
     const montrerVapeur = etat.vapeur, cycle = etat.partie === 'cycle', fusion = etat.partie === 'fusion';
-    const capSol = monde.r.capaciteSol;
+    const capSol = monde.r.capaciteSol, plein = 0.95 * capSol, ySea = cycle ? etat.infos.ySea : 0;
     const E = COUL.eau, G = COUL.glace, GR = COUL.grain;
     for (let y = 0; y < ny; y++) {
       const fr = fond[3 * y], fg = fond[3 * y + 1], fb = fond[3 * y + 2];
@@ -198,14 +205,11 @@
         const i = y * nx + x, t = typ[i];
         let r, g, b, a;
         if (t === AIR) {
-          r = fr; g = fg; b = fb;
+          if (souterrain[i]) { r = COUL.grotte[0]; g = COUL.grotte[1]; b = COUL.grotte[2]; }
+          else { r = fr; g = fg; b = fb; }
           if (montrerVapeur && v[i] > 0) {
             a = 0.6 * Math.sqrt(Math.min(1, v[i] / 0.05));
             r += (COUL.vapeur[0] - r) * a; g += (COUL.vapeur[1] - g) * a; b += (COUL.vapeur[2] - b) * a;
-          }
-          if (p[i] > 0.00015) {
-            a = Math.min(0.92, 0.35 + p[i] / 0.004);
-            r += (COUL.pluie[0] - r) * a; g += (COUL.pluie[1] - g) * a; b += (COUL.pluie[2] - b) * a;
           }
           if (d[i] > 0) {
             a = 0.95 * (1 - Math.exp(-d[i] / (cycle ? 0.004 : 0.0025)));
@@ -215,6 +219,11 @@
             a = Math.min(1, c[i] / 0.12);
             r += (COUL.givre[0] - r) * a; g += (COUL.givre[1] - g) * a; b += (COUL.givre[2] - b) * a;
           }
+          if (p[i] > (souterrain[i] ? 0.004 : 0.00015)) {   // la pluie, par-dessus le nuage, d'un bleu foncé bien visible ;
+            // dans la cavité, seulement de grosses gouttes, discrètes
+            a = souterrain[i] ? Math.min(0.5, p[i] / 0.02) : Math.min(0.95, 0.55 + p[i] / 0.003);
+            r += (COUL.pluie[0] - r) * a; g += (COUL.pluie[1] - g) * a; b += (COUL.pluie[2] - b) * a;
+          }
         } else if (t === EAU) {
           const k = 1 + 0.035 * bruit[i];
           r = E[0] * k; g = E[1] * k; b = E[2] * k;
@@ -222,12 +231,13 @@
             a = 0.6 * (1 - Math.max(0, h[i]) / L_F);
             r += (G[0] - r) * a; g += (G[1] - g) * a; b += (G[2] - b) * a;
           }
-          if (m[i] < 0.98) {  // petite quantité d'eau : plus transparente
+          if (m[i] < 0.98 && !(cycle && y <= ySea)) {  // petite quantité d'eau : plus transparente (pas un filet de rivière)
             a = 0.45 + 0.55 * Math.max(0, m[i]);
             r = fr + (r - fr) * a; g = fg + (g - fg) * a; b = fb + (b - fb) * a;
           }
         } else if (t === GLACE) {
-          const base = (drap[i] & GRAIN) ? GR : G, k = 1 + ((drap[i] & GRAIN) ? 0.07 : 0.025) * bruit[i];
+          const base = (drap[i] & CE.GIVRE) ? COUL.givre : cycle ? COUL.glaceTerre : (drap[i] & GRAIN) ? GR : G;
+          const k = 1 + ((drap[i] & GRAIN) ? 0.07 : 0.025) * bruit[i];
           r = base[0] * k; g = base[1] * k; b = Math.min(255, base[2] * k);
           if (h[i] > 0) {     // en train de fondre
             a = 0.55 * Math.min(1, h[i] / L_F);
@@ -239,13 +249,16 @@
           }
         } else if (t === VERRE) { r = COUL.verre[0]; g = COUL.verre[1]; b = COUL.verre[2]; }
         else if (t === SOL) {
-          a = Math.min(1, m[i] / capSol);
-          r = COUL.solSec[0] + (COUL.solMouille[0] - COUL.solSec[0]) * a;
-          g = COUL.solSec[1] + (COUL.solMouille[1] - COUL.solSec[1]) * a;
-          b = COUL.solSec[2] + (COUL.solMouille[2] - COUL.solSec[2]) * a;
-          const k = 1 + 0.06 * bruit[i]; r *= k; g *= k; b *= k;
+          if (m[i] > plein) { r = COUL.solSature[0]; g = COUL.solSature[1]; b = COUL.solSature[2]; }
+          else {
+            a = Math.min(1, m[i] / plein);
+            r = COUL.solSec[0] + (COUL.solHumide[0] - COUL.solSec[0]) * a;
+            g = COUL.solSec[1] + (COUL.solHumide[1] - COUL.solSec[1]) * a;
+            b = COUL.solSec[2] + (COUL.solHumide[2] - COUL.solSec[2]) * a;
+          }
+          const k = 1 + 0.08 * bruit[i]; r *= k; g *= k; b *= k;   // grain du sol, mouillé ou non
         } else if (t === ROCHE) {
-          const base = fusion ? COUL.paillasse : COUL.roche, k = 1 + 0.05 * bruit[i];
+          const base = fusion ? COUL.paillasse : cycle ? COUL.rocheVolcanique : COUL.roche, k = 1 + 0.05 * bruit[i];
           r = base[0] * k; g = base[1] * k; b = base[2] * k;
         } else if (t === CHAUD) {
           a = Math.min(1, Math.max(0, (T[i] - 20) / 180));
@@ -264,6 +277,7 @@
   function dessiner() {
     if (!etat.monde) return;
     rendreGrille();
+    placees = [];
     const W = toile.width / dpr, H = toile.height / dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#0b0f14';
@@ -273,22 +287,32 @@
     ctxDouble.drawImage(hors, 0, 0, nx, ny, 0, 0, 2 * nx, 2 * ny);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(double, 0, 0, 2 * nx, 2 * ny, vue.x, vue.y, nx * vue.s, ny * vue.s);
+    dessinerThermometres();
     if (etat.partie === 'bac-a-sable') dessinerPlaques();
     if (etat.partie === 'cycle') dessinerCycle();
     if (etat.partie === 'fusion') dessinerFusion();
-    dessinerThermometres();
     if (etat.partie === 'fusion' && courbeARefaire) { courbeARefaire = false; dessinerCourbe(); }
   }
 
   const versEcran = (gx, gy) => [vue.x + gx * vue.s, vue.y + gy * vue.s];
 
-  function etiquette(texte, x, y, {fond = 'rgba(10,14,20,.82)', couleur = '#fff', taille = 13, centre = true} = {}) {
+  function etiquette(texte, x, y, {fond = 'rgba(10,14,20,.82)', couleur = '#fff', taille = 13, centre = true, facultative = false, decalageMax = 3} = {}) {
     ctx.font = `600 ${taille}px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
     const w = ctx.measureText(texte).width + 10, hh = taille + 7;
     const W = toile.width / dpr, H = toile.height / dpr;
     let x0 = centre ? x - w / 2 : x;
     x0 = Math.max(2, Math.min(W - w - 2, x0));
-    const y0 = Math.max(2, Math.min(H - hh - 2, y - hh / 2));
+    // pas de chevauchement : on décale l'étiquette vers le bas puis vers le haut si la place est prise
+    const yVoulu = y - hh / 2;
+    let y0 = Math.max(2, Math.min(H - hh - 2, yVoulu)), trouve = false;
+    const libre = yy => placees.every(r => x0 + w <= r.x || x0 >= r.x + r.w || yy + hh <= r.y || yy >= r.y + r.h);
+    for (const k of [0, 1, -1, 2, -2, 3, -3]) {
+      if (Math.abs(k) > decalageMax) continue;
+      const yy = Math.max(2, Math.min(H - hh - 2, yVoulu + k * (hh + 2)));
+      if (libre(yy)) { y0 = yy; trouve = true; break; }
+    }
+    if (!trouve && facultative) return null;   // pas de place : l'étiquette n'est pas affichée
+    placees.push({x: x0 - 1, y: y0 - 1, w: w + 2, h: hh + 2});
     ctx.fillStyle = fond;
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x0, y0, w, hh, 6); else ctx.rect(x0, y0, w, hh);
@@ -297,6 +321,7 @@
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.fillText(texte, x0 + 5, y0 + hh / 2 + 0.5);
+    return {x: x0, y: y0, w, h: hh};
   }
 
   function dessinerThermometres() {
@@ -313,6 +338,7 @@
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy - haut * 0.6); ctx.stroke();
       ctx.fillStyle = '#d6332e'; ctx.strokeStyle = '#0b0f14'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(sx, sy, 5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+      placees.push({x: sx - 7, y: sy - haut - 2, w: 14, h: haut + 9});   // la tige : les noms l'évitent
       const T = monde.lireTemperature(th.x, th.y);
       const nom = etat.thermometres.length > 1 ? (k + 1) + ' : ' : '';
       etiquette(nom + nombre(T, 1) + ' °C', sx, sy - haut - 12, {taille: 13});
@@ -349,7 +375,7 @@
       const [xd, sy] = versEcran(pl.xmax + 1, (pl.ymin + pl.ymax + 1) / 2);
       const [xg] = versEcran(pl.xmin, 0);
       const aDroite = xd + 4 + larg < toile.width / dpr;
-      etiquette(texte, aDroite ? xd + 4 : xg - 4 - larg, sy, {taille: 12, fond: 'rgba(10,14,20,.7)', centre: false});
+      etiquette(texte, aDroite ? xd + 4 : xg - 4 - larg, sy, {taille: 12, fond: 'rgba(10,14,20,.7)', centre: false, facultative: true, decalageMax: 2});
     }
   }
 
@@ -377,27 +403,138 @@
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 8, sy); ctx.stroke();
       if (alt > 0) etiquette(nombre(alt, 0) + ' m', sx + 10, sy, {centre: false, taille: 11, fond: 'rgba(10,14,20,.55)'});
     }
+    dessinerRivieres();
+    // Haut de la nappe phréatique : un trait pointillé clair sur le sol saturé
+    const {nx, ny, typ, d, p, m, drap} = monde;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(170, 225, 255, .95)'; ctx.lineWidth = Math.max(1.5, s * 0.35); ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    let trace = false;
+    for (let x = inf.xSourceVent + 1; x <= inf.xFinSol; x++) {
+      const y = monde.niveauNappe(x);
+      if (y < 0) { trace = false; continue; }
+      const [sx0, sy] = versEcran(x, y), [sx1] = versEcran(x + 1, y);
+      if (!trace) ctx.moveTo(sx0, sy); else ctx.lineTo(sx0, sy);
+      ctx.lineTo(sx1, sy);
+      trace = true;
+    }
+    ctx.stroke();
+    ctx.restore();
     if (!etat.noms) return;
-    const {nx, ny, typ, d, p, m} = monde;
-    // Ce qui se voit : nuage, pluie, rivière, givre, sol, océan, sommet
-    let nN = 0, xN = 0, yN = 0, nP = 0, xP = 0, yP = 0, nR = 0, xR = 0, yR = 0, nG = 0, xG = 0, yG = 0;
+    // Ce qui se voit : nuage, pluie, rivières, sources, nappe, cavité, sol, roche, givre, glace
+    const plein = 0.95 * monde.r.capaciteSol, rec = monde.infiltrationRecente, cav = inf.cavite;
+    const groupe = () => ({n: 0, x: 0, y: 0, ajouter(xx, yy, w = 1) { this.n += w; this.x += xx * w; this.y += yy * w; }});
+    const N = groupe(), P = groupe(), RV = groupe(), RA = groupe(), NA = groupe(), CV = groupe(), GV = groupe(), GL = groupe(), IN = groupe();
     for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
       const i = y * nx + x, t = typ[i];
       if (t === AIR) {
-        if (d[i] > 0.0015) { nN++; xN += x; yN += y; }
-        if (p[i] > 0.0005) { nP++; xP += x; yP += y; }
-      } else if (t === EAU && y <= inf.ySea && x > inf.xCote + 2) { nR++; xR += x; yR += y; }
-      else if (t === GLACE) { nG++; xG += x; yG += y; }
+        if (d[i] > 0.0015 && !souterrain[i]) N.ajouter(x, y);
+        if (p[i] > 0.0005 && !souterrain[i]) P.ajouter(x, y);
+      } else if (t === EAU) {
+        if (x >= cav.x0 && x <= cav.x1 && y >= cav.y0 && y <= cav.y1) CV.ajouter(x, y);
+        else if (y <= inf.ySea && x > inf.xCote + 1 && x <= inf.xSourceVent) RV.ajouter(x, y);
+        else if (y <= inf.ySea && x >= inf.xResurgence && x < inf.xCoteSousLeVent - 1) RA.ajouter(x, y);
+      } else if (t === GLACE) { if (drap[i] & CE.GIVRE) GV.ajouter(x, y); else GL.ajouter(x, y); }
+      else if (t === SOL) {
+        if (m[i] > plein) NA.ajouter(x, y);
+        if (rec[i] > 0.0004) IN.ajouter(x, y, rec[i]);
+      }
     }
-    const placer = (texte, gx, gy) => { const [sx, sy] = versEcran(gx, gy); etiquette(texte, sx, sy); };
+    // les noms sont placés par ordre d'importance ; s'il n'y a pas la place, un nom est omis
+    const taille = toile.width / dpr < 600 ? 11 : 13;
+    const placer = (texte, gx, gy) => { const [sx, sy] = versEcran(gx, gy); return etiquette(texte, sx, sy, {taille, facultative: true, decalageMax: 1}); };
+    const centre = (G, texte, dy = 0, min = 1) => { if (G.n >= min) placer(texte, G.x / G.n, G.y / G.n + dy); };
     placer('Océan Indien', inf.xCote * 0.45, inf.ySea + 10);
+    centre(RV, 'Rivière', -3, 2);
+    centre(RA, 'Rivière', -3, 2);
+    placer('Source', inf.xSourceVent - 3, inf.haut[inf.xSourceVent + 1] + 3);
+    centre(CV, 'Poche d’eau souterraine (cavité)', 4, 1);
+    placer('Source (résurgence)', inf.xResurgence + 7, inf.sortieCavite + 2);
+    centre(NA, 'Nappe phréatique', 3, 5);
+    const xs = Math.round((inf.xSourceVent + inf.xSommet) / 2);
+    placer('Sol perméable', xs - 4, inf.haut[xs - 4] + 1);
+    placer('Roche imperméable', xs + 2, inf.haut[xs + 2] + 24);
     placer('Piton des Neiges', inf.xSommet, inf.ySommet - 6);
-    if (nN > 40) placer('Nuage', xN / nN, yN / nN);
-    if (nP > 6) placer('Pluie', xP / nP, yP / nP + 3);
-    if (nR > 3) placer('Rivière', xR / nR, yR / nR - 4);
-    if (nG > 0) placer('Givre', xG / nG + 6, yG / nG - 3);
-    const xs = Math.round(inf.xCote + (inf.xSommet - inf.xCote) * 0.3);
-    placer('Sol', xs + 6, inf.haut[xs] + 3);
+    centre(N, 'Nuage', 0, 40);
+    centre(P, 'Pluie', 3, 6);
+    centre(GV, 'Givre', -3, 1);
+    centre(GL, 'Glace', 3, 1);
+    // Infiltration : là où l'eau entre dans le sol en ce moment, avec une flèche vers le bas
+    if (IN.n > 0.004) {
+      const gx = IN.x / IN.n, gy = IN.y / IN.n;
+      const r = placer('Infiltration', gx, gy - 9);
+      if (!r) return;
+      const [ax] = versEcran(gx, gy);
+      const xf = Math.max(r.x + 6, Math.min(r.x + r.w - 6, ax)), y0 = r.y + r.h + 2, y1 = y0 + Math.max(14, s * 5);
+      ctx.strokeStyle = '#ffffff'; ctx.fillStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(xf, y0); ctx.lineTo(xf, y1 - 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(xf - 5, y1 - 6); ctx.lineTo(xf + 5, y1 - 6); ctx.lineTo(xf, y1); ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // Les rivières, dessinées par-dessus la grille : un ruban d'eau lissé qui suit le lit, de la source
+  // à l'océan, entre deux berges. Sa largeur grandit vers l'aval et dépend de l'eau réellement
+  // présente dans le lit à cet endroit (la masse simulée reste la vérité : lit à sec, pas de ruban).
+  // Des reflets clairs descendent la pente (pointillés qui avancent).
+  function dessinerRivieres() {
+    const inf = etat.infos, monde = etat.monde, {nx, typ, m} = monde, s = vue.s;
+    const eauColonne = x => {
+      let q = 0;
+      if (x < 0 || x >= nx) return 0;
+      for (let y = inf.haut[x] - 4; y < inf.haut[x]; y++) { const i = y * nx + x; if (y >= 0 && typ[i] === EAU) q += m[i]; }
+      return q;
+    };
+    const trajets = [
+      {de: inf.xSourceVent, a: inf.xCote - 4, pas: -1},
+      {de: inf.xResurgence, a: inf.xCoteSousLeVent + 4, pas: 1},
+    ];
+    const t = performance.now();
+    for (const tr of trajets) {
+      const pts = [];
+      for (let x = tr.de; tr.pas < 0 ? x >= tr.a : x <= tr.a; x += tr.pas) {
+        const fin = inf.haut[x] > inf.ySea + 1;                         // embouchure : la surface de l'océan
+        let local = 0;
+        for (let k = -3; k <= 3; k++) local += eauColonne(x + k);
+        pts.push({x: x + 0.5, y: fin ? inf.ySea + 0.6 : inf.haut[x] - 0.45, eau: Math.min(1, local / 1.2)});
+        if (fin) break;
+      }
+      if (pts.length < 3) continue;
+      // lissage du tracé (pas d'escalier de pixels)
+      const lisse = pts.map((pt, k) => {
+        let sy = 0, n = 0;
+        for (let j = Math.max(0, k - 2); j <= Math.min(pts.length - 1, k + 2); j++) { sy += pts[j].y; n++; }
+        return {x: pt.x, y: k === pts.length - 1 ? pt.y : sy / n, eau: pt.eau};
+      });
+      const largeur = k => (0.9 + 1.3 * k / (lisse.length - 1)) * s;
+      const segments = (style, facteur, extra = 0) => {
+        for (let k = 0; k < lisse.length - 1; k++) {
+          const a = lisse[k], b = lisse[k + 1], e = Math.min(a.eau, b.eau);
+          if (e < 0.15) continue;
+          const [x0, y0] = versEcran(a.x, a.y), [x1, y1] = versEcran(b.x, b.y);
+          ctx.strokeStyle = style; ctx.lineWidth = Math.max(2, largeur(k) * (0.55 + 0.45 * e) * facteur + extra);
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        }
+      };
+      ctx.save();
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      segments('#3b2f25', 1, Math.max(2, s * 0.5));     // berges
+      segments('#2f86d6', 1);                            // eau douce
+      // reflets qui descendent la pente
+      ctx.setLineDash([Math.max(3, s * 1.2), Math.max(8, s * 3)]);
+      ctx.lineDashOffset = -(t / 60) % 1000;
+      ctx.beginPath();
+      let ouvert = false;
+      for (let k = 0; k < lisse.length; k++) {
+        const pt = lisse[k];
+        if (pt.eau < 0.15) { ouvert = false; continue; }
+        const [sx, sy] = versEcran(pt.x, pt.y);
+        if (!ouvert) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        ouvert = true;
+      }
+      ctx.strokeStyle = 'rgba(214, 238, 255, .7)'; ctx.lineWidth = Math.max(1, s * 0.3);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   function dessinerFusion() {
@@ -424,7 +561,9 @@
     c2.font = '12px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
     c2.textBaseline = 'middle';
     // Quadrillage et graduations
-    const pasX = xMax <= 12 ? 1 : xMax <= 24 ? 2 : 5, pasY = yMax - yMin > 80 ? 20 : 10;
+    // graduations assez espacées pour rester lisibles, même sur un petit écran
+    const pasX = [1, 2, 5, 10].find(p => (W - g - dr) * p / xMax >= 26) || 10;
+    const pasY = [10, 20, 50].find(p => (H - ht - bas) * p / (yMax - yMin) >= 18) || 50;
     c2.strokeStyle = 'rgba(255,255,255,.14)'; c2.lineWidth = 1; c2.fillStyle = '#c9d3dd';
     c2.textAlign = 'center';
     for (let t = 0; t <= xMax + 1e-9; t += pasX) {
@@ -462,7 +601,7 @@
   function ajouterLigne(mes) {
     const corps = document.querySelector('#tableau tbody');
     const tr = document.createElement('tr');
-    for (const texte of [nombre(mes.t / 60, 1), nombre(mes.T, 1)]) { const td = document.createElement('td'); td.textContent = texte; tr.appendChild(td); }
+    for (const texte of [nombre(mes.t / 60, 2), nombre(mes.T, 1)]) { const td = document.createElement('td'); td.textContent = texte; tr.appendChild(td); }
     corps.appendChild(tr);
     const zone = $('tableau-zone');
     zone.scrollTop = zone.scrollHeight;
@@ -482,13 +621,13 @@
       f.mesures.push(mes);
       ajouterLigne(mes);
       courbeARefaire = true;
-      f.prochaine += 30;
+      f.prochaine += SC.FUSION.releve;
     }
   }
 
   function texteCsv() {
     const lignes = ['Temps (min);Température (°C)'];
-    for (const m of etat.fusion.mesures) lignes.push(nombreCsv(m.t / 60, 1) + ';' + nombreCsv(m.T, 1));
+    for (const m of etat.fusion.mesures) lignes.push(nombreCsv(m.t / 60, 2) + ';' + nombreCsv(m.T, 1));
     return lignes.join('\r\n') + '\r\n';
   }
 
@@ -520,14 +659,26 @@
       lignes.push(`<span class="ligne">Masse totale d’eau (avec l’air) : ${g(ms.total)}</span>`);
     } else {
       lignes.push(`<span class="total">Masse totale d’eau : ${g(ms.total)}</span>`);
+      const t = monde.temps, min = Math.floor(t / 60 + 1e-9), sec = Math.floor(t - 60 * min + 1e-9);
+      lignes.push(`<span class="ligne">Temps : ${min} min ${String(sec).padStart(2, '0')} s</span>`);
     }
     if (etat.repartition) {
+      let cavite = 0;
+      if (etat.partie === 'cycle') {
+        const c = etat.infos.cavite, {nx, typ, m} = monde;
+        for (let y = c.y0; y <= c.y1; y++) for (let x = c.x0; x <= c.x1; x++) if (typ[y * nx + x] === EAU) cavite += m[y * nx + x];
+        cavite *= monde.r.gParCase;
+      }
       lignes.push(`<span class="ligne">Glace (solide) : ${g(ms.glace)}</span>`);
-      lignes.push(`<span class="ligne">Eau liquide : ${g(ms.liquide)}</span>`);
+      lignes.push(`<span class="ligne">Eau liquide${etat.partie === 'cycle' ? ' (océan, rivières, pluie)' : ''} : ${g(ms.liquide - cavite)}</span>`);
+      if (etat.partie === 'cycle') lignes.push(`<span class="ligne">Poche d’eau souterraine (cavité) : ${g(cavite)}</span>`);
       lignes.push(`<span class="ligne">Gouttelettes (liquide) : ${g(ms.gouttelettes)}</span>`);
       lignes.push(`<span class="ligne">Vapeur d’eau (gaz) : ${g(ms.vapeur)}</span>`);
-      if (etat.partie === 'cycle') lignes.push(`<span class="ligne">Eau dans le sol : ${g(ms.sol)}</span>`);
-      if (etat.partie !== 'cycle') lignes.push(`<span class="ligne">Partie dans le reste de la pièce : ${g(ms.dehors)}</span>`);
+      if (etat.partie === 'cycle') {
+        lignes.push(`<span class="ligne">Eau dans le sol (au-dessus de la nappe) : ${g(ms.sol)}</span>`);
+        lignes.push(`<span class="ligne">Nappe phréatique : ${g(ms.nappe)}</span>`);
+      }
+      if (etat.partie !== 'cycle') lignes.push(`<span class="ligne">Vapeur partie dans le reste de la pièce : ${g(ms.dehors)}</span>`);
     }
     lignes.push(`<span class="ligne petit">${etat.partie === 'fusion' ? 'Pas à l’échelle' : 'Pas à l’échelle · durées accélérées'}</span>`);
     $('masses').innerHTML = lignes.join('');
@@ -555,7 +706,7 @@
     $('b-agitateur').setAttribute('aria-pressed', String(f.agitation));
     $('b-agitateur').textContent = f.agitation ? 'Agitateur : en marche' : 'Agitateur : arrêté';
     $('mention-vapeur').hidden = !etat.vapeur;
-    $('b-vitesse').textContent = 'Vitesse ×' + etat.vitesse;
+    $('b-vitesse').textContent = 'Vitesse ×' + ({0.25: '¼', 0.5: '½'}[etat.vitesse] || etat.vitesse);
     const pause = $('b-pause');
     pause.hidden = p === 'fusion';
     pause.textContent = etat.enMarche ? 'Pause' : 'Lecture';
@@ -674,7 +825,7 @@
       const g = versGrille(event);
       const p = etat.partie;
       const k = thermometreSous(g);
-      const peutDeplacer = p !== 'bac-a-sable' || etat.outil === 'thermometre';
+      const peutDeplacer = p !== 'bac-a-sable' || etat.outil !== 'gomme';
       if (k >= 0 && peutDeplacer) {
         const th = etat.thermometres[k];
         geste = {type: 'thermometre', k, id: event.pointerId, dx: th.x - g.x, dy: th.y - g.y};
@@ -821,7 +972,9 @@
     if (!monde) return;
     const fusion = etat.partie === 'fusion';
     if (fusion ? etat.fusion.statut !== 'en-cours' : !etat.enMarche) return;
-    const voulu = PAS_PAR_IMAGE[etat.partie] * etat.vitesse;
+    etat.reste += PAS_PAR_IMAGE[etat.partie] * etat.vitesse;   // vitesses ×¼ et ×½ : un pas toutes les 4 ou 2 images
+    const voulu = Math.floor(etat.reste);
+    etat.reste -= voulu;
     const debut = performance.now();
     for (let k = 0; k < voulu; k++) {
       monde.avancer();
