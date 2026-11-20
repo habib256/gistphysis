@@ -277,13 +277,13 @@ def pied(adaptee):
 # écrits avec des espaces ordinaires : typo() les met aux normes des pages.
 #
 # Libellés de l'application (à revoir si l'interface change) :
-#   palette : familles « Miroirs », « Écrans », « Sources », « Dioptres », « Divers »
+#   palette : familles « Miroirs », « Écrans », « Sources », « Lentilles et dioptres », « Divers »
 #   et boutons courts de 30-creation.js (OUTILS[…].court) ;
 #   menu : rubriques « Fichier », « Édition », « Ajouter (par coordonnées) »,
 #   « Options », « Aide » (60-app.js, construireMenu) ;
 #   bouton « Affichage » : interrupteurs « Normales », « Angles d'incidence et de
 #   réfraction », « Grille », « Attraction de la grille », « Longueurs des segments » ;
-#   barre en bas du dessin : « Propriétés », « Dupliquer », « Supprimer »,
+#   barre de sélection (en bas du dessin, ou en haut) : « Propriétés », « Dupliquer », « Supprimer »,
 #   « Grouper avec… », « Dissocier », « Désélectionner » ;
 #   panneau des propriétés : « Supprimer », « Aide », « Annuler », « Valider » ;
 #   bandeau de consigne : « Terminer » (Déplacer, Propriétés, Grouper),
@@ -317,7 +317,7 @@ ADAPTATIONS_COMMUNES = [
      "propriétés ; ne pas oublier à la fin de cliquer sur le bouton « Fin prop. » de la barre "
      "d'outils pour quitter le mode propriétés.</li>",
      "<li>à tout instant en touchant (ou en cliquant) l'élément pour le sélectionner, puis le bouton "
-     "« Propriétés » de la barre qui apparaît en bas du dessin ; le panneau des propriétés s'ouvre, "
+     "« Propriétés » de la barre de sélection (en bas du dessin, ou en haut si elle cachait l'élément) ; le panneau des propriétés s'ouvre, "
      "son bouton « Valider » applique les modifications et « Annuler » les abandonne. On peut aussi "
      "toucher le bouton « Propriétés » de la barre du haut, puis l'élément : ce mode reste actif "
      "jusqu'au bouton « Terminer » du bandeau de consigne (ou la touche Échap).</li>"),
@@ -383,7 +383,7 @@ ADAPTATIONS = {
          "paramètres. On peut aussi utiliser les 2 méthodes : ajout rapide au doigt, puis "
          '<a href="#modifier">modification des propriétés</a>.</p>\n'
          "<p>Pour ajouter au doigt ou à la souris : il suffit de toucher une famille de la palette des "
-         "objets (« Miroirs », « Écrans », « Sources », « Dioptres », « Divers »), puis le bouton de "
+         "objets (« Miroirs », « Écrans », « Sources », « Lentilles et dioptres », « Divers »), puis le bouton de "
          "l'élément, puis de placer les différents points : voir la "
          '<a href="#souris">remarque importante</a> sur le placement des points. La case « Rester dans '
          "ce mode » du bandeau permet d'ajouter plusieurs éléments du même type à la suite.</p>\n"
@@ -435,7 +435,7 @@ ADAPTATIONS = {
         ("AVANT", '<h2 id="modifier">', '<h2 id="supprimer">',
          '<h2 id="modifier">Modifier un élément ou une source</h2>\n'
          "<p>Toucher (ou cliquer) l'élément pour le sélectionner, puis le bouton « Propriétés » de la "
-         "barre qui apparaît en bas du dessin. On peut aussi toucher le bouton « Propriétés » de la barre "
+         "barre de sélection (en bas du dessin, ou en haut si elle cachait l'élément). On peut aussi toucher le bouton « Propriétés » de la barre "
          "du haut, ou passer par le menu « Édition » puis « Propriétés d'un élément » : un cercle bleu "
          "apparaît sur chacun des éléments présents, et il suffit de toucher l'élément voulu (si "
          "plusieurs éléments se trouvent à cet endroit, une liste permet de choisir).</p>\n"
@@ -449,7 +449,7 @@ ADAPTATIONS = {
         ("AVANT", '<h2 id="supprimer">', '<h2 id="grouper">',
          '<h2 id="supprimer">Supprimer un élément ou une source</h2>\n'
          "<p>Toucher (ou cliquer) l'élément pour le sélectionner, puis le bouton « Supprimer » de la "
-         "barre en bas du dessin (à l'ordinateur, touche Suppr, qui supprime l'élément sélectionné). On "
+         "barre de sélection (à l'ordinateur, touche Suppr, qui supprime l'élément sélectionné). On "
          "peut aussi toucher le bouton "
          "« Supprimer » de la barre du haut, ou passer par le menu « Édition » puis « Supprimer un "
          "élément » (ce mode n'a pas de raccourci clavier) : un cercle rouge apparaît sur chacun des "
@@ -467,7 +467,7 @@ ADAPTATIONS = {
          "<p>On peut grouper des éléments afin de pouvoir les translater ensemble.</p>\n"
          "<ul>\n"
          "<li>Première méthode : toucher le bouton « Grouper » de la barre du haut (ou, un élément étant "
-         "sélectionné, le bouton « Grouper avec… » de la barre en bas du dessin) ; sur chacun des "
+         "sélectionné, le bouton « Grouper avec… » de la barre de sélection) ; sur chacun des "
          "éléments présents dans la simulation apparaît une croix violette ; il suffit de toucher un "
          "élément pour l'ajouter au groupe (un message le confirme ; le toucher de nouveau le retire) ; "
          "une fois tous les éléments souhaités ajoutés, toucher le bouton « Terminer » du bandeau. Une "
@@ -483,11 +483,11 @@ ADAPTATIONS = {
          "Ce point est l'isobarycentre des points caractéristiques des éléments constitutifs du "
          "groupe.</p>\n"
          "<p>Destruction d'un groupe : sélectionner un de ses éléments, puis toucher le bouton "
-         "« Dissocier » de la barre en bas du dessin ; les éléments restent en place.</p>\n"),
+         "« Dissocier » de la barre de sélection ; les éléments restent en place.</p>\n"),
         ("AVANT", '<h2 id="dupliquer">', '<h2 id="Annuler">',
          '<h2 id="dupliquer">Dupliquer un élément ou une source</h2>\n'
          "<p>Toucher (ou cliquer) l'élément pour le sélectionner, puis le bouton « Dupliquer » de la "
-         "barre en bas du dessin. On peut aussi toucher le bouton « Dupliquer » de la barre du haut, ou "
+         "barre de sélection. On peut aussi toucher le bouton « Dupliquer » de la barre du haut, ou "
          "passer par le menu « Édition » puis « Dupliquer un élément » : un cercle bleu apparaît sur "
          "chacun des éléments présents, et il suffit de toucher l'élément à dupliquer.</p>\n"
          "<p>La copie apparaît légèrement décalée et reste sélectionnée : on la fait glisser où l'on "
@@ -628,7 +628,7 @@ ADAPTATIONS = {
     ],
     "lmc": [
         ("BLOC", DEBUT_PALETTE, "</li>",
-         ajout_palette("« Convergente » ou « Divergente »", "Dioptres",
+         ajout_palette("« Convergente » ou « Divergente »", "Lentilles et dioptres",
                        "en plaçant le premier point, puis le second, puis la position du foyer")),
         ("BLOC", DEBUT_MENU, "</li>",
          ajout_menu("« Lentille mince convergente » ou « Lentille mince divergente »", "Système optique idéal",
@@ -636,7 +636,7 @@ ADAPTATIONS = {
     ],
     "lentille": [
         ("BLOC", DEBUT_PALETTE, "</li>",
-         ajout_palette("« Lentille épaisse »", "Dioptres",
+         ajout_palette("« Lentille épaisse »", "Lentilles et dioptres",
                        "en plaçant chacun des sommets, puis chacun des centres de courbure (ils sont "
                        "automatiquement ramenés sur l'axe S1S2), et enfin en saisissant le diamètre de la "
                        "lentille")),
@@ -644,7 +644,7 @@ ADAPTATIONS = {
     ],
     "sphere": [
         ("BLOC", DEBUT_PALETTE, "</li>",
-         ajout_palette("« Sphère »", "Dioptres",
+         ajout_palette("« Sphère »", "Lentilles et dioptres",
                        "en plaçant le centre, puis un point de la surface quand la bonne taille est atteinte "
                        "(l'aperçu de la sphère suit le doigt ou la souris)")),
         ("BLOC", DEBUT_MENU, "</li>",
@@ -653,7 +653,7 @@ ADAPTATIONS = {
     ],
     "polyhedre": [
         ("BLOC", DEBUT_PALETTE, "</li>",
-         ajout_palette("« Polygone »", "Dioptres",
+         ajout_palette("« Polygone »", "Lentilles et dioptres",
                        "en choisissant le nombre de sommets dans la boîte « Nombre de sommets » qui s'ouvre "
                        "(champ « Sommets de ce polygone »), puis en plaçant chacun des sommets ; le bandeau "
                        "indique le mode « ajout d'un polygone réfractant »",
@@ -670,7 +670,7 @@ ADAPTATIONS = {
          "<strong>attention</strong>, le logiciel ne fait pas la vérification : si vous ne respectez pas "
          "cette condition, le résultat n'est pas garanti (OptGeo 3.03 pouvait même planter)."),
         ("BLOC", DEBUT_PALETTE, "</li>",
-         ajout_palette("« Polycercle »", "Dioptres",
+         ajout_palette("« Polycercle »", "Lentilles et dioptres",
                        "en choisissant le nombre de sommets dans la boîte « Nombre de sommets » qui s'ouvre "
                        "(champ « Sommets de ce polycercle »), puis en plaçant chacun des sommets (le bandeau "
                        "indique le mode « ajout d'un polycercle réfractant »), puis en choisissant dans la "
@@ -683,7 +683,7 @@ ADAPTATIONS = {
     ],
     "prisme": [
         ("BLOC", DEBUT_PALETTE, "</li>",
-         ajout_palette("« Prisme »", "Dioptres",
+         ajout_palette("« Prisme »", "Lentilles et dioptres",
                        "en plaçant le centre d'inertie, puis le sommet principal, puis un dernier point qui "
                        "fixe l'angle au sommet (en fixant un des 2 derniers sommets)")),
         ("BLOC", DEBUT_MENU, "</li>", ajout_menu("« Prisme »", "Système optique réel")),
@@ -1455,7 +1455,7 @@ def page_web():
 <li><strong>Plein écran</strong>{n}: seulement quand l'application est ouverte seule dans le navigateur (dans une page du site, elle remplit déjà son cadre).</li>
 </ul>
 <h3>La palette des objets</h3>
-<p>Elle est à gauche quand l'écran est en paysage (plus large que haut), en bas quand il est en portrait (plus haut que large). Elle range les objets en cinq familles{n}: <strong>Miroirs</strong>, <strong>Écrans</strong>, <strong>Sources</strong>, <strong>Dioptres</strong>, <strong>Divers</strong>. Touche une famille{n}: ses objets s'affichent dans un volet{n}; touche de nouveau la famille pour refermer le volet.</p>
+<p>Elle est à gauche quand l'écran est en paysage (plus large que haut), en bas quand il est en portrait (plus haut que large). Elle range les objets en cinq familles{n}: <strong>Miroirs</strong>, <strong>Écrans</strong>, <strong>Sources</strong>, <strong>Lentilles et dioptres</strong> (on y trouve les lentilles minces), <strong>Divers</strong>. Touche une famille{n}: ses objets s'affichent dans un volet{n}; touche de nouveau la famille pour refermer le volet.</p>
 <h3>Le bandeau de consigne</h3>
 <p>En haut du dessin, il dit quoi faire à chaque étape et porte les boutons utiles{n}: <strong>Annuler</strong>, <strong>Terminer</strong>, <strong>Aligner horizontalement</strong>, <strong>Bloquer horizontalement</strong>… Quand un de ces boutons est actif, le bandeau le rappelle{n}: <strong>Alignement horizontal</strong> (ou vertical) pendant qu'on place un objet, <strong>Bloqué{n}: horizontal</strong> (ou vertical) en mode Déplacer et pendant un glissement.</p>
 <p>Sur un petit écran (largeur de 560{n}pixels au plus, ou hauteur de 420{n}pixels au plus, par exemple un téléphone), il tient sur une ligne{n}: touche <strong>Plus</strong> pour voir toute la consigne et les boutons secondaires (<strong>Aligner…</strong>, <strong>Bloquer…</strong>, <strong>Rester dans ce mode</strong>), <strong>Moins</strong> pour les cacher.</p>
@@ -1493,9 +1493,9 @@ def page_web():
 <li>{poignee("croix-jaune")} <strong>Croix jaune</strong>{n}: sommet d'un arc de cercle d'un polycercle.</li>
 </ul>
 <p>Fais glisser une poignée pour modifier l'objet{n}; tu peux aussi faire glisser l'objet lui-même pour le déplacer. Les boutons <strong>Bloquer horizontalement</strong> et <strong>Bloquer verticalement</strong> du bandeau (ou les touches Ctrl et Alt maintenues) limitent le mouvement à une direction{n}: on les touche avec un autre doigt pendant le glissement, ou, en mode Déplacer, avant de commencer le glissement (un seul doigt suffit alors). Ils ne valent que pour ce glissement{n}: ils sont relâchés quand le doigt se lève. La touche Échap, ou un deuxième doigt posé sur le dessin, remet l'objet à sa place.</p>
-<p>En bas du dessin, une barre propose{n}: <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper avec…</strong>, <strong>Dissocier</strong> (seulement si l'objet fait partie d'un groupe) et <strong>Désélectionner</strong>.</p>
+<p>En bas du dessin (ou en haut, si elle cachait l'objet choisi), une barre de sélection propose{n}: <strong>Propriétés</strong>, <strong>Dupliquer</strong>, <strong>Supprimer</strong>, <strong>Grouper avec…</strong>, <strong>Dissocier</strong> (seulement si l'objet fait partie d'un groupe) et <strong>Désélectionner</strong>. Sur un écran de faible hauteur (téléphone tenu en largeur), elle ne montre que leurs icônes, dans le même ordre.</p>
 <ul>
-<li><strong>Propriétés</strong> ouvre le panneau des propriétés (à droite du dessin, ou en bas sur un écran en portrait){n}: <strong>Valider</strong> applique les changements, <strong>Annuler</strong> les abandonne, <strong>Supprimer</strong> enlève l'objet, <strong>Aide</strong> ouvre la page d'aide de l'objet. Une valeur refusée est signalée sous son champ.</li>
+<li><strong>Propriétés</strong> ouvre le panneau des propriétés (à droite du dessin, ou en bas sur un écran en portrait, sur la moitié de la hauteur pour que le dessin reste visible{n}; le bouton en forme de flèche de son en-tête l'agrandit ou le réduit){n}: <strong>Valider</strong> applique les changements, <strong>Annuler</strong> les abandonne, <strong>Supprimer</strong> enlève l'objet, <strong>Aide</strong> ouvre la page d'aide de l'objet. Une valeur refusée est signalée sous son champ.</li>
 <li><strong>Dupliquer</strong> crée une copie légèrement décalée, qui reste sélectionnée{n}: fais-la glisser où tu veux.</li>
 <li><strong>Supprimer</strong> enlève l'objet tout de suite{n}; le bouton <strong>Annuler</strong> du message qui s'affiche le remet.</li>
 </ul>

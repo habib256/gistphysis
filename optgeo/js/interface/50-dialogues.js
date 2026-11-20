@@ -149,10 +149,10 @@
     var corps = el('div', { class: 'formulaire' }, [choix, espace, indices]);
     var erreur = erreurDans(corps);
     OGW.Dialogue({ titre: demarrage ? 'Que voulez-vous faire ?' : 'Nouvelle simulation', corps: corps, boutons: [
-      { texte: 'Annuler', annuler: true, action: function () { if (demarrage && !app.scene.objets.length) app.nouvelleSimulation(OGW.espaceParDefaut(app)); } },
+      { texte: 'Annuler', annuler: true, action: function () { if (demarrage && !app.scene.objets.length) app.nouvelleSimulation(OGW.espaceParDefaut(app), !!app.repriseEnAttente); } },
       { texte: 'Valider', principal: true, action: function () {
         var v = choix.querySelector('input:checked').value;
-        if (v === 'exemple') { setTimeout(function () { OGW.dialogueExemples(app, 'ouvrir'); }, 0); if (!app.scene.objets.length && demarrage) app.nouvelleSimulation(OGW.espaceParDefaut(app)); return; }
+        if (v === 'exemple') { setTimeout(function () { OGW.dialogueExemples(app, 'ouvrir'); }, 0); if (!app.scene.objets.length && demarrage) app.nouvelleSimulation(OGW.espaceParDefaut(app), !!app.repriseEnAttente); return; }
         var ind = [ir.lire(), iv.lire(), ib.lire()].map(Math.abs);
         if (!ind.every(function (x) { return x > 0; })) return erreur('Valeur illégale d’un indice du milieu ambiant.');
         var esp = OGW.espaceParDefaut(app), unite = 'mm', resp = true;
@@ -254,20 +254,25 @@
 
   /** Ouvrir un fichier de l'appareil (.opt, et son .txt de commentaire). */
   OGW.ouvrirFichier = function (app, superposer) {
-    var inp = el('input', { type: 'file', accept: '.opt,.txt,text/plain', multiple: true, style: { display: 'none' } });
+    // Pas de filtre « accept » : Android traduit les extensions en types MIME et grise les .opt (type
+    // inconnu). L'en-tête du fichier est contrôlé à l'ouverture (OGW.texteOptValide).
+    var inp = el('input', { type: 'file', multiple: true, style: { display: 'none' } });
     document.body.appendChild(inp);
     inp.addEventListener('change', function () {
       var fichiers = Array.prototype.slice.call(inp.files || []);
       inp.remove();
       var opt = fichiers.filter(function (f) { return /\.opt$/i.test(f.name); })[0];
+      // un seul fichier, d'un autre nom (« simulation.opt.txt » renommé par un téléphone…) : son en-tête décide
+      if (!opt && fichiers.length === 1) opt = fichiers[0];
       if (!opt) { if (fichiers.length) OGW.message('Choisissez un fichier .opt (vous pouvez choisir en même temps son .txt de commentaire).', 'Fichier inaccessible !'); return; }
-      var base = opt.name.replace(/\.opt$/i, '');
-      var txt = fichiers.filter(function (f) { return f.name.toLowerCase() === (base + '.txt').toLowerCase(); })[0];
+      var base = opt.name.replace(/(\.opt)?(\.txt)?$/i, '');
+      var txt = fichiers.filter(function (f) { return f !== opt && f.name.toLowerCase() === (base + '.txt').toLowerCase(); })[0];
+      var nomOpt = /\.opt$/i.test(opt.name) ? opt.name : base + '.opt';
       lireOctets(opt, function (texteOpt) {
         if (texteOpt === null) { OGW.message('Fichier inaccessible en lecture !'); return; }
         if (superposer) { OGW.superposerTexte(app, texteOpt); return; }
-        if (txt) lireOctets(txt, function (c) { app.ouvrirTexteOpt(texteOpt, opt.name, c || ''); });
-        else app.ouvrirTexteOpt(texteOpt, opt.name, '');
+        if (txt) lireOctets(txt, function (c) { app.ouvrirTexteOpt(texteOpt, nomOpt, c || ''); });
+        else app.ouvrirTexteOpt(texteOpt, nomOpt, '');
       });
     });
     inp.click();
@@ -282,6 +287,8 @@
   OGW.superposerTexte = function (app, texte) {
     if (!app.scene.objets.length) { OGW.message('Pas de simulation en cours…', 'Hélas'); return; }
     if (!OGW.texteOptValide(texte)) { OGW.message(OGW.MESSAGE_PAS_OPT, 'Fichier non reconnu'); return; }
+    var coupe = OGW.texteOptTronque(texte);
+    if (coupe) { OGW.message(OGW.messageOptTronque(coupe), 'Fichier incomplet'); return; }
     OGW.Dialogue({ titre: 'Superposer une simulation', corps: 'Les paramètres de la simulation en cours de chargement doivent-ils écraser les actuels ?', boutons: [
       { texte: 'Annuler', annuler: true },
       { texte: 'Non', action: function () { faire(false); } },

@@ -4,3 +4,5 @@ Avec objet réel: image virtuelle droite.
 
 On peut déplacer le point source: cliquer sur le bouton "Déplacer"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en "rotation"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton "Fin dép.".
 
+Dans la version web : toucher (ou cliquer) le point source pour faire apparaître ses poignées, puis faire glisser le cercle bleu posé sur le point source ; le point reste où on lève le doigt (ou le bouton de la souris). Il n’y a ni mode à choisir, ni bouton « Fin dép. ». On peut aussi passer par le bouton « Déplacer » de la barre du haut (sous « Modes » sur un écran étroit) : les poignées de tous les éléments s’affichent, et on sort de ce mode par « Terminer ».
+

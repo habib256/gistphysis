@@ -146,42 +146,42 @@
    "titre": "Lentille convergente : objet réel avant le foyer objet",
    "fichier": "Exemples_Classiques/Lentilles/lentille_convergente_1.opt",
    "fichierTexte": "Exemples_Classiques/Lentilles/lentille_convergente_1.txt",
-   "description": "Lentille mince convergente\n\nAvec objet réel placé avant le foyer objet: image réelle renversée placée après le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+   "description": "Lentille mince convergente\n\nAvec objet réel placé avant le foyer objet: image réelle renversée placée après le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\".\n\nDans la version web : toucher (ou cliquer) le point source pour faire apparaître ses poignées, puis faire glisser le cercle bleu posé sur le point source ; le point reste où on lève le doigt (ou le bouton de la souris). Il n’y a ni mode à choisir, ni bouton « Fin dép. ». On peut aussi passer par le bouton « Déplacer » de la barre du haut (sous « Modes » sur un écran étroit) : les poignées de tous les éléments s’affichent, et on sort de ce mode par « Terminer »."
   },
   {
    "categorie": "Exemples classiques — lentilles minces",
    "titre": "Lentille convergente : objet réel entre le foyer objet et la lentille",
    "fichier": "Exemples_Classiques/Lentilles/lentille_convergente_2.opt",
    "fichierTexte": "Exemples_Classiques/Lentilles/lentille_convergente_2.txt",
-   "description": "Lentille mince convergente\n\nAvec objet réel placé après le foyer objet: image virtuelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+   "description": "Lentille mince convergente\n\nAvec objet réel placé après le foyer objet: image virtuelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\".\n\nDans la version web : toucher (ou cliquer) le point source pour faire apparaître ses poignées, puis faire glisser le cercle bleu posé sur le point source ; le point reste où on lève le doigt (ou le bouton de la souris). Il n’y a ni mode à choisir, ni bouton « Fin dép. ». On peut aussi passer par le bouton « Déplacer » de la barre du haut (sous « Modes » sur un écran étroit) : les poignées de tous les éléments s’affichent, et on sort de ce mode par « Terminer »."
   },
   {
    "categorie": "Exemples classiques — lentilles minces",
    "titre": "Lentille convergente : objet virtuel",
    "fichier": "Exemples_Classiques/Lentilles/lentille_convergente_3.opt",
    "fichierTexte": "Exemples_Classiques/Lentilles/lentille_convergente_3.txt",
-   "description": "Lentille mince convergente\n\nAvec objet virtuel: image réelle droite placée avant le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+   "description": "Lentille mince convergente\n\nAvec objet virtuel: image réelle droite placée avant le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\".\n\nDans la version web : toucher (ou cliquer) le point source pour faire apparaître ses poignées, puis faire glisser le cercle bleu posé sur le point source ; le point reste où on lève le doigt (ou le bouton de la souris). Il n’y a ni mode à choisir, ni bouton « Fin dép. ». On peut aussi passer par le bouton « Déplacer » de la barre du haut (sous « Modes » sur un écran étroit) : les poignées de tous les éléments s’affichent, et on sort de ce mode par « Terminer »."
   },
   {
    "categorie": "Exemples classiques — lentilles minces",
    "titre": "Lentille divergente : objet réel",
    "fichier": "Exemples_Classiques/Lentilles/lentille_divergente_1.opt",
    "fichierTexte": "Exemples_Classiques/Lentilles/lentille_divergente_1.txt",
-   "description": "Lentille mince divergente\n\nAvec objet réel: image virtuelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+   "description": "Lentille mince divergente\n\nAvec objet réel: image virtuelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\".\n\nDans la version web : toucher (ou cliquer) le point source pour faire apparaître ses poignées, puis faire glisser le cercle bleu posé sur le point source ; le point reste où on lève le doigt (ou le bouton de la souris). Il n’y a ni mode à choisir, ni bouton « Fin dép. ». On peut aussi passer par le bouton « Déplacer » de la barre du haut (sous « Modes » sur un écran étroit) : les poignées de tous les éléments s’affichent, et on sort de ce mode par « Terminer »."
   },
   {
    "categorie": "Exemples classiques — lentilles minces",
    "titre": "Lentille divergente : objet virtuel avant le foyer objet",
    "fichier": "Exemples_Classiques/Lentilles/lentille_divergente_2.opt",
    "fichierTexte": "Exemples_Classiques/Lentilles/lentille_divergente_2.txt",
-   "description": "Lentille mince divergente\n\nAvec objet virtuel placé avant le foyer objet: image réelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+   "description": "Lentille mince divergente\n\nAvec objet virtuel placé avant le foyer objet: image réelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\".\n\nDans la version web : toucher (ou cliquer) le point source pour faire apparaître ses poignées, puis faire glisser le cercle bleu posé sur le point source ; le point reste où on lève le doigt (ou le bouton de la souris). Il n’y a ni mode à choisir, ni bouton « Fin dép. ». On peut aussi passer par le bouton « Déplacer » de la barre du haut (sous « Modes » sur un écran étroit) : les poignées de tous les éléments s’affichent, et on sort de ce mode par « Terminer »."
   },
   {
    "categorie": "Exemples classiques — lentilles minces",
    "titre": "Lentille divergente : objet virtuel après le foyer objet",
    "fichier": "Exemples_Classiques/Lentilles/lentille_divergente_3.opt",
    "fichierTexte": "Exemples_Classiques/Lentilles/lentille_divergente_3.txt",
-   "description": "Lentille mince divergente\n\nAvec objet virtuel placé après le foyer objet: image virtuelle renversée placée avant le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+   "description": "Lentille mince divergente\n\nAvec objet virtuel placé après le foyer objet: image virtuelle renversée placée avant le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\".\n\nDans la version web : toucher (ou cliquer) le point source pour faire apparaître ses poignées, puis faire glisser le cercle bleu posé sur le point source ; le point reste où on lève le doigt (ou le bouton de la souris). Il n’y a ni mode à choisir, ni bouton « Fin dép. ». On peut aussi passer par le bouton « Déplacer » de la barre du haut (sous « Modes » sur un écran étroit) : les poignées de tous les éléments s’affichent, et on sort de ce mode par « Terminer »."
   },
   {
    "categorie": "Exemples classiques — télescopes",
@@ -195,7 +195,7 @@
    "titre": "Télescope de Newton",
    "fichier": "Exemples_Classiques/Telescopes/telescope_newton.opt",
    "fichierTexte": "Exemples_Classiques/Telescopes/telescope_newton.txt",
-   "description": "Télescope de type Newton\n\nLe miroir primaire est sphérique, de focale 400mm\nLe miroir secondaire est plan est à 45° de l'axe du télescope.\nL'oculaire a son plan focal objet tangent au tube du télescope.\nLa distance entre le foyer du miroir primaire et le centre du miroir secondaire est égale au rayon du tube du télescope.\n\nOn envoie un faisceau de lumière parallèle faisant un angle petit avec l'axe du télescope.\n\nEn passant en zoom x10, on vérifie que les rayons émergents sont parallèles entre eux: l'oeil peut observer sans accomoder."
+   "description": "Télescope de type Newton\n\nLe miroir primaire est sphérique, de focale 400mm\nLe miroir secondaire est plan est à 45° de l'axe du télescope.\nL'oculaire a son plan focal objet tangent au tube du télescope.\nLa distance entre le foyer du miroir primaire et le centre du miroir secondaire est égale au rayon du tube du télescope.\n\nOn envoie un faisceau de lumière parallèle faisant un angle petit avec l'axe du télescope.\n\nEn passant en zoom x10, on vérifie que les rayons émergents sont parallèles entre eux: l'oeil peut observer sans accomoder.\n\nDans la version web : le zoom ×10 est dans le bouton « Affichage » de la barre du haut ; on peut aussi zoomer à deux doigts ou avec les boutons + et − à droite du dessin."
   },
   {
    "categorie": "Exemples classiques",
@@ -216,7 +216,7 @@
    "titre": "Mesure d’une distance focale par autocollimation",
    "fichier": "Exemples_Classiques/autocollimation.opt",
    "fichierTexte": "Exemples_Classiques/autocollimation.txt",
-   "description": "Mesure de distance focale par autocollimation\n\nThéorie\nLe point source (centre du diaphragme) est placé au foyer objet de la lentille. Dans ces conditions, l'image finale (par, successivement: traversée de la lentille; réflexion sur le miroir; traversée de la lentille) est située dans le plan du diaphragme. Et ce, quelles que soient l'inclinaison et la position du miroir. Si la distance entre le point source et la lentille est différente de la focale, alors l'image finale n'est pas, en général, dans le plan du diaphragme (si elle l'est par hasard, elle ne l'est plus quand on translate le miroir).\n\nManipulations\nCliquer sur le bouton \"Déplacer\", puis observer ce qui se passe en translatant le miroir (curseur au dessus du centre du miroir, clic simple pour le sélectionner, déplacement pour effectuer la translation, clic simple final pour re poser le miroir, clic sur le bouton \"Fin dép\" pour sortir du mode déplacement). Puis en modifiant l'inclinaison du miroir (même méthode que pour la translation, mais en utilisant l'une ou l'autre des extrémités du miroir)."
+   "description": "Mesure de distance focale par autocollimation\n\nThéorie\nLe point source (centre du diaphragme) est placé au foyer objet de la lentille. Dans ces conditions, l'image finale (par, successivement: traversée de la lentille; réflexion sur le miroir; traversée de la lentille) est située dans le plan du diaphragme. Et ce, quelles que soient l'inclinaison et la position du miroir. Si la distance entre le point source et la lentille est différente de la focale, alors l'image finale n'est pas, en général, dans le plan du diaphragme (si elle l'est par hasard, elle ne l'est plus quand on translate le miroir).\n\nManipulations\nCliquer sur le bouton \"Déplacer\", puis observer ce qui se passe en translatant le miroir (curseur au dessus du centre du miroir, clic simple pour le sélectionner, déplacement pour effectuer la translation, clic simple final pour re poser le miroir, clic sur le bouton \"Fin dép\" pour sortir du mode déplacement). Puis en modifiant l'inclinaison du miroir (même méthode que pour la translation, mais en utilisant l'une ou l'autre des extrémités du miroir).\n\nDans la version web : toucher (ou cliquer) le miroir pour faire apparaître ses poignées. Pour le translater, faire glisser la croix verte (son centre) ou le miroir lui-même ; pour changer son inclinaison, faire glisser un disque rouge (rotation autour du centre) ou un cercle bleu (une extrémité). Le miroir reste où on lève le doigt (ou le bouton de la souris) : pas de clic final, pas de bouton « Fin dép »."
   },
   {
    "categorie": "Exemples classiques",
@@ -293,14 +293,14 @@
    "titre": "Michelson : rayons « perdus » cachés",
    "fichier": "Michelson/michelson2.opt",
    "fichierTexte": "Michelson/michelson2.txt",
-   "description": "Michelson\n\nLa même chose que dans l'exemple \"michelson1\", mais on cache les rayons qui repartent vers le volume d'entrée. Ceci se fait à l'aide de l'icone en forme de fantôme, dans la 2ème barre d'outil."
+   "description": "Michelson\n\nLa même chose que dans l'exemple \"michelson1\", mais on cache les rayons qui repartent vers le volume d'entrée. Ceci se fait à l'aide de l'icone en forme de fantôme, dans la 2ème barre d'outil.\n\nDans la version web : l’outil « Cacher segments » (rayons fantômes) est dans la palette des objets, famille « Divers » : touchez ensuite les segments de rayon à cacher."
   },
   {
    "categorie": "Interféromètre de Michelson",
    "titre": "Michelson : réflexion sur M1 puis sur la séparatrice",
    "fichier": "Michelson/michelson3.opt",
    "fichierTexte": "Michelson/michelson3.txt",
-   "description": "Michelson\n\nVisualisation du premier type de rayon auquel on s'intéresse: réflexion sur (M1) puis sur la sépératrice. Les autres segments de rayons sont cachés à l'aide de l'icone en forme de fantôme."
+   "description": "Michelson\n\nVisualisation du premier type de rayon auquel on s'intéresse: réflexion sur (M1) puis sur la sépératrice. Les autres segments de rayons sont cachés à l'aide de l'icone en forme de fantôme.\n\nDans la version web : l’outil « Cacher segments » (rayons fantômes) est dans la palette des objets, famille « Divers » : touchez ensuite les segments de rayon à cacher."
   },
   {
    "categorie": "Interféromètre de Michelson",

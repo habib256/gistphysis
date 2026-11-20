@@ -16,8 +16,10 @@
 // identique ; reprise après rechargement ; zoom à deux doigts ; molette ; 6 tailles d'écran (rien
 // ne déborde, zone de dessin non nulle, captures) ; l'app dans un cadre ; export PNG et SVG ;
 // scénarios tirés des exemples (SPEC §15) ; un contrôle par défaut de la relecture indépendante du
-// 20/11/2026 (fonction corrections). Firefox : chargement, exemples, création à la souris, tailles
-// d'écran, exports, et les défauts 1, 3, 4, 5, 12 de la relecture au doigt (correctionsFirefox).
+// 20/11/2026 (fonction corrections) ; un contrôle par réserve de la seconde relecture du 21/11/2026
+// (corrections2, correctionsTaille aux six tailles, repriseProtegee). Firefox : chargement, exemples,
+// création à la souris, tailles d'écran, exports, les défauts 1, 3, 4, 5, 12 de la première relecture
+// au doigt, et les réserves G1, G3, G10 et M1 de la seconde (correctionsFirefox, repriseProtegee).
 
 import path from 'node:path';
 import {spawn} from 'node:child_process';
@@ -508,7 +510,18 @@ async function essaisChrome(srv) {
     verifier('Chrome : aucune erreur JavaScript (scénarios)', !o.journal.erreurs.length, o.journal.erreurs);
     // 13 septies. Défauts relevés par la relecture indépendante (FAIL du 20/11/2026), un contrôle (au moins) par défaut
     await corrections(o);
+    // 13 octies. Réserves de la seconde relecture indépendante (PASS avec réserves du 21/11/2026)
+    await corrections2(o);
     await fermer(o);
+    {
+      const p = await ouvrirOnglet(c, srv.base + '/index.html', 1024, 768, {tactile: true});
+      await ev(p, `localStorage.clear()`);
+      const recharger = async () => { await ev(p, `(setTimeout(()=>location.reload(),5),true)`); await pause(1500); await ev(p, OUTILS); };
+      await recharger(); await ev(p, DEMARRER);
+      await repriseProtegee((e) => ev(p, e), recharger, 'Chrome');
+      verifier('Chrome : aucune erreur JavaScript (reprise)', !p.journal.erreurs.length, p.journal.erreurs);
+      await fermer(p);
+    }
 
     // 14. Six tailles d'écran (tactile pour les tablettes et téléphones)
     for (const [w, h] of TAILLES) {
@@ -549,6 +562,9 @@ async function essaisChrome(srv) {
         return {titre:croise(document.querySelector('#panneau .tete').getBoundingClientRect()),pied:croise(document.getElementById('panneau-pied').getBoundingClientRect()),dedans:m.left>=0&&m.right<=innerWidth}})()`);
       verifier(`${w}×${h} : la bulle de message ne couvre ni le titre ni les boutons du panneau (défaut 17)`, !bulle.titre && !bulle.pied && bulle.dedans, bulle);
       await capture(p, path.join(CAPTURES, `chrome-${w}x${h}-proprietes.png`));
+      await ev(p, `(OGW.app.fermerPanneau(),true)`);
+      await correctionsTaille(p, w, h);
+      await capture(p, path.join(CAPTURES, `chrome-${w}x${h}-selection.png`));
       verifier(`${w}×${h} : aucune erreur JavaScript`, !p.journal.erreurs.length && !p.journal.console.length, [p.journal.erreurs, p.journal.console]);
       await fermer(p);
     }
@@ -652,8 +668,9 @@ async function corrections(o) {
   await doigt(o, 'touchEnd'); await pause(120);
   const m4 = await obj(mir);
   verifier('Défaut 1 : pendant un glisser, le bouton « Bloquer » reste le même élément (pas recréé à chaque image)', stable);
-  verifier('E03 au doigt (second doigt pendant le glisser) : « Bloquer horizontalement » reçu, l’objet ne bouge plus qu’horizontalement, verrou relâché à la fin',
-    !!b && verrouPendant && Math.abs(m4.a1y - m3b.a1y) < 1e-9 && m4.a1x - m3b.a1x > 60 * p1 && await ev(o, `!OGW.app.verrouH`), {b, verrouPendant, yAvantVerrou, m3b, m4});
+  // seconde relecture, mineur 1 : bloqué à la hauteur du moment où l'on touche « Bloquer » (pas de saut à la hauteur de départ)
+  verifier('E03 au doigt (second doigt pendant le glisser) : « Bloquer horizontalement » reçu, l’objet ne bouge plus qu’horizontalement, à la hauteur du moment (pas de saut), verrou relâché à la fin',
+    !!b && verrouPendant && Math.abs(yAvantVerrou - m3b.a1y) > 20 * p1 && Math.abs(m4.a1y - yAvantVerrou) < 1e-9 && m4.a1x - m3b.a1x > 60 * p1 && await ev(o, `!OGW.app.verrouH`), {b, verrouPendant, yAvantVerrou, m3b, m4});
 
   // ---- Défaut 3 : la fin d'un glisser n'est pas perdue (glisser de 90 px → 90 px à 1 px près)
   await nouvelle();
@@ -838,6 +855,276 @@ async function corrections(o) {
   verifier('Chrome : aucune erreur JavaScript (défauts de la relecture)', !o.journal.erreurs.length, o.journal.erreurs);
 }
 
+/**
+ * Réserves de la seconde relecture indépendante (PASS avec réserves du 21/11/2026) : gênants G1 à G4,
+ * mineurs M1 à M11 (numéros du rapport de relecture). Chrome, tactile émulé, 1024×768 ; les essais
+ * qui dépendent de la taille de l'écran sont dans la boucle des six tailles et dans correctionsTelephone.
+ */
+async function corrections2(o) {
+  const nouvelle = async () => { await ev(o, `(()=>{while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();if(OGW.app.creation)OGW.app.terminerCreation();OGW.app.changerMode('selection');OGW.app.nouvelleSimulation({xxmin:0,xxmax:1000,yymin:0,yymax:700});return true})()`); await ev(o, `__image()`); };
+  const tap = async (x, y) => { await doigt(o, 'touchStart', x, y); await pause(40); await doigt(o, 'touchEnd'); await pause(90); };
+  const ajouter = (t, p) => ev(o, `(()=>{const r=OGW.app.scene.ajouter('${t}',Object.assign({},OptGeo.types['${t}'].defauts,${JSON.stringify(p)}));OGW.app.memoriser();return r.id})()`);
+  const obj = (id) => ev(o, `(()=>{const x=OGW.app.scene.objet(${JSON.stringify(id)});return x?JSON.parse(JSON.stringify(x)):null})()`);
+  const poignee = (id, nom) => ev(o, `(()=>{const h=OGW.Poignees.liste(OGW.app.scene,${JSON.stringify(id)}).find(h=>h.nom==='${nom}');return __ecran(h.x,h.y)})()`);
+  const px1 = () => ev(o, `OGW.app.pixelsEnMonde(1)`);
+  const fermerDialogues = `(()=>{const d=document.querySelector('.dialogue');const t=d?d.textContent:'';while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();return t})()`;
+
+  // ---- G1 : un doigt dont le lever n'a pas été reçu ne transforme plus tout toucher en pincement
+  await nouvelle();
+  const l1 = await ajouter('lmc', {a1x: 450, a1y: 200, a2x: 450, a2y: 500, focale: 100});
+  await ev(o, `__image()`);
+  const [cx, cy] = await ev(o, `__centre('#dessin')`);
+  await o.c.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: cx - 200, y: cy + 150, id: 1}, {x: cx - 120, y: cy + 150, id: 2}]}, o.s);
+  for (let k = 1; k <= 4; k++) { await o.c.send('Input.dispatchTouchEvent', {type: 'touchMove', touchPoints: [{x: cx - 200 - 5 * k, y: cy + 150, id: 1}, {x: cx - 120 + 5 * k, y: cy + 150, id: 2}]}, o.s); await pause(30); }
+  await o.c.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []}, o.s); await pause(100);
+  const pal = await ev(o, `__centre('#palette')`);
+  await o.c.send('Input.synthesizePinchGesture', {x: Math.round(pal[0]), y: Math.round(pal[1]), scaleFactor: 2.5, gestureSourceType: 'touch'}, o.s); await pause(300);
+  // doigt resté enregistré (sorti de l'écran : son lever n'arrive jamais) : pointerdown non principal sans pointerup
+  const reste = await ev(o, `(()=>{const c=document.getElementById('dessin'),r=c.getBoundingClientRect();c.dispatchEvent(new PointerEvent('pointerdown',{pointerId:77,isPrimary:false,pointerType:'touch',clientX:r.left+40,clientY:r.top+40,bubbles:true}));return Object.keys(OGW.app.pointeurs).length})()`);
+  const [lx, ly] = await ev(o, `__ecran(450,400)`);
+  await tap(lx, ly);
+  const g1 = await ev(o, `({sel:OGW.app.selection,pin:!!OGW.app.pincement,n:Object.keys(OGW.app.pointeurs).length})`);
+  await ev(o, `(OGW.app.demarrerCreation('miroirplan'),true)`); await pause(60);
+  await tap(cx + 200, cy - 100);
+  const g1b = await ev(o, `({p:OGW.app.creation&&OGW.app.creation.points.length,pin:!!OGW.app.pincement})`);
+  await ev(o, `(OGW.app.terminerCreation(),true)`);
+  verifier('G1 : après un pincement et un doigt dont le lever n’est jamais reçu, un toucher choisit la lentille (pas de pincement) et le toucher suivant place un point',
+    reste === 1 && g1.sel === l1 && !g1.pin && g1.n === 0 && g1b.p === 1 && !g1b.pin, {reste, g1, g1b});
+  const g1c = await ev(o, `(()=>{const c=document.getElementById('dessin'),r=c.getBoundingClientRect();c.dispatchEvent(new PointerEvent('pointerdown',{pointerId:78,isPrimary:false,pointerType:'touch',clientX:r.left+40,clientY:r.top+40,bubbles:true}));
+    const a=Object.keys(OGW.app.pointeurs).length;document.body.dispatchEvent(new PointerEvent('pointerup',{pointerId:78,isPrimary:false,pointerType:'touch',bubbles:true}));return {a,b:Object.keys(OGW.app.pointeurs).length,pin:!!OGW.app.pincement}})()`);
+  verifier('G1 : un lever reçu hors du dessin (document) retire aussi le doigt de la liste', g1c.a === 1 && g1c.b === 0 && !g1c.pin, g1c);
+  await ev(o, `(OGW.app.annulerGeste(),true)`);
+
+  // ---- G3 : petit réglage volontaire d'une poignée en mode Sélection (distance maximale, pas finale)
+  await nouvelle();
+  const e3 = await ajouter('ecran', {a1x: 500, a1y: 150, a2x: 500, a2y: 550});
+  await ev(o, `(OGW.app.selectionner(${JSON.stringify(e3)}),true)`); await ev(o, `__image()`);
+  const p1 = await px1();
+  let [ax, ay] = await poignee(e3, 'a2');
+  let av = await obj(e3);
+  await doigt(o, 'touchStart', ax, ay); await pause(80);
+  for (let k = 1; k <= 3; k++) { await doigt(o, 'touchMove', ax + k, ay); await pause(80); }
+  await doigt(o, 'touchEnd'); await pause(150);
+  let ap = await obj(e3);
+  const d3 = (ap.a2x - av.a2x) / p1;
+  verifier(`G3 : réglage volontaire de 3 px d’une extrémité (mode Sélection, lent) → ${d3.toFixed(2)} px`, Math.abs(d3 - 3) < 0.6 && ap.a1x === av.a1x, {d3, av, ap});
+  [ax, ay] = await poignee(e3, 'a2'); av = await obj(e3);
+  await doigt(o, 'touchStart', ax, ay); await pause(50); await doigt(o, 'touchMove', ax + 8, ay); await pause(80);
+  const pendant = ((await obj(e3)).a2x - av.a2x) / p1;
+  await doigt(o, 'touchMove', ax + 3, ay); await pause(80); await doigt(o, 'touchEnd'); await pause(150);
+  ap = await obj(e3);
+  const d3b = (ap.a2x - av.a2x) / p1;
+  verifier(`G3 : poignée tirée de 8 px puis ramenée à 3 px du départ → ${d3b.toFixed(2)} px (glisser gardé, pas de retour en place)`, Math.abs(pendant - 8) < 0.6 && Math.abs(d3b - 3) < 0.6, {pendant, d3b});
+  [ax, ay] = await poignee(e3, 'a2'); av = await obj(e3);
+  await doigt(o, 'touchStart', ax, ay); await doigt(o, 'touchMove', ax + 3, ay); await doigt(o, 'touchEnd'); await pause(150);
+  ap = await obj(e3);
+  verifier('G3 : toucher bref avec un tremblement de 3 px : compté comme un toucher, l’écran ne bouge pas, il reste choisi', ap.a2x === av.a2x && await ev(o, `OGW.app.selection===${JSON.stringify(e3)}`), {av, ap});
+
+  // ---- M6 : pas de coordonnées périmées dans le bandeau au début d'une construction
+  [ax, ay] = await poignee(e3, 'centre');
+  await doigt(o, 'touchStart', ax, ay); await pause(40);
+  for (let k = 1; k <= 4; k++) { await doigt(o, 'touchMove', ax + 10 * k, ay); await pause(40); }
+  const coordPendant = await ev(o, `document.getElementById('bandeau-texte').textContent`);
+  await doigt(o, 'touchEnd'); await pause(120);
+  const f6 = await ev(o, `__centre('.onglet[data-famille=miroirs]')`); await tap(f6[0], f6[1]);
+  const b6 = await ev(o, `__centre('.outil[data-outil="miroirplan"]')`); await tap(b6[0], b6[1]); await pause(80);
+  const band6 = await ev(o, `document.getElementById('bandeau-texte').textContent`);
+  await ev(o, `(OGW.app.terminerCreation(),true)`);
+  verifier('M6 : coordonnées affichées pendant un glisser, absentes du bandeau au début de la construction suivante', /X = /.test(coordPendant) && /miroir plan/i.test(band6) && !/X = /.test(band6), {coordPendant, band6});
+
+  // ---- M3 : taille de police négative (exemples « réseau ») : affichée, gardée si l'élève ne touche pas au champ
+  const m3 = await ev(o, `(async()=>{const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('reseau_en_transmission.opt'));OGW.app.ouvrirTexteOpt(e.opt,'r.opt','');while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();
+    const t=OGW.app.scene.objetsDuType('texte')[0],avant=t.policesize,opt=OptGeo.ecrireOpt(OGW.app.scene);OGW.app.ouvrirProprietes(t.id);
+    const ch=()=>[...document.querySelectorAll('#panneau-corps .champ')].find(c=>/Taille \\(points\\)/.test(c.querySelector('label')?.textContent||''));
+    const champ=ch().querySelector('input').value,note=ch().textContent;
+    [...document.querySelectorAll('#panneau-pied button')].find(b=>/Valider/.test(b.textContent)).click();
+    const ferme=document.getElementById('panneau').hidden,apres=OGW.app.scene.objet(t.id).policesize,meme=OptGeo.ecrireOpt(OGW.app.scene)===opt;
+    OGW.app.ouvrirProprietes(t.id);const i=ch().querySelector('input');i.value='12';i.dispatchEvent(new Event('input',{bubbles:true}));
+    [...document.querySelectorAll('#panneau-pied button')].find(b=>/Valider/.test(b.textContent)).click();
+    return {avant,champ,note:/8 pixels/.test(note),ferme,apres,meme,change:OGW.app.scene.objet(t.id).policesize}})()`);
+  verifier('M3 : taille −8 (hauteur de 8 pixels) affichée « 6 » points avec une note ; Valider sans toucher la garde (fichier identique) ; 12 saisi → 12',
+    m3.avant === -8 && m3.champ === '6' && m3.note && m3.ferme && m3.apres === -8 && m3.meme && m3.change === 12, m3);
+  // les 56 exemples : chaque panneau validé sans rien toucher, sans refus et sans rien changer (bornes, arrondis d'affichage)
+  // (écart relatif de 1e-12 toléré : le moteur renormalise certains objets, onde plane… — bruit de calcul, pas d'arrondi d'affichage)
+  const tous = await ev(o, `(async()=>{const refus=[],changes=[];const memes=(a,b)=>typeof a==='number'&&typeof b==='number'?Math.abs(a-b)<=1e-12*Math.max(1,Math.abs(a)):
+      (a&&b&&typeof a==='object'&&typeof b==='object')?Object.keys(a).length===Object.keys(b).length&&Object.keys(a).every(k=>memes(a[k],b[k])):a===b;for(const e of OPTGEO_EXEMPLES){OGW.app.ouvrirTexteOpt(e.opt,'x.opt','');while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();
+      for(const ob of OGW.app.scene.objets.slice()){const avant=JSON.stringify(OGW.app.scene.parametres(ob.id));OGW.app.ouvrirProprietes(ob.id);
+        [...document.querySelectorAll('#panneau-pied button')].find(b=>/Valider/.test(b.textContent)).click();
+        if(!document.getElementById('panneau').hidden){refus.push(e.fichier.split('/').pop()+' '+ob.type+' : '+[...document.querySelectorAll('#panneau .erreur-champ:not([hidden]),#panneau .erreur-generale:not([hidden])')].map(x=>x.textContent).join(' | '));OGW.app.fermerPanneau();}
+        else if(!memes(JSON.parse(avant),OGW.app.scene.parametres(ob.id)))changes.push(e.fichier.split('/').pop()+' '+ob.type);}}
+      return {refus,changes}})()`);
+  verifier('M3 / M9 : les panneaux de tous les objets des 56 exemples validés sans rien toucher : aucun refus, aucune valeur changée', !tous.refus.length && !tous.changes.length, tous);
+
+  // ---- M9 (précision affichée) : 120,0000236 affiché « 120 », valeur exacte gardée si le champ n'est pas touché
+  await nouvelle();
+  const l9 = await ajouter('lmc', {a1x: 450, a1y: 200.00000123, a2x: 450, a2y: 500, focale: 120.0000236});
+  const m9 = await ev(o, `(()=>{OGW.app.ouvrirProprietes(${JSON.stringify(l9)});const ch=[...document.querySelectorAll('#panneau-corps .champ')].find(c=>/Focale/.test(c.textContent));
+    const v=ch.querySelector('input').value,y=document.querySelector('#panneau-corps fieldset.point').querySelectorAll('input')[1].value;
+    [...document.querySelectorAll('#panneau-pied button')].find(b=>/Valider/.test(b.textContent)).click();const l=OGW.app.scene.objet(${JSON.stringify(l9)});return {v,y,f:l.focale,a1y:l.a1y}})()`);
+  verifier('M9 : focale 120,0000236 affichée « 120 », ordonnée 200,00000123 affichée « 200 » ; valeurs exactes gardées à la validation', m9.v === '120' && m9.y === '200' && m9.f === 120.0000236 && m9.a1y === 200.00000123, m9);
+  verifier('M9 : nombres affichés (4 décimales au plus, 4 chiffres significatifs sous 1)', await ev(o, `[OGW.nombreChamp(179.9999759),OGW.nombreChamp(1.23456),OGW.nombreChamp(0.000123456),OGW.nombreChamp(-2.5),OGW.nombreChamp(1500)].join(' ')`) === '180 1,2346 0,0001235 -2,5 1500');
+  // raccourcis clavier masqués sur un appareil tactile sans souris ; lentilles faciles à trouver
+  const kbd = await ev(o, `(()=>{const k=[...document.querySelectorAll('#menu kbd')];return {n:k.length,tactile:matchMedia('(hover: none) and (pointer: coarse)').matches,visibles:k.filter(x=>getComputedStyle(x).display!=='none').length}})()`);
+  verifier('M9 : raccourcis « Ctrl+… » du menu masqués sur appareil tactile (hover: none, pointer: coarse)', kbd.n > 5 && kbd.tactile && kbd.visibles === 0, kbd);
+  const fam = await ev(o, `(()=>{const b=document.querySelector('.onglet[data-famille=dioptres]');b.click();const r={onglet:b.textContent.trim(),titre:b.title,volet:document.querySelector('#volet h2').textContent,lmc:!!document.querySelector('#volet .outil[data-outil=lmc]')};OGW.app.fermerVolets();return r})()`);
+  verifier('M9 : famille « Lentilles et dioptres » (onglet, infobulle, volet), lentilles minces dedans', /Lentilles/.test(fam.onglet) && fam.titre === 'Lentilles et dioptres' && fam.volet === 'Lentilles et dioptres' && fam.lmc, fam);
+
+  // ---- M4 : pas de zone morte entre les boutons de zoom
+  const m4 = await ev(o, `(()=>{const b=[...document.querySelectorAll('#vue-boutons button')].map(x=>x.getBoundingClientRect());const x=(b[0].left+b[0].right)/2,y=(b[0].bottom+b[1].top)/2,x2=b[0].left-1;
+    const e=document.elementFromPoint(x,y),e2=document.elementFromPoint(x,(b[1].bottom+b[2].top)/2);return {ecart:b[1].top-b[0].bottom,ici:e&&e.id,ici2:e2&&e2.id}})()`);
+  verifier('M4 : entre les boutons de zoom, le toucher va au dessin (pas de zone morte)', m4.ecart > 0 && m4.ici === 'dessin' && m4.ici2 === 'dessin', m4);
+
+  // ---- M8 (contre-épreuve) : un grand objet garde les zones de 24 px de ses poignées
+  await nouvelle();
+  const l8 = await ajouter('lmc', {a1x: 450, a1y: 200, a2x: 450, a2y: 500, focale: 100});
+  await ev(o, `(OGW.app.selectionner(${JSON.stringify(l8)}),true)`); await ev(o, `__image()`);
+  const [hx8, hy8] = await poignee(l8, 'a1'), av8 = await obj(l8);
+  await doigt(o, 'touchStart', hx8, hy8 + 15); await pause(40);                 // sur la lentille, à 15 px de son extrémité
+  for (let k = 1; k <= 4; k++) { await doigt(o, 'touchMove', hx8 + 5 * k, hy8 + 15); await pause(40); }
+  await doigt(o, 'touchEnd'); await pause(150);
+  const ap8 = await obj(l8);
+  verifier('M8 : lentille de 300 px : un doigt posé sur elle à 15 px de son extrémité saisit toujours l’extrémité (zones de 24 px gardées)',
+    ap8.a1x > av8.a1x + 10 * await px1() && ap8.a2x === av8.a2x, {av8, ap8});
+
+  // ---- M5 : fichier .opt tronqué refusé (message clair, scène gardée)
+  const vrai = await ev(o, `OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt')).opt`);
+  const tronques = [];
+  for (const frac of [0.3, 0.6, 0.9]) {
+    await ev(o, `(()=>{const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));OGW.app.ouvrirTexteOpt(e.opt,'garde.opt','');while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();return true})()`);
+    const t = vrai.slice(0, Math.floor(vrai.length * frac));
+    const r = await ev(o, `(()=>{const avant=OptGeo.ecrireOpt(OGW.app.scene);const r=OGW.app.ouvrirTexteOpt(${JSON.stringify(t)},'tronque.opt','');const d=${fermerDialogues};
+      return {r,d,meme:OptGeo.ecrireOpt(OGW.app.scene)===avant,nom:OGW.app.nomFichier}})()`);
+    tronques.push({frac, ok: r.r === false && /incomplet|endommagé/.test(r.d) && /Rien n’a été ouvert/.test(r.d) && r.meme && r.nom === 'garde.opt', d: r.d.slice(0, 160)});
+  }
+  verifier('M5 : fichier .opt coupé à 30 %, 60 %, 90 % : refusé avec un message lisible, simulation en cours gardée', tronques.every(t => t.ok), tronques);
+  verifier('M5 : aucun des 56 exemples n’est pris pour un fichier coupé', await ev(o, `OPTGEO_EXEMPLES.every(e=>OGW.texteOptTronque(e.opt)===null)`));
+  // balayage : chaque exemple coupé à 5 %, 10 %… 95 %. Une coupure juste entre deux parties du fichier, ou au milieu
+  // d'un entier, ne se voit pas (le format n'a pas de marque de fin) : ces fichiers s'ouvrent incomplets.
+  const balayage = await ev(o, `(()=>{let total=0,refus=0,erreurs=0;const e0=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));
+    for(const e of OPTGEO_EXEMPLES)for(let k=1;k<20;k++){const t=e.opt.slice(0,Math.floor(e.opt.length*k/20));total++;
+      OGW.app.ouvrirTexteOpt(e0.opt,'garde.opt','');while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();
+      try{if(OGW.app.ouvrirTexteOpt(t,'t.opt','')===false)refus++;}catch(x){erreurs++;}while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();}
+    return {total,refus,erreurs,part:+(refus/total).toFixed(3)}})()`);
+  verifier(`M5 : les 56 exemples coupés à 5 %, 10 %… 95 % (${balayage.total} fichiers) : ${balayage.refus} refusés (${Math.round(balayage.part * 100)} %), aucune exception`, balayage.part >= 0.9 && balayage.erreurs === 0, balayage);
+
+  // ---- M7 : commentaires des exemples sans geste de souris impossible (note « Dans la version web »)
+  const m7 = await ev(o, `OPTGEO_EXEMPLES.filter(e=>/souris|\\bclic|cliquer|curseur|courseur|Fin dép|barre d'outil|\\bicone\\b/i.test(e.description)).map(e=>({f:e.fichier.split('/').pop(),note:e.description.includes('Dans la version web : ')}))`);
+  verifier('M7 : les ' + m7.length + ' commentaires écrits pour la souris ou les barres d’outils de Windows ont leur note « Dans la version web : … »', m7.length >= 9 && m7.every(x => x.note), m7);
+
+  // ---- G11 : sélecteur de fichiers sans filtre (Android), fichier renommé « .opt.txt » ouvert, téléchargement en .opt
+  await nouvelle();
+  const g11 = await ev(o, `(async()=>{let inp=null;const f=HTMLInputElement.prototype.click;HTMLInputElement.prototype.click=function(){if(this.type==='file'){inp=this;return;}return f.call(this)};
+    OGW.ouvrirFichier(OGW.app,false);HTMLInputElement.prototype.click=f;const accept=inp.getAttribute('accept');
+    const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));const dt=new DataTransfer();dt.items.add(new File([e.opt],'mon essai.opt.txt',{type:'text/plain'}));
+    inp.files=dt.files;inp.dispatchEvent(new Event('change'));await __attendre(()=>OGW.app.nomFichier==='mon essai.opt');while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();
+    window.__telechargements=[];OGW.app.enregistrerSous('mon essai.opt');const t=window.__telechargements[0];
+    return {accept,nom:OGW.app.nomFichier,objets:OGW.app.scene.objets.length,tele:t&&{nom:t.nom,type:t.type}}})()`);
+  verifier('G11 : sélecteur de fichiers sans filtre « accept » ; un .opt renommé « .opt.txt » s’ouvre (en-tête contrôlé) ; téléchargement « mon essai.opt » en application/octet-stream',
+    g11.accept === null && g11.nom === 'mon essai.opt' && g11.objets === 2 && g11.tele && g11.tele.nom === 'mon essai.opt' && g11.tele.type === 'application/octet-stream', g11);
+  await nouvelle();
+  verifier('Chrome : aucune erreur JavaScript (seconde relecture)', !o.journal.erreurs.length, o.journal.erreurs);
+}
+
+/**
+ * Seconde relecture, G10 : quitter ou recharger la page pendant « Reprendre le travail en cours ? »
+ * n'écrase pas la sauvegarde. Fonctionne avec Chrome (ev) et Firefox (evf) ; recharger() recharge la page.
+ */
+async function repriseProtegee(evx, recharger, N) {
+  const SAUVE = `(()=>{const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('dispersion_prisme.opt'))||OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));
+    OGW.app.ouvrirTexteOpt(e.opt,e.fichier.split('/').pop(),'');while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();OGW.app.modifie=true;OGW.app.sauvegarderLocal();
+    return JSON.parse(localStorage.getItem('optgeo-web:travail')).scene.objets.length})()`;
+  const stock = `(()=>{const s=JSON.parse(localStorage.getItem('optgeo-web:travail')||'null');return s?{nom:s.nom,n:s.scene.objets.length}:null})()`;
+  const question = `__attendre(()=>document.querySelector('.dialogue h2')&&document.querySelector('.dialogue h2').textContent==='Reprendre le travail en cours ?')`;
+  const quitter = `(()=>{window.dispatchEvent(new Event('beforeunload'));Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'));delete document.hidden;return true})()`;
+  const n0 = await evx(SAUVE), s0 = await evx(stock);
+  await recharger();
+  const q1 = await evx(question);
+  await evx(quitter);
+  const s1 = await evx(stock);
+  await recharger();
+  const q2 = await evx(question);
+  // « Nouvelle simulation », puis la boîte suivante fermée sans choix : toujours rien d'écrit
+  await evx(`([...document.querySelectorAll('.dialogue .pied button')].find(b=>/Nouvelle simulation/.test(b.textContent)).click(),true)`);
+  await evx(`__attendre(()=>document.querySelector('.dialogue h2')&&document.querySelector('.dialogue h2').textContent==='Que voulez-vous faire ?')`);
+  await evx(`([...document.querySelectorAll('.dialogue .pied button')].find(b=>/Annuler/.test(b.textContent)).click(),true)`);
+  await evx(quitter);
+  const s2 = await evx(stock);
+  // l'élève travaille : la sauvegarde suit de nouveau
+  await evx(`(()=>{const r=OGW.app.scene.ajouter('ecran',Object.assign({},OptGeo.types.ecran.defauts,{a1x:OGW.app.scene.options.xxmin+10,a1y:OGW.app.scene.options.yymin+10,a2x:OGW.app.scene.options.xxmin+10,a2y:OGW.app.scene.options.yymax-10}));OGW.app.memoriser();return r.ok})()`);
+  await evx(`new Promise(r=>setTimeout(()=>r(true),700))`);
+  const s3 = await evx(stock);
+  verifier(N + ' : G10 — page quittée ou cachée pendant « Reprendre le travail en cours ? » : sauvegarde intacte, reprise proposée de nouveau ; « Nouvelle simulation » puis fermeture sans choix : intacte ; un élément ajouté : la sauvegarde suit',
+    n0 > 0 && q1 && q2 && s1 && s1.n === n0 && s1.nom === s0.nom && s2 && s2.n === n0 && s3 && s3.n === 1 && s3.nom === null, {n0, s0, s1, s2, s3, q1: !!q1, q2: !!q2});
+}
+
+/** Seconde relecture : essais qui dépendent de la taille de l'écran (G2 barre de sélection, M2 bulle, M8 petit objet, M9 panneau en portrait). */
+async function correctionsTaille(p, w, h) {
+  const T = `${w}×${h}`;
+  const tactile = w < 1366;
+  // G2 : barre de sélection, une ligne d'icônes sur faible hauteur ; jamais sur les poignées de l'objet choisi
+  // un petit miroir vertical (un cinquième de la hauteur) au milieu de l'espace de travail, en bas puis en haut
+  const etat = async (posY) => ev(p, `(async()=>{const s=OGW.app.scene;OGW.app.fermerPanneau();OGW.app.dessinateur.toutVoir();s.objetsDuType('miroirplan').forEach(m=>s.supprimer(m.id));
+    const o=s.options,H=o.yymax-o.yymin,xm=(o.xxmin+o.xxmax)/2,yc=o.yymin+H*${posY};
+    const l=s.ajouter('miroirplan',Object.assign({},OptGeo.types.miroirplan.defauts,{a1x:xm,a1y:yc-H*0.1,a2x:xm,a2y:yc+H*0.1}));OGW.app.memoriser();OGW.app.selectionner(l.id);await __image();
+    const b=document.getElementById('barre-contexte'),r=b.getBoundingClientRect(),c=document.getElementById('dessin').getBoundingClientRect();
+    const hs=OGW.Poignees.liste(s,l.id).map(h=>__ecran(h.x,h.y)).filter(q=>q[0]>c.left+4&&q[0]<c.right-4&&q[1]>c.top+4&&q[1]<c.bottom-4);
+    const touchables=hs.filter(q=>{const e=document.elementFromPoint(q[0],q[1]);return e&&e.id==='dessin'}).length;
+    const nom=document.getElementById('contexte-nom');const titres=[...b.querySelectorAll('button')].filter(x=>x.getClientRects().length).every(x=>x.title&&x.getAttribute('aria-label'));
+    OGW.app.signaler('Simulation enregistrée : essai.opt (dossier des téléchargements).');const m=document.getElementById('message').getBoundingClientRect();
+    const croise=!(m.right<=r.left||m.left>=r.right||m.bottom<=r.top||m.top>=r.bottom);
+    return {haut:b.classList.contains('en-haut'),h:Math.round(r.height),w:Math.round(r.width),part:Math.round(100*r.height/c.height),hs:hs.length,touchables,nomVisible:nom.getClientRects().length>0,titres,bulleSurBarre:croise,dedans:r.left>=c.left-1&&r.right<=c.right+1&&r.top>=c.top-1&&r.bottom<=c.bottom+1}})()`);
+  const bas = await etat(0.12), hautE = await etat(0.88);
+  const faible = h <= 500 && w > 560;
+  verifier(`${T} : G2 — barre de sélection ${bas.w}×${bas.h} px (${bas.part} % de la hauteur du dessin)${faible ? ', une ligne d’icônes sans le nom (infobulles)' : ''}`,
+    bas.dedans && (faible ? bas.h <= 60 && !bas.nomVisible && bas.titres : bas.part <= 20), bas);
+  // la barre ne change de côté que si elle couvrirait l'objet : en portrait, l'espace de travail laisse de la place sous lui
+  verifier(`${T} : G2 — petit miroir en bas puis en haut de l’espace de travail : toutes ses poignées restent touchables (${bas.touchables}/${bas.hs}, ${hautE.touchables}/${hautE.hs})${faible ? ' ; barre passée en haut quand le miroir est en bas' : ''}`,
+    bas.touchables === bas.hs && hautE.touchables === hautE.hs && bas.hs >= 4 && hautE.hs >= 4 && !hautE.haut && (!faible || bas.haut), {bas, hautE});
+  verifier(`${T} : M2 — la bulle « Simulation enregistrée » ne couvre pas la barre de sélection (en bas comme en haut)`, !bas.bulleSurBarre && !hautE.bulleSurBarre, {bas: bas.bulleSurBarre, haut: hautE.bulleSurBarre});
+  // G4 : pendant une construction, l'espace de travail cadré (« Tout voir ») ne commence pas sous le bandeau
+  const g4 = await ev(p, `(async()=>{const res=[];for(const esp of ['exemple','defaut']){if(esp==='defaut')OGW.app.nouvelleSimulation(OGW.espaceParDefaut(OGW.app));OGW.app.selection=null;OGW.app.dessinateur.toutVoir();await __image();
+      const o=OGW.app.scene.options,top0=OGW.app.dessinateur.vue().versEcran(o.xxmin,o.yymax)[1];OGW.app.demarrerCreation('lmc');await __image();
+      const c=document.getElementById('dessin').getBoundingClientRect(),b=document.getElementById('bandeau').getBoundingClientRect();
+      const top1=OGW.app.dessinateur.vue().versEcran(o.xxmin,o.yymax)[1];
+      OGW.app.apresEtape(OGW.app.creation.valider({x:(o.xxmin+o.xxmax)/2,y:(o.yymin+o.yymax)/2}));await __image();
+      const b2=document.getElementById('bandeau').getBoundingClientRect(),top2=OGW.app.dessinateur.vue().versEcran(o.xxmin,o.yymax)[1];OGW.app.terminerCreation();await __image();
+      res.push({esp,top:Math.round(top1),bandeau:Math.round(b.bottom-c.top),bandeau2:Math.round(b2.bottom-c.top),fixe:Math.abs(top1-top0)<0.01&&Math.abs(top2-top0)<0.01});}
+      const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));OGW.app.ouvrirTexteOpt(e.opt,'l.opt','');OGW.app.fermerPanneau();await __image();return res})()`);
+  verifier(`${T} : G4 — pendant une construction, le haut de l’espace de travail cadré est sous le bandeau (${g4.map(r => r.top + ' ≥ ' + Math.max(r.bandeau, r.bandeau2)).join(', ')} px), sans décalage du dessin`,
+    g4.every(r => r.top >= Math.max(r.bandeau, r.bandeau2) - 1 && r.fixe), g4);
+  // M9 : en portrait, panneau des propriétés sur la moitié de la hauteur, agrandi aux 7/8 à la demande
+  if (h > w) {
+    const m9 = await ev(p, `(async()=>{OGW.app.ouvrirProprietes(OGW.app.scene.objetsDuType('lmc')[0].id);await __image();const z=document.getElementById('zone').getBoundingClientRect(),pa=()=>document.getElementById('panneau').getBoundingClientRect();
+      const b=document.querySelector('[data-action="taille-panneau"]'),vis=b.getClientRects().length>0,br=b.getBoundingClientRect();const r1=pa().height/z.height;b.click();await __image();const r2=pa().height/z.height,lab=b.getAttribute('aria-label');b.click();await __image();
+      const r3=pa().height/z.height;const l=OGW.app.scene.objetsDuType('lmc')[0],g=OGW.app.scene.geometrie(l.id),q=__ecran(g.ox,g.oy),lentilleVisible=q[1]>z.top&&q[1]<pa().top;OGW.app.fermerPanneau();
+      return {r1:+r1.toFixed(2),r2:+r2.toFixed(2),r3:+r3.toFixed(2),vis,cible:Math.min(br.width,br.height),lab,lentilleVisible}})()`);
+    verifier(`${T} : M9 — panneau des propriétés sur ${Math.round(m9.r1 * 100)} % de la hauteur (la lentille reste visible au-dessus), bouton « Agrandir le panneau » (${Math.round(m9.r2 * 100)} %) puis « Réduire »`,
+      m9.r1 <= 0.52 && m9.r2 >= 0.85 && Math.abs(m9.r3 - m9.r1) < 0.01 && m9.vis && m9.cible >= 43.5 && m9.lab === 'Réduire le panneau' && m9.lentilleVisible, m9);
+  }
+  // M8 : petit objet au doigt — toucher le corps hors du disque d'une poignée translate l'objet ; la poignée elle-même marche toujours
+  if (tactile) {
+    const m8 = await ev(p, `(async()=>{OGW.app.nouvelleSimulation({xxmin:0,xxmax:1000,yymin:0,yymax:700});await __image();const s=OGW.app.scene,R=OGW.app.pixelsEnMonde(30);
+      const r=s.ajouter('sphere',Object.assign({},OptGeo.types.sphere.defauts,{cx:500,cy:350,rayon:R,indicerouge:1.5,indicevert:1.5,indicebleu:1.5,reflechientrant:2,reflechisortant:2}));OGW.app.memoriser();OGW.app.selectionner(r.id);await __image();
+      return {id:r.id,R,c:__ecran(500,350),p1:OGW.app.pixelsEnMonde(1)}})()`);
+    const sphere = () => ev(p, `JSON.parse(JSON.stringify(OGW.app.scene.objet(${JSON.stringify(m8.id)})))`);
+    const glisser = async (x0, y0, dx, dy) => {
+      await doigt(p, 'touchStart', x0, y0); await pause(40);
+      for (let k = 1; k <= 6; k++) { await doigt(p, 'touchMove', x0 + dx * k / 6, y0 + dy * k / 6); await pause(40); }
+      await doigt(p, 'touchEnd'); await pause(150);
+    };
+    const s0 = await sphere();
+    await glisser(m8.c[0] + 19, m8.c[1] - 5, 40, 30);            // dans la sphère, à 12 px du bord droit (poignée), à 20 px du centre
+    const s1 = await sphere();
+    verifier(`${T} : M8 — petite sphère (30 px) : glisser commencé sur son corps, hors du disque des poignées → translation (rayon inchangé)`,
+      Math.abs(s1.rayon - s0.rayon) < 1e-9 && Math.abs((s1.cx - s0.cx) / m8.p1 - 40) < 1.5 && Math.abs((s0.cy - s1.cy) / m8.p1 - 30) < 1.5, {s0, s1});
+    const b1 = await ev(p, `(()=>{const g=OGW.app.scene.geometrie(${JSON.stringify(m8.id)});return __ecran(g.cx+g.rayon,g.cy)})()`);
+    await glisser(b1[0] + 2, b1[1], 20, 0);
+    const s2 = await sphere();
+    verifier(`${T} : M8 — la poignée du bord (cercle bleu) se saisit toujours : rayon agrandi`, s2.rayon > s1.rayon + 10 * m8.p1 && Math.abs(s2.cx - s1.cx) < 1e-9, {s1, s2});
+    await ev(p, `(()=>{const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));OGW.app.ouvrirTexteOpt(e.opt,'l.opt','');OGW.app.fermerPanneau();return true})()`);
+  }
+}
+
 // ---------------------------------------------------------------- Firefox (WebDriver BiDi)
 async function lancerFirefox() {
   if (typeof WebSocket !== 'function') throw new Error('WebSocket absent : Node 22 ou plus, ou « node --experimental-websocket » (Node 20-21)');
@@ -960,6 +1247,11 @@ async function essaisFirefox(srv) {
       const cap = await f.send('browsingContext.captureScreenshot', {context});
       writeFileSync(path.join(CAPTURES, `firefox-${w}x${h}.png`), Buffer.from(cap.data, 'base64'));
     }
+    // seconde relecture, G10 : la sauvegarde n'est pas écrasée pendant « Reprendre le travail en cours ? »
+    await taille(1024, 768);
+    const recharger = async () => { await aller(); await evf(OUTILS); };
+    await recharger(); await evf(DEMARRER);
+    await repriseProtegee(evf, recharger, N);
     const erreurs = f.evenements.filter(e => e.method === 'log.entryAdded' && e.params.level === 'error').map(e => e.params.text);
     verifier(N + ' : aucune erreur JavaScript', erreurs.length === 0, erreurs);
   } finally {
@@ -1016,12 +1308,14 @@ async function correctionsFirefox(f, context, evf, N) {
   await evf(`(window.__bt=[...document.querySelectorAll('#bandeau-boutons button')].find(x=>/Bloquer horizontalement/.test(x.textContent)),true)`);
   await vers(hx + 35, hy + 35);
   const stable = await evf(`!!window.__bt&&window.__bt.isConnected&&window.__bt===[...document.querySelectorAll('#bandeau-boutons button')].find(x=>/Bloquer horizontalement/.test(x.textContent))`);
+  await pause(80);
+  const yAvantVerrou = (await obj(id)).a1y;
   await clicSouris(b[0], b[1]);            // un autre pointeur touche le bouton pendant que le doigt glisse
   const pendant = await evf(`OGW.app.verrouH`);
   await vers(hx + 60, hy + 60); await vers(hx + 90, hy + 90); await lever();
   const m4 = await obj(id);
-  verifier(N + ' : défaut 1 — pendant un glisser, « Bloquer horizontalement » reste le même élément et reçoit le toucher ; mouvement horizontal ensuite, verrou relâché',
-    stable && pendant && Math.abs(m4.a1y - m3b.a1y) < 1e-9 && m4.a1x - m3b.a1x > 70 * p1 && await evf(`!OGW.app.verrouH`), {stable, pendant, m3b, m4});
+  verifier(N + ' : défaut 1 — pendant un glisser, « Bloquer horizontalement » reste le même élément et reçoit le toucher ; mouvement horizontal ensuite, à la hauteur du moment (pas de saut), verrou relâché',
+    stable && pendant && Math.abs(yAvantVerrou - m3b.a1y) > 20 * p1 && Math.abs(m4.a1y - yAvantVerrou) < 1e-9 && m4.a1x - m3b.a1x > 70 * p1 && await evf(`!OGW.app.verrouH`), {stable, pendant, m3b, yAvantVerrou, m4});
 
   // défaut 3 : glisser de 90 px (lent et rapide) → 90 px à 1 px près
   await nouvelle();
@@ -1070,6 +1364,49 @@ async function correctionsFirefox(f, context, evf, N) {
   await f.send('input.releaseActions', {context}); await pause(300);
   const echelle = await evf(`visualViewport.scale`);
   verifier(N + ' : défaut 12 — touch-action « pan-x pan-y », page non zoomée après un pincement sur la palette (échelle ' + echelle + ')', ta.every(t => t === 'pan-x pan-y') && echelle === 1, {ta, echelle});
+  // ---- seconde relecture, G1 : doigt dont le lever n'est jamais reçu (événement non principal sans lever), puis un toucher
+  await nouvelle();
+  const l1 = await ajouter('lmc', {a1x: 450, a1y: 200, a2x: 450, a2y: 500, focale: 100});
+  await evf(`__image()`);
+  const reste = await evf(`(()=>{const c=document.getElementById('dessin'),r=c.getBoundingClientRect();c.dispatchEvent(new PointerEvent('pointerdown',{pointerId:77,isPrimary:false,pointerType:'touch',clientX:r.left+40,clientY:r.top+40,bubbles:true}));return Object.keys(OGW.app.pointeurs).length})()`);
+  await geste([await evf(`__ecran(450,400)`)]);
+  const g1 = await evf(`({sel:OGW.app.selection,pin:!!OGW.app.pincement,n:Object.keys(OGW.app.pointeurs).length})`);
+  await evf(`(OGW.app.demarrerCreation('miroirplan'),true)`); await pause(60);
+  await geste([await evf(`__ecran(800,150)`)]);
+  const g1b = await evf(`({p:OGW.app.creation&&OGW.app.creation.points.length,pin:!!OGW.app.pincement})`);
+  await evf(`(OGW.app.terminerCreation(),true)`);
+  verifier(N + ' : G1 — doigt dont le lever n’est jamais reçu : le toucher suivant choisit la lentille (pas de pincement), le suivant place un point',
+    reste === 1 && g1.sel === l1 && !g1.pin && g1.n === 0 && g1b.p === 1 && !g1b.pin, {reste, g1, g1b});
+
+  // ---- seconde relecture, G3 : petit réglage d'une poignée (3 px lent ; 8 px puis retour à 3 px) ; toucher immobile = toucher
+  await nouvelle();
+  const e3 = await ajouter('ecran', {a1x: 500, a1y: 150, a2x: 500, a2y: 550});
+  await evf(`(OGW.app.selectionner(${JSON.stringify(e3)}),true)`); await evf(`__image()`);
+  const pA = await evf(`OGW.app.pixelsEnMonde(1)`);
+  const a2 = () => evf(`(()=>{const h=OGW.Poignees.liste(OGW.app.scene,${JSON.stringify(e3)}).find(h=>h.nom==='a2');return __ecran(h.x,h.y)})()`);
+  let [ax, ay] = await a2(), av = await obj(e3);
+  await geste([[ax, ay], [ax + 1, ay], [ax + 2, ay], [ax + 3, ay]], 80);
+  let ap = await obj(e3);
+  const d3 = (ap.a2x - av.a2x) / pA;
+  [ax, ay] = await a2(); av = await obj(e3);
+  await poser(ax, ay); await vers(ax + 8, ay, 60); await pause(80);
+  const pendant3 = ((await obj(e3)).a2x - av.a2x) / pA;
+  await vers(ax + 3, ay, 60); await lever();
+  ap = await obj(e3);
+  const d3b = (ap.a2x - av.a2x) / pA;
+  // même réglage de 3 px en un seul geste continu (appui, trois pas de 80 ms, lever : environ 240 ms)
+  [ax, ay] = await a2(); av = await obj(e3);
+  await actions('doigt', 'touch', [{type: 'pointerMove', x: R(ax), y: R(ay)}, {type: 'pointerDown', button: 0},
+    ...[1, 2, 3].map(k => ({type: 'pointerMove', x: R(ax + k), y: R(ay), duration: 80})), {type: 'pointerUp', button: 0}]);
+  await f.send('input.releaseActions', {context}); await pause(150);
+  ap = await obj(e3);
+  const d3c = (ap.a2x - av.a2x) / pA;
+  [ax, ay] = await a2(); av = await obj(e3);
+  await geste([[ax, ay]]);
+  ap = await obj(e3);
+  verifier(`${N} : G3 — réglage de 3 px d’une extrémité → ${d3.toFixed(2)} px (en un geste continu : ${d3c.toFixed(2)} px) ; tirée de 8 px puis ramenée à 3 px → ${d3b.toFixed(2)} px ; toucher immobile : rien ne bouge, l’écran reste choisi`,
+    Math.abs(d3 - 3) < 0.6 && Math.abs(d3c - 3) < 0.6 && Math.abs(pendant3 - 8) < 0.6 && Math.abs(d3b - 3) < 0.6 && ap.a2x === av.a2x && await evf(`OGW.app.selection===${JSON.stringify(e3)}`), {d3, d3c, pendant3, d3b});
+
   await nouvelle();
   await evf(`(OGW.app.ouvrirTexteOpt(${JSON.stringify(scenePrecedente)},'reprise.opt',''),OGW.app.fermerPanneau(),__image())`);
 }

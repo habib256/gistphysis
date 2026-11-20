@@ -114,14 +114,47 @@
     }
     return v;
   };
-  Dessinateur.prototype.haut = function () { var r = this.retrait.haut || 0; return this.h - r - (this.retrait.bas || 0) > 140 ? r : 0; };
+  /**
+   * Décalage du cadrage vers le bas, pour que l'espace de travail cadré (« Tout voir ») ne commence
+   * pas sous le bandeau de consigne. La réserve (hauteur du bandeau d'une construction, mesurée à
+   * chaque changement de taille de la fenêtre) ne dépend pas de la présence du bandeau : le dessin
+   * ne bouge donc jamais quand le bandeau apparaît, change ou disparaît (pas de saut sous le doigt).
+   * Si l'espace de travail laisse assez de place au-dessus de lui, rien n'est décalé ; si c'est la
+   * largeur qui limite l'échelle, on décale juste ce qu'il faut sans réduire l'échelle ; sinon
+   * l'espace est cadré dans la hauteur restante sous la réserve.
+   */
+  Dessinateur.prototype.haut = function () {
+    var r = this.reserveHaut || 0;
+    if (!r) return 0;
+    var H0 = this.hauteurVisible();
+    if (H0 - r <= 140) return 0;
+    var o = this.app.scene.options, lh = o.yymax - o.yymin, L = this.L();
+    var v0 = OptGeo.creerVue(o, L, H0, { marge: 8 });
+    if (!(lh > 0) || !isFinite(v0.sy)) return 0;
+    var libre = (H0 - lh * v0.sy) / 2;
+    if (libre >= r) return 0;
+    var t = 2 * r - H0 + lh * v0.sy;
+    if (t > 0 && t < r) {
+      var v1 = OptGeo.creerVue(o, L, H0 - t, { marge: 8 });
+      if (Math.abs(v1.sy - v0.sy) <= 1e-9 * v0.sy) return t;
+    }
+    return r;
+  };
+  /** Hauteur de la zone que le panneau des propriétés laisse visible. */
+  Dessinateur.prototype.hauteurVisible = function () { var r = this.retrait.bas || 0; return this.h - r > 140 ? this.h - r : this.h; };
   /** Partie visible de la zone (le panneau des propriétés peut en couvrir une partie). */
   Dessinateur.prototype.L = function () { var r = this.retrait.droite || 0; return this.w - r > 160 ? this.w - r : this.w; };
-  Dessinateur.prototype.H = function () { var r = this.retrait.bas || 0; return (this.h - r > 140 ? this.h - r : this.h) - this.haut(); };
-  Dessinateur.prototype.definirRetrait = function (droite, bas, haut) {
-    haut = haut === undefined ? (this.retrait.haut || 0) : haut;
-    if ((this.retrait.droite || 0) === droite && (this.retrait.bas || 0) === bas && (this.retrait.haut || 0) === haut) return;
-    this.retrait = { droite: droite, bas: bas, haut: haut }; this.demander();
+  Dessinateur.prototype.H = function () { return this.hauteurVisible() - this.haut(); };
+  Dessinateur.prototype.definirRetrait = function (droite, bas) {
+    if ((this.retrait.droite || 0) === droite && (this.retrait.bas || 0) === bas) return;
+    this.retrait = { droite: droite, bas: bas }; this.demander();
+  };
+  /** Réserve en haut pour le bandeau de consigne (pixels CSS). */
+  Dessinateur.prototype.definirReserveHaut = function (r) {
+    r = Math.max(0, Math.round(r || 0));
+    if (r === (this.reserveHaut || 0)) return false;
+    this.reserveHaut = r; this.demander();
+    return true;
   };
   Dessinateur.prototype.toutVoir = function () { this.zoom = 1; this.cx = null; this.cy = null; this.demander(); };
   /** Zoom de facteur f autour du point écran (px, py) (centre de la vue par défaut). */

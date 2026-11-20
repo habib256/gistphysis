@@ -1,3 +1,5 @@
 Michelson
 
 La même chose que dans l'exemple "michelson1", mais on cache les rayons qui repartent vers le volume d'entrée. Ceci se fait à l'aide de l'icone en forme de fantôme, dans la 2ème barre d'outil.
+
+Dans la version web : l’outil « Cacher segments » (rayons fantômes) est dans la palette des objets, famille « Divers » : touchez ensuite les segments de rayon à cacher.

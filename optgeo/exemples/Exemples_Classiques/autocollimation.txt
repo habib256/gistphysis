@@ -6,3 +6,5 @@ Le point source (centre du diaphragme) est placé au foyer objet de la lentille.
 Manipulations
 Cliquer sur le bouton "Déplacer", puis observer ce qui se passe en translatant le miroir (curseur au dessus du centre du miroir, clic simple pour le sélectionner, déplacement pour effectuer la translation, clic simple final pour re poser le miroir, clic sur le bouton "Fin dép" pour sortir du mode déplacement). Puis en modifiant l'inclinaison du miroir (même méthode que pour la translation, mais en utilisant l'une ou l'autre des extrémités du miroir).
 
+Dans la version web : toucher (ou cliquer) le miroir pour faire apparaître ses poignées. Pour le translater, faire glisser la croix verte (son centre) ou le miroir lui-même ; pour changer son inclinaison, faire glisser un disque rouge (rotation autour du centre) ou un cercle bleu (une extrémité). Le miroir reste où on lève le doigt (ou le bouton de la souris) : pas de clic final, pas de bouton « Fin dép ».
+

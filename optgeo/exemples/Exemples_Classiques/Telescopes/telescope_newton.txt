@@ -8,3 +8,5 @@ La distance entre le foyer du miroir primaire et le centre du miroir secondaire 
 On envoie un faisceau de lumière parallèle faisant un angle petit avec l'axe du télescope.
 
 En passant en zoom x10, on vérifie que les rayons émergents sont parallèles entre eux: l'oeil peut observer sans accomoder.
+
+Dans la version web : le zoom ×10 est dans le bouton « Affichage » de la barre du haut ; on peut aussi zoomer à deux doigts ou avec les boutons + et − à droite du dessin.

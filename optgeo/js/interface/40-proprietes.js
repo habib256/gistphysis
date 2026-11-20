@@ -11,7 +11,7 @@
  */
 (function () {
   'use strict';
-  var OGW = window.OGW, OptGeo = window.OptGeo, el = OGW.el, N = OGW.nombre;
+  var OGW = window.OGW, OptGeo = window.OptGeo, el = OGW.el, N = OGW.nombre, NC = OGW.nombreChamp;
   var PI = Math.PI;
 
   /* ------------------------------------------------------------------ */
@@ -408,7 +408,7 @@
       case 'note':
         return { bloc: el('p', { class: 'note', texte: f.texte }) };
       case 'point': {
-        var cx = champTexteNombre(N(v[f.x], 10), unite, null, v[f.x]), cy = champTexteNombre(N(v[f.y], 10), unite, null, v[f.y]);
+        var cx = champTexteNombre(NC(v[f.x]), unite, null, v[f.x]), cy = champTexteNombre(NC(v[f.y]), unite, null, v[f.y]);
         bloc = el('fieldset', { class: 'champ point' }, [el('legend', { texte: f.libelle }),
           el('label', { for: cx.id, texte: 'x =' }), cx.ligne, el('label', { for: cy.id, texte: 'y =' }), cy.ligne]);
         lecteur = function (q) {
@@ -422,7 +422,7 @@
       case 'nombre': case 'angle': {
         var estAngle = f.k === 'angle';
         var val = v[f.cle];
-        c = champTexteNombre(estAngle ? N(OGW.deg(val), 10) : N(val, 10), estAngle ? '°' : (f.unite ? unite : ''), null, estAngle ? OGW.deg(val) : val);
+        c = champTexteNombre(estAngle ? NC(OGW.deg(val)) : NC(val), estAngle ? '°' : (f.unite ? unite : ''), null, estAngle ? OGW.deg(val) : val);
         var rad = estAngle ? el('span', { class: 'conversion' }) : null;
         if (rad) {
           var majRad = function () { var d = OGW.lireNombre(c.input.value); rad.textContent = isFinite(d) ? '= ' + N(OGW.rad(d), 8) + ' rad' : ''; };
@@ -509,7 +509,7 @@
       case 'indices': {
         var sel = el('select', { 'aria-label': 'Matériau' }, [el('option', { value: '-1', texte: 'Saisie libre' })].concat(
           OGW.MATERIAUX.map(function (m, i) { return el('option', { value: String(i), texte: m.nom }); })));
-        var ir = champTexteNombre(N(v.indicerouge, 10), '', null, v.indicerouge), iv = champTexteNombre(N(v.indicevert, 10), '', null, v.indicevert), ib = champTexteNombre(N(v.indicebleu, 10), '', null, v.indicebleu);
+        var ir = champTexteNombre(NC(v.indicerouge), '', null, v.indicerouge), iv = champTexteNombre(NC(v.indicevert), '', null, v.indicevert), ib = champTexteNombre(NC(v.indicebleu), '', null, v.indicebleu);
         sel.addEventListener('change', function () {
           var m = OGW.MATERIAUX[+sel.value]; if (!m) return;
           ir.input.value = N(m.rouge, 8); iv.input.value = N(m.vert, 8); ib.input.value = N(m.bleu, 8);
@@ -635,7 +635,7 @@
       return { droit: false, R: R, gauche: s > 0, aigu: h <= R };
     }
     function ajouterLigne(s, i, arc) {
-      var cx = champTexteNombre(N(s.x, 10), unite, null, s.x), cy = champTexteNombre(N(s.y, 10), unite, null, s.y);
+      var cx = champTexteNombre(NC(s.x), unite, null, s.x), cy = champTexteNombre(NC(s.y), unite, null, s.y);
       var l = { cx: cx, cy: cy };
       var tete = el('div', { class: 'tete-sommet' }, [el('strong', { class: 'num' }), el('span', { class: 'outils' })]);
       var ligne = el('div', { class: 'ligne-sommet' }, [tete, el('label', { for: cx.id, texte: 'x =' }), cx.ligne, el('label', { for: cy.id, texte: 'y =' }), cy.ligne]);
@@ -727,7 +727,12 @@
     FAMILLES.forEach(function (f) {
       gr.appendChild(el('label', { class: 'radio' }, [el('input', { type: 'radio', name: nomg, value: f.v, checked: f.v === v.policename || (!connue && f.v === 'Arial') }), f.t]));
     });
-    var taille = OGW.champEntier(v.policesize || 10, 6, 72);
+    // Taille négative (fichiers d'OptGeo, propriété Size de Delphi) : hauteur des caractères en pixels.
+    // Le champ montre la taille équivalente en points (pixels × 72 / 96) ; si l'élève n'y touche pas,
+    // la valeur du fichier est gardée telle quelle à la validation.
+    var tailleFichier = v.policesize, enPixels = typeof tailleFichier === 'number' && tailleFichier < 0;
+    var tailleAffichee = enPixels ? Math.max(1, Math.round(-tailleFichier * 72 / 96)) : (tailleFichier || 10);
+    var taille = OGW.champEntier(tailleAffichee, 6, 72), tailleInit = taille.input.value;
     var cases = [['policefsbold', 'Gras'], ['policefsitalic', 'Italique'], ['policefsunderline', 'Souligné'], ['policefsstrikeout', 'Barré']].map(function (c) {
       var i = el('input', { type: 'checkbox', checked: !!v[c[0]] });
       return { cle: c[0], input: i, el: el('label', { class: 'interrupteur' }, [i, el('span', { texte: c[1] })]) };
@@ -735,7 +740,8 @@
     var couleur = OGW.champCouleur(v.policecolor);
     var element = el('fieldset', { class: 'champ police' }, [el('legend', { texte: 'Police' }), gr,
       !connue ? el('p', { class: 'note', texte: 'Police du fichier : « ' + v.policename + ' » (remplacée à l’affichage si elle manque sur l’appareil).' }) : null,
-      el('div', { class: 'champ' }, [el('label', { for: taille.id, texte: 'Taille (points)' }), taille.element]),
+      el('div', { class: 'champ' }, [el('label', { for: taille.id, texte: 'Taille (points)' }), taille.element,
+        enPixels ? el('p', { class: 'note', texte: 'Taille du fichier : ' + tailleFichier + ', c’est-à-dire une hauteur de ' + (-tailleFichier) + ' pixels (environ ' + tailleAffichee + ' points). Elle est gardée si vous ne changez pas ce champ.' }) : null]),
       el('div', { class: 'cases' }, cases.map(function (c) { return c.el; })),
       el('div', { class: 'champ' }, [el('span', { class: 'etiquette', texte: 'Couleur' }), couleur.element])]);
     return {
@@ -744,8 +750,8 @@
         var r = gr.querySelector('input:checked');
         if (r && (connue || r.value !== 'Arial' || q.policename === undefined)) q.policename = r.value;
         if (r && !connue && r.value !== 'Arial') q.policename = r.value;
-        var t = taille.lire(); if (!isFinite(t)) return 'Taille de 6 à 72.';
-        q.policesize = t;
+        if (enPixels && taille.input.value === tailleInit) q.policesize = tailleFichier;     // champ non touché : valeur du fichier
+        else { var t = taille.lire(); if (!isFinite(t)) return 'Taille de 6 à 72.'; q.policesize = t; }
         cases.forEach(function (c) { q[c.cle] = c.input.checked; });
         q.policecolor = couleur.lire();
       }

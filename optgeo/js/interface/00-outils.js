@@ -66,6 +66,20 @@
     if (s === '-0') s = '0';
     return s.replace('.', ',');
   };
+  /**
+   * Nombre affiché dans un champ du panneau des propriétés : 4 décimales au plus (4 chiffres
+   * significatifs au-dessous de 1), zéros inutiles retirés (« 120,0000236 » → « 120 »). La valeur
+   * exacte n'est pas perdue : un champ que l'élève ne touche pas garde la valeur d'origine.
+   */
+  OGW.nombreChamp = function (x) {
+    if (!isFinite(x)) return '';
+    var a = Math.abs(x);
+    if (a === 0) return '0';
+    if (a < 1 || a >= 1e9) return OGW.nombre(x, 4);
+    var s = x.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+    if (s === '-0') s = '0';
+    return s.replace('.', ',');
+  };
   /** Vrai si tous les nombres de l'objet (et de ses tableaux, objets imbriqués) sont finis. */
   OGW.valeursFinies = function (g, profondeur) {
     profondeur = profondeur || 0;
@@ -89,6 +103,40 @@
       .map(function (s) { return s.trim(); }).filter(Boolean);
     if (l[0] === 'NE PAS MODIFIER CE FICHIER') return l[1] === 'VERSION';
     return l[0] === 'VERSION';
+  };
+  /**
+   * Fichier .opt coupé avant la fin (copie ou téléchargement interrompus) : sa dernière ligne est le
+   * début d'un mot-clé d'OptGeo (« Nombr » pour « Nombre de prismes: »…). Le lecteur du moteur
+   * prendrait ce morceau pour une partie inconnue et ouvrirait une simulation incomplète.
+   * Les mots-clés sont ceux qu'écrit le moteur (OptGeo.ecrireOpt d'une scène vide).
+   * @returns {string|null} la ligne coupée, ou null si le fichier ne paraît pas coupé
+   */
+  var motsCles = null;
+  OGW.texteOptTronque = function (texte) {
+    if (!motsCles) {
+      motsCles = window.OptGeo.ecrireOpt(new window.OptGeo.Scene()).split(/\r\n|\r|\n/)
+        .filter(function (l) { return /^[A-Za-z]/.test(l) && !/^(TRUE|FALSE)$/.test(l); });
+    }
+    texte = String(texte || '');
+    var lignes = texte.split(/\r\n|\r|\n/).map(function (l) { return l.replace(/\s+$/, ''); }).filter(Boolean);
+    var der = lignes[lignes.length - 1];
+    if (!der) return null;
+    // coupé au milieu d'un mot-clé (« Nombr ») : en fin de fichier, avec ou sans fin de ligne
+    if (/^[A-Za-z]/.test(der) && motsCles.indexOf(der) < 0 &&
+      motsCles.some(function (m) { return m.length > der.length && m.indexOf(der) === 0; })) return der;
+    if (/[\r\n]\s*$/.test(texte)) return null;          // la dernière ligne est complète
+    // coupé au milieu d'une valeur : booléen (« FA »), style de police (« fsu »)…
+    if (['TRUE', 'FALSE', 'fsbold', 'fsitalic', 'fsunderline', 'fsstrikeout'].some(function (m) { return m.length > der.length && m.indexOf(der) === 0; })) return der;
+    if (/^\(/.test(der) && !/\)$/.test(der)) return der;      // liste de segments « (1,4,1… » non refermée
+    // … ou nombre à virgule sans son exposant complet (OptGeo écrit tous ses réels « 5.000…E+0001 »)
+    var reels = texte.split(/\s+/).filter(function (t) { return /^[-+]?\d+\.\d/.test(t); }), dernier = reels[reels.length - 1];
+    if (reels.length >= 3 && texte.replace(/\s+$/, '').slice(-dernier.length) === dernier && !/E[-+]\d{4}$/i.test(dernier) &&
+      reels.slice(0, -1).every(function (t) { return /E[-+]\d{4}$/i.test(t); })) return der;
+    return null;
+  };
+  OGW.messageOptTronque = function (ligne) {
+    return 'Ce fichier .opt est incomplet : il s’arrête avant la fin (dernière ligne « ' + ligne + '… »). ' +
+      'Il a peut-être été mal copié ou mal téléchargé. Rien n’a été ouvert ; la simulation en cours est conservée.';
   };
   OGW.MESSAGE_PAS_OPT = 'Ce fichier n’est pas une simulation OptGeo : un fichier .opt commence par « NE PAS MODIFIER CE FICHIER » puis « VERSION ». ' +
     'Rien n’a été ouvert ; la simulation en cours est conservée.';
@@ -208,6 +256,7 @@
     affichage: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     pleinecran: '<path d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
+    agrandir: '<path d="M6 15l6-6 6 6"/>',
     moins: '<path d="M5 12h14"/>',
     toutvoir: '<rect x="4" y="6" width="16" height="12"/><path d="M2 3h4M2 3v4M22 3h-4M22 3v4M2 21h4M2 21v-4M22 21h-4M22 21v-4"/>',
     fermer: '<path d="M6 6l12 12M18 6L6 18"/>',

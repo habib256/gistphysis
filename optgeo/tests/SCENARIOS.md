@@ -1,6 +1,6 @@
 # Scénarios d’acceptation (SPEC-INTERFACE.md §15) : état des vérifications
 
-État au 20/11/2026. La spécification annonce 106 scénarios ; sa liste en compte 111 (A01–A43, G01–G33, E01–E16, O01–O12, F01–F07), tous repris ci-dessous.
+État au 21/11/2026. La spécification annonce 106 scénarios ; sa liste en compte 111 (A01–A43, G01–G33, E01–E16, O01–O12, F01–F07), tous repris ci-dessous.
 
 Légende :
 - **Auto** : vérifié par `tests/verifier-interface.mjs` (Chrome sans écran, tactile émulé ; certains aussi dans Firefox 160), au doigt quand c’est indiqué.
@@ -105,9 +105,9 @@ Par le menu « Ajouter » : les 26 types créés par coordonnées (panneau « Aj
 |---|---|---|
 | E01 | Déplacer | Auto partiel : mode Déplacer, translation d’un groupe par « Gr » au doigt ; Écart : glisser au lieu de « clic, déplacement, clic » |
 | E02 | Rotation (disque rouge) | Auto (longueur conservée) |
-| E03 | Blocage vertical / horizontal en déplacement | Auto, au doigt (Chrome et Firefox) : en mode Déplacer, « Bloquer verticalement » touché avant le glisser → déplacement vertical seulement ; pendant un glisser en mode Sélection, un second doigt sur « Bloquer horizontalement » → mouvement horizontal seulement (Chrome ; Firefox avec un second pointeur souris). Le blocage ne vaut que pour ce glisser. Écart : boutons au lieu de Alt / Ctrl maintenus (touches toujours actives au clavier) |
+| E03 | Blocage vertical / horizontal en déplacement | Auto, au doigt (Chrome et Firefox) : en mode Déplacer, « Bloquer verticalement » touché avant le glisser → déplacement vertical seulement ; pendant un glisser en mode Sélection, un second doigt sur « Bloquer horizontalement » → mouvement horizontal seulement, à la hauteur du moment où le bouton est touché (pas de saut à la hauteur de départ) (Chrome ; Firefox avec un second pointeur souris). Le blocage ne vaut que pour ce glisser. Écart : boutons au lieu de Alt / Ctrl maintenus (touches toujours actives au clavier) |
 | E04 | Alignement à la création | Auto, au doigt (Chrome et Firefox) : « Aligner horizontalement » touché, second point aligné ; l’alignement est remis à faux à la fin de la construction |
-| E05 | Points confondus | Auto (Chrome et Firefox, au doigt) : écran et miroir superposés ; le premier toucher choisit l’un et affiche « 1 sur 2 éléments ici » sans décaler le dessin, le second toucher au même endroit choisit l’autre. Écart : toucher de nouveau au lieu d’une liste (liste nommée dans les modes Propriétés, Dupliquer, Supprimer, Grouper) |
+| E05 | Points confondus | Auto (Chrome et Firefox, au doigt) : écran et miroir superposés ; le premier toucher choisit l’un et affiche « 1 sur 2 éléments ici » sans décaler le dessin, le second toucher au même endroit choisit l’autre. Un geste sur une poignée n’est un toucher que si le doigt n’est jamais allé à plus de 4 px de l’appui et que le geste est bref (200 ms) ou presque immobile (1,5 px) : un réglage volontaire de 3 px, ou un aller à 8 px puis retour à 3 px, reste un glisser (Chrome et Firefox) Écart : toucher de nouveau au lieu d’une liste (liste nommée dans les modes Propriétés, Dupliquer, Supprimer, Grouper) |
 | E06 | Mode Propriétés | Auto partiel : panneau ouvert par la barre contextuelle et par le menu ; mode « toucher pour les propriétés » non essayé |
 | E07 | Mode Supprimer | Auto partiel : suppression et Annuler vérifiés ; mode non essayé au doigt ; Écart : suppression immédiate et annulable |
 | E08 | Supprimer tout | Auto (confirmation, Annuler) |
@@ -164,6 +164,28 @@ Chacun a au moins un contrôle dans `verifier-interface.mjs` (Chrome ; Firefox p
 12. `touch-action: pan-x pan-y` sur la page, pincement sur la palette, la barre ou le bandeau sans zoom de la page ;
 13. sauvegarde automatique sans image, ancienne image nettoyée, message si le stockage est plein ;
 14. 50 niveaux d’annulation ; 15. sphère de rayon 0 refusée ; 16. options d’affichage non annulées ; 17. bulle de message hors du titre et des boutons du panneau, aux six tailles.
+
+## Réserves de la seconde relecture indépendante du 21/11/2026 (PASS avec réserves) : contrôles ajoutés
+
+Chacune a au moins un contrôle dans `verifier-interface.mjs` (Chrome, tactile émulé ; Firefox pour G1, G3, G10 et M1). « Six tailles » : 360×640, 640×360, 768×1024, 1024×768, 1366×768, 1920×1080.
+
+| N° | Réserve | Contrôle |
+|---|---|---|
+| G1 | Doigt resté enregistré après un pincement : tout toucher suivant devenait un pincement | Pincement sur le dessin, pincement sur la palette, puis un doigt dont le lever n’est jamais reçu (événement non principal sans lever) : le toucher suivant choisit la lentille, le suivant place un point ; un lever reçu hors du dessin retire le doigt (Chrome et Firefox) |
+| G2 | Barre de sélection de 286×131 px sur un téléphone en paysage, poignées intouchables | Aux six tailles : barre dans le dessin, une ligne d’icônes sans le nom à 640×360 (52 px, infobulles et noms pour les lecteurs d’écran) ; petit miroir en bas puis en haut de l’espace de travail : toutes ses poignées touchables (`elementFromPoint`), barre passée en haut quand le miroir est en bas (640×360) |
+| G3 | Petit réglage d’une poignée annulé en mode Sélection | Réglage de 3 px → 3 px ; tirée de 8 px puis ramenée à 3 px → 3 px ; tremblement bref de 3 px → toucher (rien ne bouge) ; E05 toujours vérifié (Chrome et Firefox, aussi en un geste continu de 240 ms dans Firefox) |
+| G4 | Bandeau par-dessus le haut de l’espace de travail pendant une construction | Aux six tailles, exemple et espace par défaut : le haut de l’espace de travail cadré est sous le bandeau, avant et après le premier point, sans décalage du dessin au début et à la fin de la construction |
+| G10 | Sauvegarde écrasée si l’on quitte ou recharge pendant « Reprendre le travail en cours ? » | `beforeunload` et `visibilitychange` (page cachée) pendant la question : sauvegarde intacte, reprise proposée de nouveau ; « Nouvelle simulation » puis boîte fermée sans choix : intacte ; un élément ajouté : la sauvegarde suit (Chrome et Firefox) |
+| G11 | Sélecteur de fichiers d’Android (`accept`) | Sélecteur sans filtre ; un .opt renommé « .opt.txt » s’ouvre (en-tête contrôlé) sous le nom « .opt » ; téléchargement « .opt » en `application/octet-stream` |
+| M1 | « Bloquer » pendant un glisser faisait sauter l’objet à sa hauteur de départ | Voir E03 (Chrome et Firefox) |
+| M2 | Bulle de message sur la barre de sélection | Aux six tailles, barre en bas et en haut : la bulle « Simulation enregistrée » ne la couvre pas |
+| M3 | Taille de police négative des exemples « réseau » refusée | −8 affiché « 6 » points avec une note, gardé si le champ n’est pas touché (fichier réécrit identique), 12 saisi → 12 ; les panneaux de tous les objets des 56 exemples validés sans rien toucher : aucun refus, aucune valeur changée |
+| M4 | Zone morte entre les boutons de zoom | Entre deux boutons, le toucher va au dessin |
+| M5 | Fichier .opt tronqué ouvert en partie | Coupé à 30, 60 et 90 % : refusé avec un message lisible, simulation en cours gardée ; aucun des 56 exemples pris pour un fichier coupé ; balayage des 56 exemples coupés de 5 % en 5 % (1 064 fichiers) : 92 % refusés. Limite : une coupure juste entre deux parties du fichier, ou au milieu d’un entier, ne se voit pas (le format .opt n’a pas de marque de fin) et le fichier s’ouvre incomplet |
+| M6 | Coordonnées périmées dans le bandeau | Après un glisser, le bandeau d’une nouvelle construction n’a pas de coordonnées |
+| M7 | Commentaires d’exemples écrits pour la souris | Les 9 commentaires qui parlent de souris, de clic, de curseur, de « Fin dép. », de barre d’outils ou d’icône ont leur note « Dans la version web : … » (`outils/adapter-commentaires.js`) |
+| M8 | Corps d’un petit objet couvert par les zones de ses poignées | Sphère de 30 px, aux quatre tailles tactiles : glisser commencé sur son corps hors du disque d’une poignée → translation ; la poignée du bord se saisit toujours |
+| M9 | Ergonomie (précision affichée, raccourcis, panneau en portrait, lentilles) | 120,0000236 affiché « 120 », valeur exacte gardée ; raccourcis « Ctrl+… » masqués en tactile ; en portrait, panneau sur 50 % de la hauteur, agrandi à 88 % puis réduit par le bouton de son en-tête ; famille « Lentilles et dioptres » |
 
 ## Hors scénarios, vérifié aussi
 

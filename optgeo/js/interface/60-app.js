@@ -39,7 +39,7 @@
     app.dessinateur.toutVoir();
     app.majInterface();
   };
-  app.marquerModifie = function () { app.modifie = true; app.sauvegarderBientot(); app.majTitre(); };
+  app.marquerModifie = function () { app.modifie = true; app.repriseEnAttente = false; app.sauvegarderBientot(); app.majTitre(); };
   /** Après chaque action annulable. */
   app.memoriser = function () {
     if (app.hist.memoriser()) app.marquerModifie();
@@ -106,6 +106,9 @@
   app.sauvegarderLocal = function () {
     clearTimeout(minuterieSauvegarde);
     if (!app.scene) return false;
+    // question « Reprendre le travail en cours ? » sans réponse : la scène affichée n'est que la scène
+    // vide du démarrage, elle ne doit jamais remplacer la sauvegarde (page quittée, rechargée, cachée…)
+    if (app.repriseEnAttente) return false;
     var d = { v: 2, date: Date.now(), nom: app.nomFichier, modifie: app.modifie, scene: app.scene.versJSON() };
     var ok = OGW.stockage.ecrire('travail', d);
     if (!ok && !echecSauvegarde) app.signaler('Sauvegarde automatique impossible sur cet appareil (mémoire du navigateur pleine ou bloquée). Pensez à enregistrer la simulation (Menu › Enregistrer).', 'erreur');
@@ -171,19 +174,22 @@
     app.nomFichier = null; app.modifie = false;
     app.definirImageFond(null, true);
     app.remplacerScene(s);
-    if (!sansSauvegarde) app.sauvegarderLocal();
+    if (!sansSauvegarde) { app.repriseEnAttente = false; app.sauvegarderLocal(); }
   };
   app.ouvrirTexteOpt = function (texte, nom, commentaire, extra) {
     var r;
     if (!OGW.texteOptValide(texte)) { OGW.message(OGW.MESSAGE_PAS_OPT, 'Fichier non reconnu'); return false; }
+    var coupe = OGW.texteOptTronque(texte);
+    if (coupe) { OGW.message(OGW.messageOptTronque(coupe), 'Fichier incomplet'); return false; }
     try { r = OptGeo.lireOpt(texte); } catch (e) {
-      OGW.message('Fichier endommagé !!! (' + e.message + ')');
-      return;
+      OGW.message('Fichier endommagé ou incomplet (' + e.message + '). Rien n’a été ouvert ; la simulation en cours est conservée.', 'Fichier endommagé');
+      return false;
     }
     r.scene.commentaire = commentaire || '';
     app.nomFichier = nom; app.modifie = false;
     app.definirImageFond(null, true);
     app.remplacerScene(r.scene);
+    app.repriseEnAttente = false;
     app.sauvegarderLocal();
     var av = (r.avertissements || []).concat(r.nonPrisEnCharge && r.nonPrisEnCharge.length ? ['Non pris en charge : ' + r.nonPrisEnCharge.join(', ')] : []);
     if (av.length) app.signaler('Fichier ouvert avec ' + av.length + ' avertissement(s) : ' + av.slice(0, 3).join(' ; '), 'erreur');
@@ -313,13 +319,14 @@
     if (app.scene.objetsDuType(outil.type).length >= MAX_PAR_TYPE) { OGW.message('Nombre maximal de ' + (OGW.NOMS[outil.type] || '').toLowerCase() + ' déjà atteint !'); return; }
     app.changerMode('selection');
     app.selection = null;
+    app.coordTexte = '';                         // pas de coordonnées d'un geste précédent dans le bandeau
     app.verrouH = app.verrouV = false;           // « Aligner » ne vaut que pour la construction en cours
     var c = new OGW.Creation(app, outil);
     c.preparer(function () { app.creation = c; app.mode = 'creation'; app.majInterface(); app.dessinateur.demander(); },
       function () { app.terminerCreation(); });
   };
   app.terminerCreation = function (silencieux) {
-    app.creation = null; app.loupeEtat = null; app.loupe.cacher();
+    app.creation = null; app.loupeEtat = null; app.loupe.cacher(); app.coordTexte = '';
     app.verrouH = app.verrouV = false;
     if (app.mode === 'creation') app.mode = 'selection';
     if (!silencieux) { app.majInterface(); app.dessinateur.demander(); }
@@ -383,15 +390,56 @@
    */
   app.majRetrait = function () {
     var p = $('#panneau'), z = $('#zone');
-    if (p.hidden) { app.dessinateur.definirRetrait(0, 0, 0); return; }
+    if (p.hidden) { app.dessinateur.definirRetrait(0, 0); return; }
     var r = p.getBoundingClientRect(), rz = z.getBoundingClientRect();
-    if (r.top > rz.top + 10) app.dessinateur.definirRetrait(0, Math.max(0, rz.bottom - r.top), 0);
-    else app.dessinateur.definirRetrait(Math.max(0, rz.right - r.left), 0, 0);
+    if (r.top > rz.top + 10) app.dessinateur.definirRetrait(0, Math.max(0, rz.bottom - r.top));
+    else app.dessinateur.definirRetrait(Math.max(0, rz.right - r.left), 0);
+  };
+  /**
+   * Hauteur que prend le bandeau d'une construction à la largeur actuelle (consigne la plus longue
+   * des outils, boutons « Aligner… », « Rester dans ce mode », « Plus », « Annuler ») : le cadrage
+   * « Tout voir » la réserve en haut (Dessinateur.haut). Mesurée sur le vrai bandeau, rempli un
+   * instant puis remis tel quel (sans affichage entre les deux).
+   */
+  var consigneEssai = null;
+  app.mesurerReserveBandeau = function () {
+    var b = $('#bandeau'), txt = $('#bandeau-texte'), bt = $('#bandeau-boutons');
+    if (consigneEssai === null) {
+      consigneEssai = '';
+      Object.keys(OGW.OUTILS).forEach(function (k) {
+        var o = OGW.OUTILS[k];
+        (o.consignes || []).forEach(function (c) { var x = 'Mode : ' + o.mode + '. ' + c; if (x.length > consigneEssai.length) consigneEssai = x; });
+      });
+    }
+    var avant = { cache: b.hidden, texte: txt.textContent, deplie: b.classList.contains('deplie'), enfants: Array.prototype.slice.call(bt.childNodes) };
+    avant.enfants.forEach(function (n) { bt.removeChild(n); });
+    [['Aligner horizontalement', 'secondaire'], ['Aligner verticalement', 'secondaire'], ['Plus', 'deplier'], ['Annuler', 'principal']].forEach(function (d) {
+      bt.appendChild(el('button', { type: 'button', class: d[1], texte: d[0] }));
+    });
+    bt.insertBefore(el('label', { class: 'rester secondaire' }, [el('input', { type: 'checkbox' }), 'Rester dans ce mode']), bt.lastChild);
+    txt.textContent = consigneEssai;
+    b.classList.remove('deplie'); b.style.visibility = 'hidden'; b.hidden = false;
+    var h = Math.ceil(b.getBoundingClientRect().height);
+    b.hidden = avant.cache; b.style.visibility = ''; b.classList.toggle('deplie', avant.deplie);
+    txt.textContent = avant.texte;
+    while (bt.firstChild) bt.removeChild(bt.firstChild);
+    avant.enfants.forEach(function (n) { bt.appendChild(n); });
+    return h;
+  };
+  /** Portrait : panneau sur la moitié de la hauteur (la scène reste visible), ou agrandi aux 7/8. */
+  app.basculerTaillePanneau = function (agrandi) {
+    var p = $('#panneau'), b = $('[data-action="taille-panneau"]');
+    agrandi = agrandi === undefined ? !p.classList.contains('agrandi') : !!agrandi;
+    p.classList.toggle('agrandi', agrandi);
+    b.setAttribute('aria-pressed', String(agrandi));
+    b.setAttribute('aria-label', agrandi ? 'Réduire le panneau' : 'Agrandir le panneau'); b.title = b.getAttribute('aria-label');
+    app.majRetrait(); app.dessinateur.demander();
   };
   app.fermerPanneau = function () {
     var o = app.panneau;
     if (!o) return;
     app.panneau = null;
+    app.basculerTaillePanneau(false);
     $('#panneau').hidden = true;
     document.body.classList.remove('panneau-ouvert', 'panneau-large');
     app.majRetrait();
@@ -448,7 +496,22 @@
     });
     x.addEventListener('click', function () { if (performance.now() - fait < 600) return; if (x._action) x._action(); });
   }
-  function basculerVerrou(cote) { return function () { if (cote === 'h') app.verrouH = !app.verrouH; else app.verrouV = !app.verrouV; app.majBandeau(); }; }
+  /**
+   * « Bloquer » touché pendant un glisser : l'objet est bloqué là où il est à cet instant (pas à sa
+   * position de départ, sinon il sauterait). Armé avant le glisser (mode Déplacer) : position de départ.
+   */
+  function basculerVerrou(cote) {
+    return function () {
+      if (cote === 'h') app.verrouH = !app.verrouH; else app.verrouV = !app.verrouV;
+      var g = app.geste;
+      if (g && (g.kind === 'poignee' || g.kind === 'corps' || g.kind === 'groupe')) {
+        var c = positionGlissee(g);
+        if (c && cote === 'h' && app.verrouH) g.refY = c.y;
+        if (c && cote === 'v' && app.verrouV) g.refX = c.x;
+      }
+      app.majBandeau();
+    };
+  }
   app.majBandeau = function () {
     var b = $('#bandeau'), txt = $('#bandeau-texte'), bt = $('#bandeau-boutons');
     var lignes = [], m = app.mode, items = [];
@@ -551,13 +614,55 @@
     ctxBar.hidden = !visible;
     if (visible) {
       $('#contexte-nom').textContent = sel ? OGW.nomObjet(app.scene, app.selection) : 'Groupe n° ' + (app.groupeChoisi + 1);
+      ctxBar.title = $('#contexte-nom').textContent;           // nom en infobulle quand il est caché (faible hauteur)
+      ctxBar.setAttribute('aria-label', 'Sélection : ' + ctxBar.title);
       var dansGroupe = sel ? app.scene.groupesDe(app.selection).length > 0 : true;
       $('[data-ctx="proprietes"]').hidden = !sel; $('[data-ctx="dupliquer"]').hidden = !sel; $('[data-ctx="supprimer"]').hidden = !sel;
       $('[data-ctx="grouper"]').hidden = !sel; $('[data-ctx="degrouper"]').hidden = !dansGroupe;
     }
     app.majBandeau();
+    placerBarreContexte();
     app.majTitre();
   };
+
+  /**
+   * Barre de sélection : en bas du dessin, ou en haut (sous le bandeau) si elle couvrirait davantage
+   * l'objet choisi et ses poignées en bas. La bulle de message se place au-dessus d'elle.
+   */
+  function pointsSelection() {
+    var s = app.scene, vue = app.dessinateur.vue(), pts = [];
+    var ids = app.selection && s.objet(app.selection) ? [app.selection] : (app.groupeChoisi !== null && s.groupes[app.groupeChoisi] ? s.groupes[app.groupeChoisi].membres : []);
+    ids.forEach(function (id) {
+      OGW.Poignees.liste(s, id).forEach(function (h) { pts.push(vue.versEcran(h.x, h.y)); });
+      if (app.groupeChoisi !== null) { var r = OGW.Poignees.reference(s, id); pts.push(vue.versEcran(r.x, r.y)); }
+    });
+    return pts;
+  }
+  function placerBarreContexte() {
+    var barre = $('#barre-contexte'), zone = $('#zone');
+    if (barre.hidden) { zone.style.removeProperty('--bas-message'); return; }
+    var rz = zone.getBoundingClientRect(), bd = $('#bandeau');
+    var hautLibre = bd.hidden ? 8 : Math.max(8, Math.round(bd.getBoundingClientRect().bottom - rz.top) + 6);
+    barre.style.setProperty('--haut-barre', hautLibre + 'px');
+    var pts = pointsSelection(), marge = 24;
+    function couverts() {
+      var r = barre.getBoundingClientRect(), n = 0;
+      pts.forEach(function (q) {
+        var x = q[0] + rz.left, y = q[1] + rz.top;
+        if (x > r.left - marge && x < r.right + marge && y > r.top - marge && y < r.bottom + marge) n++;
+      });
+      return n;
+    }
+    var enHaut = barre.classList.contains('en-haut');
+    barre.classList.remove('en-haut'); var nBas = couverts();
+    barre.classList.add('en-haut'); var nHaut = couverts();
+    // on ne change de côté que si l'autre couvre moins de poignées (pas d'aller-retour pour rien)
+    enHaut = enHaut ? !(nBas < nHaut) : nHaut < nBas;
+    barre.classList.toggle('en-haut', enHaut);
+    if (enHaut) zone.style.removeProperty('--bas-message');
+    else zone.style.setProperty('--bas-message', Math.max(74, Math.round(rz.bottom - barre.getBoundingClientRect().top) + 10) + 'px');
+  }
+  app.placerBarreContexte = placerBarreContexte;
 
   /* ================================================================== */
   /* Surcouche de dessin                                                 */
@@ -648,9 +753,10 @@
         var e = vue.versEcran(h.x, h.y), d = Math.hypot(e[0] - p.x, e[1] - p.y);
         // à distance égale, la poignée de l'objet sélectionné et les points précis passent avant la translation
         var bonus = (h.role === 'translation' ? 1.5 : 0);
-        if (d <= tol && (!meilleur || d + bonus < meilleur.d)) meilleur = { id: id, nom: h.nom, d: d + bonus };
+        if (d <= tol && (!meilleur || d + bonus < meilleur.d)) meilleur = { id: id, nom: h.nom, d: d + bonus, brut: d };
       });
     });
+    if (meilleur && type !== 'mouse' && corpsPrioritaire(p, meilleur, tol)) meilleur = null;
     var groupes = app.mode === 'deplacer' ? s.groupes.map(function (g, i) { return i; }) :
       (app.selection ? s.groupesDe(app.selection) : (app.groupeChoisi !== null ? [app.groupeChoisi] : []));
     groupes.forEach(function (i) {
@@ -658,6 +764,24 @@
       if (d <= tol && (!meilleur || d < meilleur.d)) meilleur = { groupe: i, d: d };
     });
     return meilleur;
+  }
+  /**
+   * Petit objet au doigt (toutes ses poignées tiennent dans 3 fois la zone d'une poignée, 72 px) : les
+   * zones de ses poignées (24 px) se chevauchent et couvrent tout son corps. Hors du disque visible
+   * d'une poignée (10 px), un doigt plus proche du corps que de la poignée touche alors le corps
+   * (choisir l'objet, le translater). Un objet plus grand garde ses zones de 24 px.
+   */
+  var DISQUE_POIGNEE = 10;
+  function corpsPrioritaire(p, h, tol) {
+    if (h.id === undefined || h.brut <= DISQUE_POIGNEE) return false;
+    var vue = app.dessinateur.vue(), s = app.scene;
+    var pts = OGW.Poignees.liste(s, h.id).map(function (q) { return vue.versEcran(q.x, q.y); }), etendue = 0;
+    for (var i = 0; i < pts.length; i++)
+      for (var j = i + 1; j < pts.length; j++) etendue = Math.max(etendue, Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]));
+    if (etendue > 3 * tol) return false;
+    var m = vue.versMonde(p.x, p.y), dm = OptGeo.distanceObjet(s, h.id, m[0], m[1]);
+    if (!isFinite(dm)) return false;
+    return dm / vue.pixelsEnMonde(1) < h.brut;
   }
   var mesureTexte = document.createElement('canvas').getContext('2d');
   /** Objets sous le point écran p, du plus proche au plus lointain. */
@@ -668,7 +792,7 @@
       var d;
       if (o.type === 'texte') {
         var g = s.geometrie(o.id); if (!g) return;
-        var px = Math.round(g.policesize * 96 / 72), e = vue.versEcran(g.x, g.y);
+        var px = g.policesize < 0 ? -g.policesize : Math.round(g.policesize * 96 / 72), e = vue.versEcran(g.x, g.y);
         mesureTexte.font = px + 'px sans-serif';
         var w = mesureTexte.measureText(g.texte || ' ').width, h = px * 1.2;
         var dx = Math.max(e[0] - p.x, 0, p.x - (e[0] + w)), dy = Math.max(e[1] - p.y, 0, p.y - (e[1] + h));
@@ -778,9 +902,19 @@
     app.dessinateur.demander();
   }
   function verrous(pt, ref, mod) {
-    if (app.verrouV || (mod && mod.alt)) pt.x = ref.x;
-    if (app.verrouH || (mod && mod.ctrl)) pt.y = ref.y;
+    var g = app.geste, rx = g && g.refX !== undefined ? g.refX : ref.x, ry = g && g.refY !== undefined ? g.refY : ref.y;
+    if (app.verrouV || (mod && mod.alt)) pt.x = rx;
+    if (app.verrouH || (mod && mod.ctrl)) pt.y = ry;
     return pt;
+  }
+  /** Position actuelle du point que le glisser déplace (centre du groupe, poignée, ou point de référence). */
+  function positionGlissee(g) {
+    var s = app.scene;
+    if (g.kind === 'groupe') return s.centre(g.membres);
+    var c = g.ctx; if (!c || !s.objet(c.id)) return null;
+    if (c.role === 'translation') return OGW.Poignees.reference(s, c.id);
+    var h = OGW.Poignees.liste(s, c.id).filter(function (q) { return q.nom === c.nom; })[0];
+    return h ? { x: h.x, y: h.y } : null;
   }
   function refuser(p) {
     app.refus = { x: p.x, y: p.y, t: performance.now() };
@@ -817,12 +951,37 @@
     app.majInterface(); app.dessinateur.demander();
   };
 
+  /**
+   * Un pointeur principal (premier doigt posé, ou la souris) ne peut pas commencer pendant qu'un autre
+   * doigt du même genre est encore posé : les doigts encore enregistrés sont des doigts dont le lever
+   * n'a pas été reçu (doigt sorti de l'écran, geste commencé hors du dessin…). On les oublie, sinon tout
+   * toucher suivant deviendrait un pincement.
+   */
+  function oublierPointeursPerdus(e) {
+    var type = e.pointerType || 'mouse', n = 0;
+    Object.keys(app.pointeurs).forEach(function (k) {
+      if (+k !== e.pointerId && (app.pointeurs[k].type || 'mouse') === type) { delete app.pointeurs[k]; n++; }
+    });
+    if (!Object.keys(app.pointeurs).length) app.pincement = null;
+    if (n && app.geste) terminerGestePerdu();
+  }
+  /** Geste dont le lever n'a pas été reçu : un glisser garde son résultat, le reste est abandonné. */
+  function terminerGestePerdu() {
+    var g = app.geste;
+    if ((g.kind === 'poignee' || g.kind === 'corps' || g.kind === 'groupe') && g.change) {
+      if (rafGlisser) { window.cancelAnimationFrame(rafGlisser); rafGlisser = null; }
+      app.geste = null; app.infoGlisser = ''; app.verrouH = app.verrouV = false;
+      app.loupeEtat = null; app.loupe.cacher();
+      app.memoriser();
+    } else app.annulerGeste();
+  }
   function surAppui(e) {
     if (OGW.dialogueOuvert()) return;
     var p = pos(e);
     app.dernierType = e.pointerType || 'mouse';
+    if (e.isPrimary) oublierPointeursPerdus(e);
     try { canvas.setPointerCapture(e.pointerId); } catch (x) { /* rien */ }
-    app.pointeurs[e.pointerId] = { x: p.x, y: p.y };
+    app.pointeurs[e.pointerId] = { x: p.x, y: p.y, type: e.pointerType || 'mouse' };
     var n = Object.keys(app.pointeurs).length;
     if (n >= 2) {                                   // deux doigts : zoom et déplacement de la vue
       if (app.geste) app.annulerGeste();
@@ -834,7 +993,8 @@
     if (e.pointerType === 'mouse' && e.button === 1) { app.geste = { kind: 'vue', dernier: p, x0: p.x, y0: p.y, bouge: true }; e.preventDefault(); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     dernierPointGlisser = null;
-    var g = app.geste = { kind: 'vide', x0: p.x, y0: p.y, dernier: p, bouge: false, type: e.pointerType };
+    app.coordTexte = '';                            // pas de coordonnées d'un geste précédent dans le bandeau
+    var g = app.geste = { kind: 'vide', x0: p.x, y0: p.y, dernier: p, bouge: false, type: e.pointerType, t0: performance.now(), dmax: 0 };
     if (app.modeNumeros === 'fantomes' && app.basculerFantome) { g.kind = 'segment'; return; }
     if (app.mode === 'creation' && app.creation) {
       g.kind = 'visee';
@@ -881,8 +1041,9 @@
       }
       return;
     }
-    var seuil = g.type === 'mouse' ? 4 : 10;
-    if (!g.bouge && Math.hypot(p.x - g.x0, p.y - g.y0) > seuil) g.bouge = true;
+    var seuil = g.type === 'mouse' ? 4 : 10, dist = Math.hypot(p.x - g.x0, p.y - g.y0);
+    if (dist > g.dmax) g.dmax = dist;
+    if (!g.bouge && dist > seuil) g.bouge = true;
     switch (g.kind) {
       case 'visee': {
         var m = viser(p, e);
@@ -930,8 +1091,9 @@
     // simple toucher (sans glisser) sur une poignée de l'objet choisi : c'est un toucher, pas un glisser.
     // L'éventuel tremblement du doigt est annulé et, s'il y a plusieurs éléments à cet endroit, on passe
     // au suivant (E05 : « touchez encore au même endroit »), même si une poignée est sous le doigt.
-    if ((g.kind === 'poignee' || g.kind === 'corps') && app.mode === 'selection' && !g.bouge &&
-      Math.hypot(p.x - g.x0, p.y - g.y0) <= (g.type === 'mouse' ? 2 : 4)) {
+    // Un petit réglage volontaire (quelques pixels, geste lent, ou doigt allé plus loin puis revenu)
+    // reste un glisser : voir estUnToucher.
+    if ((g.kind === 'poignee' || g.kind === 'corps') && app.mode === 'selection' && estUnToucher(g, p)) {
       if (rafGlisser) { window.cancelAnimationFrame(rafGlisser); rafGlisser = null; }
       if (g.change && g.etatAvant) app.scene.restaurer(g.etatAvant);
       app.geste = null; app.infoGlisser = ''; app.verrouH = app.verrouV = false;
@@ -976,6 +1138,19 @@
     }
     app.dessinateur.demander();
   }
+  /**
+   * Geste sur une poignée compté comme un toucher : le doigt (ou la souris) n'est jamais allé à plus de
+   * 4 px (2 px à la souris) du point d'appui — distance maximale, pas finale — et le geste est bref
+   * (200 ms au plus), ou presque immobile (1,5 px au doigt, 0,5 px à la souris) quelle que soit sa durée.
+   */
+  var TOUCHER = { doigt: { max: 4, immobile: 1.5 }, souris: { max: 2, immobile: 0.5 }, duree: 200 };
+  function estUnToucher(g, p) {
+    var t = g.type === 'mouse' ? TOUCHER.souris : TOUCHER.doigt;
+    var d = Math.max(g.dmax || 0, Math.hypot(p.x - g.x0, p.y - g.y0));
+    if (d > t.max) return false;
+    return d <= t.immobile || performance.now() - g.t0 <= TOUCHER.duree;
+  }
+  app.estUnToucher = estUnToucher;
   /** Toucher sans glisser. */
   function tape(p, g) {
     var s = app.scene;
@@ -1081,7 +1256,7 @@
   function construirePalette() {
     var onglets = $('#palette-onglets'), volet = $('#volet');
     OGW.FAMILLES.forEach(function (f) {
-      var b = el('button', { type: 'button', class: 'onglet', 'aria-expanded': 'false', 'aria-controls': 'volet', 'data-famille': f.id,
+      var b = el('button', { type: 'button', class: 'onglet', 'aria-expanded': 'false', 'aria-controls': 'volet', 'data-famille': f.id, title: f.nom,
         html: OGW.icone(f.icone) + '<span>' + f.nom + '</span>' });
       b.addEventListener('click', function () {
         var deja = !volet.hidden && volet.getAttribute('data-famille') === f.id;
@@ -1245,6 +1420,7 @@
         case 'zoommoins': app.dessinateur.zoomer(1 / 1.5); app.majInterface(); break;
         case 'toutvoir': app.dessinateur.toutVoir(); app.majInterface(); break;
         case 'fermer-panneau': app.fermerPanneau(); break;
+        case 'taille-panneau': app.basculerTaillePanneau(); break;
       }
     });
     // un toucher hors des volets les ferme
@@ -1258,6 +1434,8 @@
   /* ================================================================== */
   function demarrer() {
     OGW.$$('[data-icone]').forEach(function (b) { b.insertAdjacentHTML('afterbegin', OGW.icone(b.getAttribute('data-icone'))); });
+    // barre de sélection : le libellé sert aussi d'infobulle (il est caché sur un écran de faible hauteur)
+    OGW.$$('#barre-contexte button').forEach(function (b) { var t = b.textContent.trim(); b.title = t; b.setAttribute('aria-label', t); });
     canvas = $('#dessin');
     app.dessinateur = new OGW.Dessinateur(canvas, app);
     app.loupe = new OGW.Loupe($('#zone'));
@@ -1269,6 +1447,15 @@
     canvas.addEventListener('pointerup', function (e) { surRelache(e, false); });
     canvas.addEventListener('pointercancel', function (e) { surRelache(e, true); });
     canvas.addEventListener('lostpointercapture', function (e) { if (app.pointeurs[e.pointerId]) surRelache(e, false); });
+    // filet de sécurité : un lever ou une annulation reçus ailleurs que sur le dessin (phase de
+    // remontée, donc après le dessin) retire aussi le doigt de la liste
+    ['pointerup', 'pointercancel'].forEach(function (t) {
+      document.addEventListener(t, function (e) {
+        if (!app.pointeurs[e.pointerId]) return;
+        delete app.pointeurs[e.pointerId];
+        if (!Object.keys(app.pointeurs).length) app.pincement = null;
+      });
+    });
     canvas.addEventListener('wheel', surMolette, { passive: false });
     canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     canvas.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse' && app.creation && !app.geste) { app.creation.visee = null; app.dessinateur.demander(); } });
@@ -1276,7 +1463,11 @@
     window.addEventListener('beforeunload', function () { app.sauvegarderLocal(); });
     document.addEventListener('visibilitychange', function () { if (document.hidden) app.sauvegarderLocal(); });
     var zone = $('#zone');
-    function taille() { app.majRetrait(); if (app.dessinateur.redimensionner()) app.majInterface(); }
+    function taille() {
+      app.majRetrait();
+      var change = app.dessinateur.definirReserveHaut(app.mesurerReserveBandeau());
+      if (app.dessinateur.redimensionner() || change) app.majInterface();
+    }
     if (window.ResizeObserver) new ResizeObserver(taille).observe(zone);
     window.addEventListener('resize', taille);
     taille();
@@ -1294,12 +1485,16 @@
     }
     if (sauve && sauve.scene && ((sauve.scene.objets && sauve.scene.objets.length) || sauve.scene.commentaire)) {
       var date = new Date(sauve.date);
+      app.repriseEnAttente = true;        // rien n'est écrit dans la sauvegarde avant la réponse de l'élève
       OGW.Dialogue({ titre: 'Reprendre le travail en cours ?', corps: el('div', {}, [
         el('p', { texte: (sauve.nom || 'Simulation sans nom') + ' : ' + sauve.scene.objets.length + ' élément(s), enregistrée automatiquement sur cet appareil le ' +
           date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '.' })]),
       boutons: [
+        // « Nouvelle simulation » (ou Échap) : la sauvegarde reste protégée jusqu'à ce que l'élève
+        // crée vraiment une nouvelle simulation ou ouvre un fichier (la boîte suivante peut être fermée)
         { texte: 'Nouvelle simulation', annuler: true, action: function () { setTimeout(function () { OGW.dialogueNouvelle(app, true); }, 0); } },
         { texte: 'Reprendre', principal: true, action: function () {
+          app.repriseEnAttente = false;
           try {
             var s = OptGeo.Scene.depuisJSON(sauve.scene);
             app.nomFichier = sauve.nom || null;

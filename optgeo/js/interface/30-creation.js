@@ -61,7 +61,7 @@
     { id: 'miroirs', nom: 'Miroirs', icone: 'mscore', outils: ['miroirplan', 'lsr', 'mscopa', 'mscepa', 'mscore', 'mscere', 'coniqueconcave', 'coniqueconvexe'] },
     { id: 'ecrans', nom: 'Écrans', icone: 'ecran', outils: ['ecran', 'diaphragme', 'oeil'] },
     { id: 'sources', nom: 'Sources', icone: 'sourcereelle', outils: ['rayon', 'sourcereelle', 'sourcevirtuelle', 'ondeplane'] },
-    { id: 'dioptres', nom: 'Dioptres', icone: 'lmc', outils: ['lmc', 'lmd', 'lec', 'polyhedre', 'prisme', 'sphere', 'polycercle'] },
+    { id: 'dioptres', nom: 'Lentilles et dioptres', icone: 'lmc', outils: ['lmc', 'lmd', 'lec', 'polyhedre', 'prisme', 'sphere', 'polycercle'] },
     { id: 'divers', nom: 'Divers', icone: 'angle', outils: ['metre', 'angle', 'texte', 'fleche', 'reseau', 'jolipoint', '*fantomes', '*commentaire'] }
   ];
   OGW.OUTILS = OUTILS;
