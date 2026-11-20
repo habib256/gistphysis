@@ -83,7 +83,7 @@
             <button type="button" id="b-agitateur" class="large">Agitateur</button>
             <div id="tableau-zone">
               <table id="tableau">
-                <caption>Mesures (toutes les 30 s)</caption>
+                <caption>Mesures (toutes les 15 s)</caption>
                 <thead><tr><th scope="col">Temps (min)</th><th scope="col">Température (°C)</th></tr></thead>
                 <tbody></tbody>
               </table>
@@ -100,6 +100,7 @@
               <button type="button" id="b-depart">Remettre à zéro</button>
             </div>
             <div id="lectures" aria-label="Thermomètres"></div>
+            <div id="repartition" aria-label="Répartition de la masse d’eau"></div>
           </div>
         </aside>
       </main>
@@ -124,7 +125,7 @@
               <li>Le Soleil chauffe l’océan. Vois-tu de l’eau quitter l’océan ? Active « Montrer la vapeur » pour repérer la vapeur d’eau, puis désactive-la.</li>
               <li>Où les nuages apparaissent-ils ? Active « Thermomètre », touche la scène au bord de la mer pour y poser un thermomètre, puis un autre à l’altitude des nuages : compare les températures de l’air.</li>
               <li>Suis l’eau de pluie qui tombe sur le sol clair : que devient la couleur du sol ? Jusqu’où l’eau descend-elle ?</li>
-              <li>Quand il ne pleut pas, d’où vient l’eau des rivières ? Suis-la en remontant jusqu’à l’endroit où elle sort de la pente, puis regarde ce qu’il y a sous la surface.</li>
+              <li>Les alizés faiblissent de temps en temps (« Alizés », en haut à gauche). Que devient alors la pluie sur l’île ? Quand il ne pleut pas, d’où vient l’eau des rivières ? Suis-la en remontant jusqu’à l’endroit où elle sort de la pente, puis regarde ce qu’il y a sous la surface.</li>
               <li>Cache le Soleil (bouton « Soleil ») et observe pendant un moment. Qu’est-ce qui change ?</li>
               <li>Arrête le vent (bouton « Vent »). Où vont alors la vapeur et les nuages ?</li>
               <li>Baisse la température de l’air au bord de la mer, attends, puis regarde le sommet du Piton des Neiges.</li>
@@ -150,7 +151,11 @@
             <li>La vapeur d’eau est invisible ; ce que l’on voit (nuage, brume, buée) est fait de minuscules gouttelettes d’eau liquide.</li>
             <li>Un bloc de glace qui flotte reste posé sur l’eau ; en réalité, il s’enfonce presque entièrement.</li>
             <li>Bac à sable : la pièce est petite ; la vapeur en trop s’en va dans le reste de la pièce (sa masse est comptée).</li>
+            <li>Dans l’eau qui bout, le thermomètre peut lire un peu moins de 100 °C (99,5 °C par exemple) : l’eau qui s’évapore à la surface refroidit un peu le reste de l’eau ; dans la simulation, seule l’eau qui forme les bulles est exactement à 100 °C.</li>
+            <li>Deux récipients reliés ne se mettent pas au même niveau (pas de pression de l’eau).</li>
+            <li>Cycle de l’eau : le lit des rivières descend en marches avec de petits bassins ; l’écoulement de l’eau dans le sol (la nappe) est simplifié ; l’air qui redescend ne se réchauffe pas ; les deux côtes donnent sur le même océan (l’eau en trop d’un côté passe de l’autre).</li>
           </ul>
+          <p class="credit">Application de M. VERHILLE Arnaud — licence GNU GPL v3 — aucune donnée n’est envoyée.</p>
           <button type="button" id="b-fermer-protocole" class="large accent">Fermer</button>
         </div>
       </section>

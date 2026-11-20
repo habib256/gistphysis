@@ -13,7 +13,7 @@
 
 (function (racine) {
   const CE = racine.ChangementsEtat || (typeof require === 'function' ? require('./simulation.js') : null);
-  const {Monde, AIR, EAU, GLACE, VERRE, SOL, ROCHE, CHAUD, FROID, GRAIN, VENUE_DU_CIEL, satLiquide} = CE;
+  const {Monde, AIR, EAU, GLACE, VERRE, SOL, ROCHE, CHAUD, FROID, GRAIN, VENUE_DU_CIEL, FISSURE, satLiquide} = CE;
 
   // Air de départ : température et humidité relative données
   function remplirAir(monde, T, humidite) {
@@ -28,7 +28,7 @@
   function bacASable(nx, ny, tAir = 20, {vide = false} = {}) {
     const monde = new Monde(nx, ny, {
       gParCase: 1, dt: 0.5, relaxAir: 0.006, kEvap: 0.015, kSubl: 0.004, brassage: 0.3, distBrassage: 3,
-      convection: 0.8, tChaud: 130, tFroid: -25, seuilPluie: 0.06, dispersion: 8, diffGouttelettes: 0.08, depotGouttelettes: 0.01,
+      convection: 0.8, tChaud: 160, tFroid: -25, evapChaud: 0.2, fenetreAeration: 6, seuilPluie: 0.06, dispersion: 8, diffGouttelettes: 0.08, depotGouttelettes: 0.01,
       sortieHaut: 0.5 * satLiquide(tAir),
     });
     monde.rectangle(0, 0, nx - 1, ny - 1, AIR, tAir);
@@ -39,7 +39,7 @@
       // Plaque chauffante et bécher d'eau
       const lb = Math.max(14, Math.round(nx * 0.16)), hb = Math.max(18, Math.round(ny * 0.32));
       const xb = Math.round(nx * 0.07) + 2;
-      monde.rectangle(xb - 3, sol - 1, xb + lb + 2, sol, CHAUD, 130);
+      monde.rectangle(xb - 3, sol - 1, xb + lb + 2, sol, CHAUD, 160);
       const fond = sol - 2;
       monde.rectangle(xb - 1, fond - hb, xb - 1, fond, VERRE, tAir);
       monde.rectangle(xb + lb, fond - hb, xb + lb, fond, VERRE, tAir);
@@ -76,18 +76,18 @@
   // ressort par une source (résurgence) qui donne une autre rivière. Les lits des rivières, creusés
   // dans la roche, descendent en marches avec de petits bassins jusqu'à l'océan.
   const CYCLE = {nx: 160, ny: 100, ySea: 74, yFond: 94, xCote: 50, xSommet: 116, ySommet: 19, xCoteSousLeVent: 150,
-    altSommet: 3070, gradient: 0.0075, epaisseurSol: 6, xSourceVent: 78, xFinSol: 127,
+    altSommet: 3070, gradient: 0.0075, epaisseurSol: 6, tMerMoyenne: 22, xSourceVent: 78, xFinSol: 127,
     cavite: {x0: 117, x1: 128, y0: 37, y1: 42}, sortieCavite: 40, fissure: {x0: 119, x1: 127}};
 
   function cycle(tMer = 20) {
     const {nx, ny, ySea, yFond, xCote, xSommet, ySommet, xCoteSousLeVent: xEst, xSourceVent, xFinSol, cavite, fissure} = CYCLE;
     const monde = new Monde(nx, ny, {
-      gParCase: 1, dt: 0.5, relaxAir: 0.03, relaxSol: 0.02, relaxOcean: 0.008,
-      kEvap: 0.1, kEvapTerre: 0.01, plafondAir: 0.75, brassage: 0.3, distBrassage: 3, brassageYMin: 66, brassageHaut: 0.03, brassageAir: false,
+      gParCase: 1, dt: 0.5, relaxAir: 0.03, relaxSol: 0.02, relaxOcean: 0.01,
+      kEvap: 0.15, kEvapTerre: 0.01, plafondAir: 0.77, brassage: 0.3, distBrassage: 3, brassageYMin: 66, brassageHaut: 0.015, brassageAir: false,
       glissementNeige: true, convection: 0, convectionLiquide: 0, diffGouttelettes: 0.01,
       chuteGouttelettes: 0.004, seuilPluie: 0.0025, tauxPluie: 0.08, evapPluie: 0.004, seuilFlaque: 0.3, seuilGivre: 0.25, tailleGoutte: 0.002,
-      sol: true, bordsSolides: false, conductionAir: 0.02, capaciteSol: 0.35, kInfiltration: 0.03, kNappe: 0.02, kSource: 0.2,
-      kSolBas: 0.05, kSolCote: 0.03, kSortieSol: 0.05, kEvapSol: 0.01, dispersion: 6, soleil: 0,
+      sol: true, solFixe: true, alterner: true, bordsSolides: false, conductionAir: 0, capaciteSol: 0.35, kInfiltration: 0.03, kNappe: 0.006, kSource: 0.2, kReservoir: 0.00003, ventVariable: 12000,
+      kSolBas: 0.025, kSolCote: 0.03, kSortieSol: 0.05, kEvapSol: 0.01, dispersion: 6, soleil: 0,
     });
     // Relief : haut du sol (ou du fond de l'océan) pour chaque colonne
     const haut = new Int32Array(nx);
@@ -122,6 +122,9 @@
     for (let x = 0; x < nx; x++) if (haut[x] >= ySea && haut[x] <= ySea + 1) haut[x] = ySea + 2;
     const altitude = y => (ySea - y) * CYCLE.altSommet / (ySea - ySommet);
     const tAir = y => tMer - CYCLE.gradient * Math.max(0, altitude(y));
+    // sous-sol (à plus de 2 cases de la surface) et cavité : température moyenne de l'année à cette
+    // altitude, qui ne suit pas la température de l'air du moment (la cavité ne gèle pas)
+    const tSousSol = y => CYCLE.tMerMoyenne - CYCLE.gradient * Math.max(0, altitude(Math.min(y, ySea)));
     const dansCavite = (x, y) => x >= cavite.x0 && x <= cavite.x1 && y >= cavite.y0 && y <= cavite.y1;
     const dansGalerie = (x, y) => y === CYCLE.sortieCavite && x > cavite.x1 && x < xResurgence;
     const ocean = new Uint8Array(nx * ny);
@@ -130,20 +133,21 @@
       surface[x] = Math.min(haut[x], ySea + 1);
       for (let y = 0; y < ny; y++) {
         const i = y * nx + x;
+        const prof = y - haut[x];
         if (y >= haut[x] && (dansCavite(x, y) || dansGalerie(x, y))) {
-          monde.poser(i, AIR, tAir(y));                          // cavité et galerie, dans la roche
+          monde.poser(i, AIR, tSousSol(y));                      // cavité et galerie, dans la roche
         } else if (y >= haut[x]) {
           // Sol perméable (entre la source de gauche et le sommet) sur de la roche imperméable ;
           // sous le sommet, de la roche fissurée (perméable) mène l'eau jusqu'à la cavité
-          const prof = y - haut[x];
-          const estSol = (x > xSourceVent && x <= xFinSol && prof < CYCLE.epaisseurSol)
-            || (x >= fissure.x0 && x <= fissure.x1 && y < cavite.y0 && prof >= CYCLE.epaisseurSol);
-          monde.poser(i, estSol ? SOL : ROCHE, tAir(Math.min(y, ySea)));
+          const estSol = x > xSourceVent && x <= xFinSol && prof < CYCLE.epaisseurSol;
+          const estFissure = x >= fissure.x0 && x <= fissure.x1 && y < cavite.y0 && prof >= CYCLE.epaisseurSol;
+          monde.poser(i, estSol || estFissure ? SOL : ROCHE, prof >= 2 ? tSousSol(y) : tAir(Math.min(y, ySea)), estFissure ? {drap: FISSURE} : {});
           // au départ : nappe dans le bas de la couche de sol, sol humide au-dessus
           if (estSol) monde.m[i] = prof >= 3 ? 0.35 : 0.05;
+          if (estFissure) monde.m[i] = 0.1;
         } else if (y > ySea) monde.poser(i, EAU, tMer);
         else monde.poser(i, AIR, tAir(y));
-        monde.tAmb[i] = y > ySea && y < haut[x] ? tMer : tAir(Math.min(y, ySea));
+        monde.tAmb[i] = y > ySea && y < haut[x] ? tMer : (y >= haut[x] && prof >= 2) || dansCavite(x, y) || dansGalerie(x, y) ? tSousSol(y) : tAir(Math.min(y, ySea));
         if (haut[x] > ySea + 1 && y >= ySea - 3 && y < haut[x]) ocean[i] = 1;   // océan et embouchures
       }
     }
@@ -170,6 +174,10 @@
     for (let x = 0; x < nx; x++) if (haut[x] > ySea + 1) colonnes.push(x);
     monde.r.colonnesSoleil = colonnes;
     monde.r.hautSol = haut;
+    // les deux bassins de l'océan (gauche et droite), mis au même niveau
+    let g1 = 0; while (g1 + 1 < nx && haut[g1 + 1] > ySea + 1) g1++;
+    let d0 = nx - 1; while (d0 - 1 > 0 && haut[d0 - 1] > ySea + 1) d0--;
+    monde.r.mers = [{x0: 0, x1: g1}, {x0: d0, x1: nx - 1}];
     monde.r.vent = ventCycle(nx, ny, surface);
     monde.r.ventPeriodique = true;
     return {monde, thermometres: [], infos: {haut, surface, altitude, tAir, xResurgence, ...CYCLE}};

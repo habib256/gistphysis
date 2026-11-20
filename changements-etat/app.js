@@ -29,7 +29,7 @@
     neige: 'Fais tomber de la neige : des grains de glace à −5 °C.',
     eau: 'Verse de l’eau liquide à 20 °C.',
     verre: 'Construis une paroi ou un récipient en verre.',
-    chaud: 'Pose une plaque chauffante (130 °C).',
+    chaud: 'Pose une plaque chauffante (160 °C).',
     froid: 'Pose une plaque froide (−25 °C).',
     thermometre: 'Touche la scène pour poser un thermomètre (4 au plus). Un thermomètre se déplace en le faisant glisser, quel que soit l’outil (sauf la gomme, qui l’efface).',
     gomme: 'Efface ce que tu touches : eau, glace, parois, plaques, brume, thermomètres.',
@@ -164,7 +164,7 @@
     }
     // dans la coupe du cycle : l'air sous la surface (cavité, galerie) est dans le noir
     souterrain = new Uint8Array(n);
-    if (etat.partie === 'cycle') for (let i = 0; i < n; i++) if (((i / nx) | 0) > etat.infos.surface[i % nx]) souterrain[i] = 1;
+    if (etat.partie === 'cycle') for (let i = 0; i < n; i++) if (((i / nx) | 0) > etat.infos.haut[i % nx]) souterrain[i] = 1;
     bruit = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       let a = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b);
@@ -193,11 +193,25 @@
     vue = {s, x: (w - nx * s) / 2, y: (h - ny * s) / 2};
   }
 
+  // Niveau de chaque bassin de l'océan (ligne médiane du haut de l'eau), pour chaque colonne de mer
+  function niveauxMer(monde) {
+    const {nx, ny, typ} = monde, oc = monde.r.ocean, niv = new Int16Array(nx).fill(-1);
+    for (const b of monde.r.mers || []) {
+      const ys = [];
+      for (let x = b.x0; x <= b.x1; x++) { let y = 0; while (y < ny && !(oc[y * nx + x] && typ[y * nx + x] === EAU)) y++; ys.push(y); }
+      ys.sort((a, c) => a - c);
+      const med = ys[ys.length >> 1];
+      for (let x = b.x0; x <= b.x1; x++) niv[x] = med;
+    }
+    return niv;
+  }
+
   // Couleur de chaque case dans l'image (une case = un pixel, agrandi ensuite avec lissage)
   function rendreGrille() {
     const monde = etat.monde, {nx, ny, typ, drap, m, h, T, v, d, c, p} = monde;
     const montrerVapeur = etat.vapeur, cycle = etat.partie === 'cycle', fusion = etat.partie === 'fusion';
     const capSol = monde.r.capaciteSol, plein = 0.95 * capSol, ySea = cycle ? etat.infos.ySea : 0;
+    const niveauMer = cycle ? niveauxMer(monde) : null;
     const E = COUL.eau, G = COUL.glace, GR = COUL.grain;
     for (let y = 0; y < ny; y++) {
       const fr = fond[3 * y], fg = fond[3 * y + 1], fb = fond[3 * y + 2];
@@ -212,8 +226,11 @@
             r += (COUL.vapeur[0] - r) * a; g += (COUL.vapeur[1] - g) * a; b += (COUL.vapeur[2] - b) * a;
           }
           if (d[i] > 0) {
-            a = 0.95 * (1 - Math.exp(-d[i] / (cycle ? 0.004 : 0.0025)));
-            r += (COUL.gouttelettes[0] - r) * a; g += (COUL.gouttelettes[1] - g) * a; b += (COUL.gouttelettes[2] - b) * a;
+            a = 0.97 * (1 - Math.exp(-d[i] / (cycle ? 0.0012 : 0.0025)));
+            // cycle : un nuage épais (chargé de pluie) est gris, son bord est blanc
+            const gris = cycle ? Math.min(0.55, d[i] / 0.012) : 0;
+            const cr = COUL.gouttelettes[0] - 105 * gris, cg = COUL.gouttelettes[1] - 100 * gris, cb = COUL.gouttelettes[2] - 92 * gris;
+            r += (cr - r) * a; g += (cg - g) * a; b += (cb - b) * a;
           }
           if (c[i] > 0) {
             a = Math.min(1, c[i] / 0.12);
@@ -221,7 +238,8 @@
           }
           if (p[i] > (souterrain[i] ? 0.004 : 0.00015)) {   // la pluie, par-dessus le nuage, d'un bleu foncé bien visible ;
             // dans la cavité, seulement de grosses gouttes, discrètes
-            a = souterrain[i] ? Math.min(0.5, p[i] / 0.02) : Math.min(0.95, 0.55 + p[i] / 0.003);
+            // (dans le cycle, la pluie qui tombe est surtout dessinée en traits, par-dessus : voir dessinerPluie)
+            a = souterrain[i] ? Math.min(0.5, p[i] / 0.02) : cycle ? Math.min(0.35, p[i] / 0.006) : Math.min(0.95, 0.55 + p[i] / 0.003);
             r += (COUL.pluie[0] - r) * a; g += (COUL.pluie[1] - g) * a; b += (COUL.pluie[2] - b) * a;
           }
         } else if (t === EAU) {
@@ -231,7 +249,9 @@
             a = 0.6 * (1 - Math.max(0, h[i]) / L_F);
             r += (G[0] - r) * a; g += (G[1] - g) * a; b += (G[2] - b) * a;
           }
-          if (m[i] < 0.98 && !(cycle && y <= ySea)) {  // petite quantité d'eau : plus transparente (pas un filet de rivière)
+          if (cycle && niveauMer && niveauMer[x] >= 0 && y < niveauMer[x] && monde.r.ocean[i]) {   // bosse sur la mer : discrète
+            r = fr + (r - fr) * 0.35; g = fg + (g - fg) * 0.35; b = fb + (b - fb) * 0.35;
+          } else if (m[i] < 0.98 && !(cycle && y <= ySea)) {  // petite quantité d'eau : plus transparente (pas un filet de rivière)
             a = 0.45 + 0.55 * Math.max(0, m[i]);
             r = fr + (r - fr) * a; g = fg + (g - fg) * a; b = fb + (b - fb) * a;
           }
@@ -248,7 +268,11 @@
             r = fr + (r - fr) * a; g = fg + (g - fg) * a; b = fb + (b - fb) * a;
           }
         } else if (t === VERRE) { r = COUL.verre[0]; g = COUL.verre[1]; b = COUL.verre[2]; }
-        else if (t === SOL) {
+        else if (t === SOL && (drap[i] & CE.FISSURE)) {   // roche fissurée : de la roche, avec des fissures sombres
+          const fissure = ((x * 5 + y * 3) % 7 === 0) || ((x + 2 * y) % 11 === 0);
+          const k = (fissure ? 0.45 : 1) * (1 - 0.25 * Math.min(1, m[i] / capSol)) * (1 + 0.05 * bruit[i]);
+          r = COUL.rocheVolcanique[0] * k; g = COUL.rocheVolcanique[1] * k; b = COUL.rocheVolcanique[2] * k;
+        } else if (t === SOL) {
           if (m[i] > plein) { r = COUL.solSature[0]; g = COUL.solSature[1]; b = COUL.solSature[2]; }
           else {
             a = Math.min(1, m[i] / plein);
@@ -379,11 +403,66 @@
     }
   }
 
+  // Le plus grand nuage : la plus grande zone d'air voisine de gouttelettes (pour placer « Nuage »)
+  function plusGrandNuage(monde) {
+    const {nx, ny, typ, d} = monde, vu = new Uint8Array(nx * ny), pile = [];
+    let best = {n: 0, x: 0, y: 0};
+    const nuage = i => typ[i] === AIR && d[i] > 0.0015 && !souterrain[i];
+    for (let i0 = 0; i0 < nx * ny; i0++) {
+      if (vu[i0] || !nuage(i0)) continue;
+      const g = {n: 0, x: 0, y: 0};
+      pile.push(i0); vu[i0] = 1;
+      while (pile.length) {
+        const i = pile.pop(), x = i % nx, y = (i / nx) | 0;
+        g.n++; g.x += x; g.y += y;
+        for (const j of [x > 0 ? i - 1 : -1, x < nx - 1 ? i + 1 : -1, i - nx, i + nx]) if (j >= 0 && j < nx * ny && !vu[j] && nuage(j)) { vu[j] = 1; pile.push(j); }
+      }
+      if (g.n > best.n) best = g;
+    }
+    return best;
+  }
+
+  // Les nuages : autour de chaque case de gouttelettes, une tache blanche floue (dessin seulement :
+  // le nuage reste là où sont les gouttelettes, mais il a l'air d'un nuage et non d'une rangée de cases)
+  function dessinerNuages() {
+    const monde = etat.monde, {nx, ny, typ, d} = monde, s = vue.s, inf = etat.infos;
+    ctx.save();
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+      const i = y * nx + x;
+      if (typ[i] !== AIR || d[i] < 0.0008 || y > inf.haut[x]) continue;
+      const [sx, sy] = versEcran(x + 0.5, y + 0.2), rayon = s * (1.6 + Math.min(1.4, d[i] / 0.004));
+      const a = Math.min(0.55, 0.18 + d[i] / 0.006), gris = Math.min(1, d[i] / 0.012);
+      const c = Math.round(248 - 70 * gris);
+      const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, rayon);
+      grad.addColorStop(0, `rgba(${c},${c + 2},${c + 5},${a})`);
+      grad.addColorStop(1, `rgba(${c},${c + 2},${c + 5},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(sx - rayon, sy - rayon, 2 * rayon, 2 * rayon);
+    }
+    ctx.restore();
+  }
+
+  // La pluie qui tombe : de petits traits verticaux bleu foncé, par-dessus les nuages
+  function dessinerPluie() {
+    const monde = etat.monde, {nx, ny, typ, p} = monde, s = vue.s;
+    ctx.save();
+    ctx.strokeStyle = 'rgb(10, 38, 115)'; ctx.lineWidth = Math.max(1.5, s * 0.3); ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+      const i = y * nx + x;
+      if (typ[i] !== AIR || p[i] < 0.0004 || souterrain[i]) continue;
+      const [sx, sy] = versEcran(x + 0.5, y + 0.5), lg = Math.max(5, s * 2.2) * Math.min(1, 0.5 + p[i] / 0.004);
+      ctx.moveTo(sx, sy - lg); ctx.lineTo(sx - lg * 0.12, sy);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function dessinerCycle() {
     const inf = etat.infos, monde = etat.monde, s = vue.s;
     // Soleil
     if (etat.soleil) {
-      const [cx, cy] = versEcran(monde.nx * 0.29, monde.ny * 0.13);
+      const [cx, cy] = versEcran(monde.nx * 0.42, monde.ny * 0.12);
       const R = Math.max(10, s * 5);
       ctx.strokeStyle = '#e0a000'; ctx.lineWidth = Math.max(2, R * 0.12); ctx.lineCap = 'round';
       for (let k = 0; k < 8; k++) {
@@ -404,6 +483,8 @@
       if (alt > 0) etiquette(nombre(alt, 0) + ' m', sx + 10, sy, {centre: false, taille: 11, fond: 'rgba(10,14,20,.55)'});
     }
     dessinerRivieres();
+    dessinerNuages();
+    dessinerPluie();
     // Haut de la nappe phréatique : un trait pointillé clair sur le sol saturé
     const {nx, ny, typ, d, p, m, drap} = monde;
     ctx.save();
@@ -424,11 +505,10 @@
     // Ce qui se voit : nuage, pluie, rivières, sources, nappe, cavité, sol, roche, givre, glace
     const plein = 0.95 * monde.r.capaciteSol, rec = monde.infiltrationRecente, cav = inf.cavite;
     const groupe = () => ({n: 0, x: 0, y: 0, ajouter(xx, yy, w = 1) { this.n += w; this.x += xx * w; this.y += yy * w; }});
-    const N = groupe(), P = groupe(), RV = groupe(), RA = groupe(), NA = groupe(), CV = groupe(), GV = groupe(), GL = groupe(), IN = groupe();
+    const N = plusGrandNuage(monde), P = groupe(), RV = groupe(), RA = groupe(), NA = groupe(), CV = groupe(), GV = groupe(), GL = groupe(), IN = groupe(), FI = groupe();
     for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
       const i = y * nx + x, t = typ[i];
       if (t === AIR) {
-        if (d[i] > 0.0015 && !souterrain[i]) N.ajouter(x, y);
         if (p[i] > 0.0005 && !souterrain[i]) P.ajouter(x, y);
       } else if (t === EAU) {
         if (x >= cav.x0 && x <= cav.x1 && y >= cav.y0 && y <= cav.y1) CV.ajouter(x, y);
@@ -436,7 +516,8 @@
         else if (y <= inf.ySea && x >= inf.xResurgence && x < inf.xCoteSousLeVent - 1) RA.ajouter(x, y);
       } else if (t === GLACE) { if (drap[i] & CE.GIVRE) GV.ajouter(x, y); else GL.ajouter(x, y); }
       else if (t === SOL) {
-        if (m[i] > plein) NA.ajouter(x, y);
+        if (drap[i] & CE.FISSURE) FI.ajouter(x, y);
+        else if (m[i] > plein) NA.ajouter(x, y);
         if (rec[i] > 0.0004) IN.ajouter(x, y, rec[i]);
       }
     }
@@ -450,9 +531,10 @@
     placer('Source', inf.xSourceVent - 3, inf.haut[inf.xSourceVent + 1] + 3);
     centre(CV, 'Poche d’eau souterraine (cavité)', 4, 1);
     placer('Source (résurgence)', inf.xResurgence + 7, inf.sortieCavite + 2);
-    centre(NA, 'Nappe phréatique', 3, 5);
+    centre(NA, 'Nappe phréatique', 6, 5);
     const xs = Math.round((inf.xSourceVent + inf.xSommet) / 2);
     placer('Sol perméable', xs - 4, inf.haut[xs - 4] + 1);
+    centre(FI, 'Roche fissurée', 0, 1);
     placer('Roche imperméable', xs + 2, inf.haut[xs + 2] + 24);
     placer('Piton des Neiges', inf.xSommet, inf.ySommet - 6);
     centre(N, 'Nuage', 0, 40);
@@ -493,9 +575,9 @@
       const pts = [];
       for (let x = tr.de; tr.pas < 0 ? x >= tr.a : x <= tr.a; x += tr.pas) {
         const fin = inf.haut[x] > inf.ySea + 1;                         // embouchure : la surface de l'océan
-        let local = 0;
-        for (let k = -3; k <= 3; k++) local += eauColonne(x + k);
-        pts.push({x: x + 0.5, y: fin ? inf.ySea + 0.6 : inf.haut[x] - 0.45, eau: Math.min(1, local / 1.2)});
+        let local = 0, debit = 0;
+        for (let k = -3; k <= 3; k++) { local += eauColonne(x + k); const xx = x + k; if (xx >= 0 && xx < nx) debit += monde.debitColonne[xx]; }
+        pts.push({x: x + 0.5, y: fin ? inf.ySea + 0.6 : inf.haut[x] - 0.45, eau: Math.min(1, local / 1.2), debit: Math.min(1, debit / 2)});
         if (fin) break;
       }
       if (pts.length < 3) continue;
@@ -503,7 +585,7 @@
       const lisse = pts.map((pt, k) => {
         let sy = 0, n = 0;
         for (let j = Math.max(0, k - 2); j <= Math.min(pts.length - 1, k + 2); j++) { sy += pts[j].y; n++; }
-        return {x: pt.x, y: k === pts.length - 1 ? pt.y : sy / n, eau: pt.eau};
+        return {x: pt.x, y: k === pts.length - 1 ? pt.y : sy / n, eau: pt.eau, debit: pt.debit};
       });
       const largeur = k => (0.9 + 1.3 * k / (lisse.length - 1)) * s;
       const segments = (style, facteur, extra = 0) => {
@@ -511,7 +593,9 @@
           const a = lisse[k], b = lisse[k + 1], e = Math.min(a.eau, b.eau);
           if (e < 0.15) continue;
           const [x0, y0] = versEcran(a.x, a.y), [x1, y1] = versEcran(b.x, b.y);
-          ctx.strokeStyle = style; ctx.lineWidth = Math.max(2, largeur(k) * (0.55 + 0.45 * e) * facteur + extra);
+          // largeur : un filet quand il ne coule presque rien, plus large quand le débit augmente
+          const dq = Math.min(a.debit, b.debit);
+          ctx.strokeStyle = style; ctx.lineWidth = Math.max(2, largeur(k) * (0.35 + 0.9 * dq) * facteur + extra);
           ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
         }
       };
@@ -661,6 +745,10 @@
       lignes.push(`<span class="total">Masse totale d’eau : ${g(ms.total)}</span>`);
       const t = monde.temps, min = Math.floor(t / 60 + 1e-9), sec = Math.floor(t - 60 * min + 1e-9);
       lignes.push(`<span class="ligne">Temps : ${min} min ${String(sec).padStart(2, '0')} s</span>`);
+      if (etat.partie === 'cycle') {
+        const f = monde.forceVent();
+        lignes.push(`<span class="ligne">Alizés : ${!etat.vent ? 'arrêtés' : f > 0.6 ? 'soutenus' : f > 0.05 ? 'faibles' : 'presque nuls (accalmie)'}</span>`);
+      }
     }
     if (etat.repartition) {
       let cavite = 0;
@@ -677,11 +765,15 @@
       if (etat.partie === 'cycle') {
         lignes.push(`<span class="ligne">Eau dans le sol (au-dessus de la nappe) : ${g(ms.sol)}</span>`);
         lignes.push(`<span class="ligne">Nappe phréatique : ${g(ms.nappe)}</span>`);
+        lignes.push(`<span class="ligne">Eau dans la roche fissurée : ${g(ms.fissure)}</span>`);
       }
       if (etat.partie !== 'cycle') lignes.push(`<span class="ligne">Vapeur partie dans le reste de la pièce : ${g(ms.dehors)}</span>`);
     }
     lignes.push(`<span class="ligne petit">${etat.partie === 'fusion' ? 'Pas à l’échelle' : 'Pas à l’échelle · durées accélérées'}</span>`);
-    $('masses').innerHTML = lignes.join('');
+    // sur la scène : le total, le temps, l'échelle ; le détail de la répartition va dans le panneau
+    const detail = lignes.filter(l => /Glace \(solide\)|Eau liquide|Poche d’eau|Gouttelettes|Vapeur|Eau dans le sol|Nappe|roche fissurée/.test(l));
+    $('masses').innerHTML = lignes.filter(l => !detail.includes(l)).join('');
+    $('repartition').innerHTML = detail.length ? '<h2>Répartition</h2>' + detail.map(l => l.replace('class="ligne"', 'class="ligne-rep"')).join('') : '';
     const lect = etat.thermometres.map((th, k) => `<p>Thermomètre${etat.thermometres.length > 1 ? ' ' + (k + 1) : ''} : <strong>${nombre(monde.lireTemperature(th.x, th.y), 1)} °C</strong></p>`);
     $('lectures').innerHTML = lect.join('');
     if (etat.partie === 'fusion') {
@@ -826,7 +918,7 @@
       const p = etat.partie;
       const k = thermometreSous(g);
       const peutDeplacer = p !== 'bac-a-sable' || etat.outil !== 'gomme';
-      if (k >= 0 && peutDeplacer) {
+      if (k >= 0 && peutDeplacer && !etat.thermometres[k].fixe) {
         const th = etat.thermometres[k];
         geste = {type: 'thermometre', k, id: event.pointerId, dx: th.x - g.x, dy: th.y - g.y};
       } else if ((p === 'bac-a-sable' && etat.outil === 'thermometre') || (p === 'cycle' && etat.thermoCycle)) {
@@ -884,6 +976,7 @@
         const {monde, infos} = scene, {nx, ny} = monde;
         for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
           const i = y * nx + x;
+          if (y > infos.haut[x] + 1) continue;   // sous-sol et cavité : température moyenne de l'année, inchangée
           const ocean = y > infos.ySea && y < infos.haut[x];   // même règle que dans scenes.js
           monde.tAmb[i] = ocean ? etat.tMer : etat.tMer - infos.gradient * Math.max(0, infos.altitude(Math.min(y, infos.ySea)));
         }

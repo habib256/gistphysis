@@ -86,6 +86,9 @@ button.large { width: 100%; margin-top: 6px; }
 #communs { margin-top: 8px; }
 #lectures { font-size: 14px; font-variant-numeric: tabular-nums; }
 #lectures p { margin: 2px 0; }
+#repartition { font-size: 14px; font-variant-numeric: tabular-nums; }
+#repartition h2 { margin: 8px 0 2px; font-size: 14px; }
+#repartition .ligne-rep { display: block; margin: 1px 0; }
 
 #tableau-zone { margin-top: 8px; max-height: 34vh; overflow-y: auto; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; }
 #tableau { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -114,6 +117,7 @@ button.large { width: 100%; margin-top: 6px; }
 .boite ol, .boite ul { margin: 0 0 6px; padding-left: 22px; }
 .boite li { margin-bottom: 5px; }
 .boite p { margin: 4px 0 8px; }
+.boite .credit { font-size: 13px; color: var(--doux); }
 #confirmation .boite { max-width: 420px; }
 
 [hidden] { display: none !important; }

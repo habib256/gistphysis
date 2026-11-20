@@ -18,7 +18,7 @@
 //   3 bis. cycle : contraste sol sec / sol saturé, pluie sur le ciel, rivière visible à l'écran ;
 //   4. tactile émulé : choisir l'outil au doigt, verser de l'eau d'un trait, poser puis faire
 //      glisser un thermomètre ;
-//   5. expérience de fusion : « Démarrer », relevé toutes les 30 s, tableau et fichier CSV
+//   5. expérience de fusion : « Démarrer », relevé toutes les 15 s, tableau et fichier CSV
 //      (séparateur « ; », virgule décimale) ;
 //   6. changement de partie par les onglets : l'adresse suit ;
 //   7. pause quand l'app est hors de l'écran (cadre placé loin sous le haut de la page) ;
@@ -272,9 +272,14 @@ async function controler(nav, base) {
       m.p[ip] = 0.003; m.d[ip] = 0; m.d[iciel] = 0; m.p[iciel] = 0;
       Changements.dessiner();
       const px = Changements.pixelsGrille();
-      const sol = rapport(lum(px[i1]), lum(px[i2])), pluie = rapport(lum(px[ip]), lum(px[iciel]));
-      // le ruban de la rivière à l'écran : des pixels bleu d'eau le long du lit de gauche
       const v = Changements.vue(), toile = document.getElementById('scene'), ctx = toile.getContext('2d');
+      // la pluie est dessinée à l'écran en petits traits verticaux : on lit le milieu du trait de la goutte,
+      // et le même endroit au-dessus de la case de ciel voisine
+      const ecran = (gx, gy) => { const d = ctx.getImageData(Math.round((v.x + gx * v.s) * v.dpr), Math.round((v.y + gy * v.s) * v.dpr), 1, 1).data; return d[0] | (d[1] << 8) | (d[2] << 16); };
+      const lg = Math.max(5, v.s * 2.2) / v.s;   // longueur du trait, en cases
+      const sol = rapport(lum(px[i1]), lum(px[i2]));
+      const pluie = rapport(lum(ecran(20.5 - 0.06 * lg, 20.5 - lg / 2)), lum(ecran(24.5 - 0.06 * lg, 20.5 - lg / 2)));
+      // le ruban de la rivière à l'écran : des pixels bleu d'eau le long du lit de gauche
       let bleus = 0, testes = 0;
       for (let xx = inf.xCote + 4; xx < inf.xSourceVent - 2; xx += 2) {
         const X = Math.round((v.x + (xx + 0.5) * v.s) * v.dpr);
@@ -285,7 +290,7 @@ async function controler(nav, base) {
       }
       return {sol: +sol.toFixed(2), pluie: +pluie.toFixed(2), bleus, colonnes: Math.ceil((inf.xSourceVent - 2 - inf.xCote - 4) / 2)};
     })()`);
-    verifier(`${N} cycle : sol sec et sol saturé nettement différents (rapport de luminance ${r.sol}, au moins 4) ; pluie visible sur le ciel (rapport ${r.pluie}, au moins 3)`, r.sol >= 4 && r.pluie >= 3);
+    verifier(`${N} cycle : sol sec et sol saturé nettement différents (rapport de luminance ${r.sol}, au moins 4) ; pluie (trait dessiné) visible sur le ciel (rapport ${r.pluie}, au moins 3)`, r.sol >= 4 && r.pluie >= 3);
     verifier(`${N} cycle : la rivière de gauche se voit à l’écran tout le long de son lit (${r.bleus} colonnes sur ${r.colonnes} avec de l’eau bleue)`, r.bleus >= 0.8 * r.colonnes, r);
     await p.capture(path.join(SORTIE, `${nav.chrome ? 'chrome' : 'firefox'}-cycle-riviere.png`));
     await p.fermer();

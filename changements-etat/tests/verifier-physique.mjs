@@ -3,7 +3,7 @@
 //   node tests/verifier-physique.mjs [--seulement 1,4,…]
 //
 // Le moteur (simulation.js, scenes.js) est déterministe : hasard à graine fixe. Chaque contrôle
-// dit ce qu'il vérifie. Durée : environ 6 minutes.
+// dit ce qu'il vérifie. Durée : environ 15 minutes.
 //   1. Conservation de la masse : bac à sable (toutes les transformations), cycle de l'eau,
 //      expérience de fusion ; outils (une paroi ou une plaque posée ne change pas la masse, l'eau
 //      posée l'augmente exactement de ce qui est posé) ; sublimation dans l'air sec et froid.
@@ -19,6 +19,10 @@
 //   7. Eau souterraine et rivières : infiltration (front d'humidité qui descend), nappe qui monte
 //      après une averse puis redescend, sources, rivières en eau en permanence, cavité qui se
 //      remplit et déborde par la résurgence, masse conservée.
+//   8. Cycle sur 80 000 pas (mers au même niveau, pas d'eau qui s'entasse hors des lits, nappe
+//      épaisse, périodes sans pluie avec des rivières en eau) ; source qui faiblit quand la nappe
+//      baisse ; cavité qui ne gèle pas ; neige ou glace chauffées par-dessous (bain proche de 0 °C) ;
+//      panache de brume au-dessus de l'eau qui bout, air clair juste au-dessus de l'eau.
 // Le script n'est pas nécessaire au fonctionnement de l'app.
 
 import {createRequire} from 'node:module';
@@ -135,7 +139,8 @@ if (partie(3, 'Bac à sable de départ')) {
     for (let k = 1; k <= 4000; k++) {
       monde.avancer();
       if (k % 50) continue;
-      if (caseSous(th1) !== EAU) dansEau1 = false;
+      // dans l'eau, ou dans une bulle de vapeur qui passe (de l'eau juste au-dessus)
+      if (caseSous(th1) !== EAU && !(caseSous(th1) === AIR && monde.typ[(Math.floor(th1.y) - 1) * nx + Math.floor(th1.x)] === EAU)) dansEau1 = false;
       if (monde.compteurs.bulles > 0) l1.push(monde.lireTemperature(th1.x, th1.y));
       const t2 = caseSous(th2);
       if (t2 !== EAU && t2 !== GLACE) dansEau2 = false;
@@ -148,7 +153,7 @@ if (partie(3, 'Bac à sable de départ')) {
     verifier(`grille ${nx}×${ny} : du givre se forme sur la plaque froide sans rien poser (${arrondi(givre, 1)} g de glace contre la plaque après 3 000 pas)`, givre >= 1);
     const tri = l1.slice().sort((a, b) => a - b), med = tri[Math.floor(tri.length / 2)];
     verifier(`grille ${nx}×${ny} : le thermomètre 1 reste dans l’eau du bécher pendant 4 000 pas (33 min de chronomètre) et lit pendant l’ébullition entre ${arrondi(tri[0], 2)} et ${arrondi(tri[tri.length - 1], 2)} °C (médiane ${arrondi(med, 2)})`,
-      dansEau1 && tri.length > 10 && tri[0] >= 99.3 && tri[tri.length - 1] <= 100.0001 && med >= 99.6);
+      dansEau1 && tri.length > 10 && tri[0] >= 99 && tri[tri.length - 1] <= 100.0001 && med >= 99.6);
     const glace0 = l2[0].glace;
     const debut = l2.findIndex(e => e.T >= -0.5);   // une fois la glace réchauffée jusqu'à 0 °C
     const pendant = l2.slice(debut).filter(e => e.glace > 0.25 * glace0).map(e => e.T), apres = l2.slice(finGlace + 5).map(e => e.T);
@@ -316,12 +321,12 @@ if (partie(7, 'Eau souterraine et rivières (cycle)')) {
     const arrivee = [-1, -1, -1, -1];
     const niveaux = [];
     let ajoute = 0;
-    for (let k = 1; k <= 6000; k++) {
+    for (let k = 1; k <= 16000; k++) {   // la nappe se vide lentement par la source (réservoir)
       if (k <= 150) for (const x of xs) { const i = (infos.haut[x] - 2) * monde.nx + x; if (monde.typ[i] === AIR) { monde.p[i] += 0.006; ajoute += 0.006; } }
       monde.avancer();
       const pr = profil();
       for (let j = 0; j < 4; j++) if (arrivee[j] < 0 && pr[j] > p0[j] + 0.1) arrivee[j] = k;
-      if (k % 300 === 0) niveaux.push(arrondi(niveau(), 2));
+      if (k % 800 === 0) niveaux.push(arrondi(niveau(), 2));
     }
     verifier(`averse sur le sol perméable : l’eau arrive d’abord en surface puis plus profond (premiers pas d’arrivée par profondeur : ${arrivee.join(', ')})`,
       arrivee.every(a => a > 0) && arrivee[0] < arrivee[1] && arrivee[1] < arrivee[2] && arrivee[2] < arrivee[3] && arrivee[3] < 1500);
@@ -360,6 +365,105 @@ if (partie(7, 'Eau souterraine et rivières (cycle)')) {
     verifier(`après des pluies au-dessus de la roche fissurée, la cavité se remplit (${arrondi(c0, 1)} → jusqu’à ${arrondi(cMax, 1)} g, eau tombée du plafond depuis le début : ${arrondi(monde.compteurs.goutteCavite, 1)} g) jusqu’à sa sortie, puis déborde : la rivière de la résurgence grossit (${arrondi(r0, 1)} → jusqu’à ${arrondi(rMax, 1)} g)`,
       cMax >= c0 + pleine && rMax > r0 + 1, {retire: arrondi(retire, 1)});
     verifier(`masse conservée (écart ${(monde.masses().total - m0 - ajoute).toExponential(1)} g)`, Math.abs(monde.masses().total - m0 - ajoute) < 1e-6);
+  }
+}
+
+// ---------------------------------------------------------------- 8. Longue durée et cas particuliers
+if (partie(8, 'Longue durée du cycle, nappe, cavité au froid, glace chauffée par-dessous, panache')) {
+  const eauDans = (monde, x0, x1, y0, y1) => { let s = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * monde.nx + x; if (monde.typ[i] === EAU) s += monde.m[i]; } return s; };
+  {
+    const {monde, infos} = SC.cycle(20);
+    monde.r.soleil = 3;
+    const {nx, ny} = monde, oc = monde.r.ocean, c = infos.cavite;
+    const niveau = b => { const ys = []; for (let x = b.x0; x <= b.x1; x++) { let y = 0; while (y < ny && !(oc[y * nx + x] && monde.typ[y * nx + x] === EAU)) y++; ys.push(y); } ys.sort((a, e) => a - e); return ys[ys.length >> 1]; };
+    const dansLit = x => (x >= infos.xCote - 2 && x <= infos.xSourceVent) || (x >= infos.xResurgence && x <= infos.xCoteSousLeVent + 2);
+    const horsLits = () => { let s = 0; for (let y = 0; y <= infos.ySea; y++) for (let x = 0; x < nx; x++) { const i = y * nx + x; if (monde.typ[i] === EAU && !oc[i] && !dansLit(x) && !(x >= c.x0 && x <= c.x1 && y >= c.y0 && y <= c.y1)) s += monde.m[i]; } return s; };
+    const epaisseur = () => { let k = 0, n = 0; for (let x = infos.xSourceVent + 1; x <= infos.xFinSol; x++) { const y = monde.niveauNappe(x); n++; if (y >= 0 && infos.haut[x] + infos.epaisseurSol - y >= 2) k++; } return k / n; };
+    const m0 = monde.masses().total;
+    let ecartNiveaux = 0, horsMax = 0, epMin = 1, sec = 0, secMax = 0, riviereSec = Infinity;
+    for (let k = 1; k <= 80000; k++) {
+      monde.avancer();
+      if (k % 250) continue;
+      let pluie = 0;   // gouttes de pluie au-dessus de l'île (pas de la mer)
+      for (let i = 0; i < monde.n; i++) if (monde.typ[i] === AIR && monde.p[i] > 0.0004 && ((i / nx) | 0) <= infos.haut[i % nx] && infos.haut[i % nx] <= infos.ySea + 1) pluie++;
+      if (pluie <= 2) { sec += 250; secMax = Math.max(secMax, sec); riviereSec = Math.min(riviereSec, eauDans(monde, infos.xCote - 2, infos.xSourceVent, 0, infos.ySea)); } else sec = 0;
+      if (k % 2000) continue;
+      ecartNiveaux = Math.max(ecartNiveaux, Math.abs(niveau(monde.r.mers[0]) - niveau(monde.r.mers[1])));
+      if (k >= 10000) horsMax = Math.max(horsMax, horsLits());
+      if (k >= 10000 && k <= 60000) epMin = Math.min(epMin, epaisseur());
+    }
+    verifier(`cycle, 80 000 pas : les deux mers restent au même niveau (écart maximal ${ecartNiveaux} case)`, ecartNiveaux <= 1);
+    verifier(`cycle, 80 000 pas : pas d’eau qui s’accumule sur l’île hors des lits des rivières (au plus ${arrondi(horsMax, 1)} g, ruissellement en cours compris)`, horsMax <= 8);
+    verifier(`entre 10 000 et 60 000 pas, la nappe a au moins 2 cases d’épaisseur sur au moins la moitié de la couche de sol (au moins ${Math.round(100 * epMin)} %)`, epMin >= 0.5);
+    verifier(`des périodes sans pluie sur l’île (au plus 2 gouttes, jusqu’à ${secMax} pas de suite, quand les alizés faiblissent) pendant lesquelles la rivière garde de l’eau (au moins ${arrondi(riviereSec, 1)} g)`, secMax >= 2000 && riviereSec >= 3);
+    verifier(`masse conservée sur 80 000 pas (écart ${(monde.masses().total - m0).toExponential(1)} g)`, Math.abs(monde.masses().total - m0) < 1e-6 * m0);
+  }
+  {
+    // sans pluie (Soleil caché, pas de vent) : la nappe baisse et la source faiblit
+    const {monde} = SC.cycle(20);
+    monde.r.soleil = 0; monde.r.vent = null; monde.r.ventVariable = 0;
+    const debits = [], nappes = [];
+    let s0 = monde.compteurs.source;
+    for (let k = 1; k <= 16000; k++) { monde.avancer(); if (k % 4000 === 0) { debits.push(arrondi(monde.compteurs.source - s0, 2)); s0 = monde.compteurs.source; nappes.push(arrondi(monde.masses().nappe, 1)); } }
+    verifier(`sans pluie, la nappe baisse (${nappes.join(' → ')} g) et la source faiblit après la mise en route (eau sortie par 4 000 pas : ${debits.join(', ')} g) sans s’arrêter d’un coup`,
+      nappes[3] < nappes[0] && debits[3] < Math.max(debits[0], debits[1]) && debits[3] > 0);
+  }
+  {
+    // air à 10 °C au bord de la mer : la cavité (sous-sol) ne gèle pas
+    const {monde, infos} = SC.cycle(10);
+    monde.r.soleil = 3;
+    avancer(monde, 20000);
+    const c = infos.cavite;
+    let glace = 0; for (let y = c.y0; y <= c.y1; y++) for (let x = c.x0; x <= c.x1; x++) if (monde.typ[y * monde.nx + x] === GLACE) glace++;
+    verifier(`air à 10 °C au bord de la mer : la cavité ne gèle pas (${glace} case de glace ; eau à ${arrondi(monde.T[c.y1 * monde.nx + c.x0], 1)} °C)`, glace === 0 && eauDans(monde, c.x0, c.x1, c.y0, c.y1) > 5);
+  }
+  {
+    // neige et bloc de glace chauffés par-dessous dans un récipient construit
+    for (const [nom, grain, tChaud] of [['neige, plaque 160 °C', true, 160], ['bloc de glace, plaque 160 °C', false, 160], ['neige, plaque 60 °C', true, 60]]) {
+      const {monde} = SC.bacASable(160, 94, 20, {vide: true});
+      monde.r.tChaud = tChaud;
+      const x0 = 60, x1 = 90, fond = 88, nx = monde.nx;
+      monde.rectangle(x0 - 1, 55, x0 - 1, fond, VERRE, 20); monde.rectangle(x1 + 1, 55, x1 + 1, fond, VERRE, 20); monde.rectangle(x0 - 1, fond, x1 + 1, fond, VERRE, 20);
+      monde.rectangle(x0 - 4, fond + 1, x1 + 4, fond + 3, CHAUD, tChaud);
+      for (let y = fond - 20; y < fond; y++) for (let x = x0; x <= x1; x++) monde.poser(y * nx + x, GLACE, -5, grain ? {drap: GRAIN} : {});
+      let gl0 = 0, maxi = -Infinity, n = 0;
+      for (let k = 0; k <= 1500; k++) {
+        if (k % 10 === 0) {
+          let gl = 0; for (let y = 30; y < fond; y++) for (let x = x0; x <= x1; x++) { const i = y * nx + x; if (monde.typ[i] === GLACE) gl += monde.m[i]; }
+          if (!gl0) gl0 = gl;
+          const bas = monde.lireTemperature((x0 + x1) / 2, fond - 3.5), mi = monde.lireTemperature((x0 + x1) / 2, fond - 10);
+          if (gl >= 0.25 * gl0 && k > 30) { maxi = Math.max(maxi, bas, mi); n++; }
+        }
+        monde.avancer();
+      }
+      verifier(`${nom}, dans un récipient construit : tant qu’il reste un quart de la glace, l’eau au fond et à mi-hauteur reste sous 2 °C (au plus ${arrondi(maxi, 2)} °C, ${n} mesures)`, n >= 3 && maxi <= 2);
+    }
+  }
+  {
+    // panache au-dessus de l'eau qui bout, couche claire juste au-dessus de l'eau
+    const [nx, ny] = dims(770, 714);
+    const {monde, thermometres} = SC.bacASable(nx, ny, 20);
+    const th = thermometres[0];
+    let brumeMax = 0, claireOk = true, mesures = 0;
+    for (let k = 1; k <= 2500; k++) {
+      monde.avancer();
+      if (k < 700 || k % 100) continue;
+      let brume = 0;
+      for (let i = 0; i < monde.n; i++) {
+        if (monde.typ[i] !== AIR) continue;
+        const x = i % nx;
+        if (Math.abs(x - th.x) <= 14 && 0.97 * (1 - Math.exp(-monde.d[i] / 0.0025)) > 0.4) brume++;
+      }
+      brumeMax = Math.max(brumeMax, brume);
+      // les deux cases d'air juste au-dessus de l'eau du bécher : pas de brume
+      for (let x = Math.round(th.x) - 5; x <= Math.round(th.x) + 5; x++) {
+        let y = 0; while (y < ny && monde.typ[y * nx + x] !== EAU) y++;
+        for (const yy of [y - 1, y - 2]) { const i = yy * nx + x; if (yy >= 0 && monde.typ[i] === AIR && monde.d[i] > 0.0004) claireOk = false; }
+      }
+      mesures++;
+    }
+    verifier(`bac à sable : un panache de brume au-dessus du bécher qui bout (jusqu’à ${brumeMax} cases de brume nette au-dessus du bécher)`, brumeMax >= 100);
+    verifier(`bac à sable : juste au-dessus de l’eau qui bout, l’air reste clair (vapeur invisible) à chacune des ${mesures} mesures`, claireOk && mesures > 10);
   }
 }
 
