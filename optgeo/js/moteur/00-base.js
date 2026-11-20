@@ -253,66 +253,58 @@
   }
 
   /**
-   * unit222.pas, les_deux_cercles_se_coupent_ils. Les bogues d'origine sont
-   * conservés : dans le cas y0=y1, N n'est pas initialisé (on le prend nul) et,
-   * pour une seule solution, l'original écrit para3:=para1 au lieu de para1:=para3.
-   * Renvoie {n, para1, para2, para3, para4}.
+   * unit222.pas:1124, les_deux_cercles_se_coupent_ils (validation des polycercles) :
+   * points communs des cercles (x0, y0, r0) et (x1, y1, r1) et, pour chacun, sa position
+   * sur chaque arc (paraArcSansTol, 10 = hors de l'arc). Renvoie {n, para1, para2, para3, para4}.
+   *
+   * Écart voulu : l'original élimine x par la droite des points communs, en divisant par
+   * y0 − y1. En double (64 bits au lieu des 80 bits de Pascal) ce calcul perd tous ses
+   * chiffres quand les centres sont presque à la même hauteur (lentille en polycercle d'axe
+   * horizontal tournée de 1e-9° à 1e-7°, ou sommets décalés de 1e-9 : création refusée à
+   * tort), et y0 = y1 exactement lève une exception dans l'original (création refusée).
+   * Ici, forme vectorielle, sans division par y0 − y1 : a = (r0² − r1² + d²) / 2d le long de
+   * la ligne des centres, h = √(r0² − a²) de part et d'autre. Mêmes points communs que
+   * l'original aux arrondis près ailleurs, rangés dans le même ordre (x décroissant, puis y
+   * décroissant), et même règle pour une seule solution sur les arcs (para1:=para3).
+   * Cercles concentriques : aucun point commun si r0 ≠ r1 ; si r0 = r1, deux arcs qui se
+   * recouvrent donnent une solution au milieu du recouvrement (création refusée).
    */
   function lesDeuxCerclesSeCoupentIls(x0, y0, x1, y1, r0, r1, t01, t02, t11, t12) {
     var r = { n: 0, para1: 10, para2: 10, para3: 10, para4: 10 };
-    var N = 0, A, B, Cc, delta, xx, yy, xx1, yy1, th0, th1, n;
-    if (y0 !== y1) {
-      N = (sqr(r1) - sqr(r0) - sqr(x1) + sqr(x0) - sqr(y1) + sqr(y0)) / 2 / (y0 - y1);
-      A = sqr((x0 - x1) / (y0 - y1)) + 1;
-      B = 2 * y0 * (x0 - x1) / (y0 - y1) - 2 * N * (x0 - x1) / (y0 - y1) - 2 * x0;
-      Cc = sqr(x0) + sqr(y0) + sqr(N) - sqr(r0) - 2 * y0 * N;
-      delta = sqr(B) - 4 * A * Cc;
-      if (delta < 0) return r;
-      if (delta === 0) {
-        xx = -B / 2 / A; yy = N - xx * (x0 - x1) / (y0 - y1);
-        r.para1 = paraArcSansTol(donneAnglePolaireDans02Pi(xx - x0, yy - y0), t01, t02, r.para1);
-        r.para2 = paraArcSansTol(donneAnglePolaireDans02Pi(xx - x1, yy - y1), t11, t12, r.para2);
-        r.n = (r.para1 >= 0 && r.para1 <= 1 && r.para2 >= 0 && r.para2 <= 1) ? 1 : 0;
-        return r;
+    var dx = x1 - x0, dy = y1 - y0, d = Math.sqrt(dx * dx + dy * dy), n;
+    if (d === 0) {
+      if (r0 !== r1) return r;
+      for (var k = -1; k <= 1; k++) {
+        var lo = Math.max(t01, t11 + 2 * PI * k), hi = Math.min(t02, t12 + 2 * PI * k);
+        if (hi > lo) {
+          var mil = (lo + hi) / 2;
+          r.para1 = (mil - t01) / (t02 - t01); r.para2 = (mil - 2 * PI * k - t11) / (t12 - t11); r.n = 1;
+          return r;
+        }
       }
-      xx1 = (-B + Math.sqrt(delta)) / 2 / A; yy1 = N - xx1 * (x0 - x1) / (y0 - y1);
-      r.para1 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x0, yy1 - y0), t01, t02, r.para1);
-      r.para2 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x1, yy1 - y1), t11, t12, r.para2);
-      xx1 = (-B - Math.sqrt(delta)) / 2 / A; yy1 = N - xx1 * (x0 - x1) / (y0 - y1);
-      r.para3 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x0, yy1 - y0), t01, t02, r.para3);
-      r.para4 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x1, yy1 - y1), t11, t12, r.para4);
-      n = 0;
-      if (r.para1 >= 0 && r.para1 <= 1 && r.para2 >= 0 && r.para2 <= 1) n++;
-      if (r.para3 >= 0 && r.para3 <= 1 && r.para4 >= 0 && r.para4 <= 1) {
-        n++;
-        if (n === 1) { r.para1 = r.para3; r.para2 = r.para4; }
-      }
-      r.n = n;
       return r;
     }
-    // cas y0 = y1
-    xx = (sqr(r1) - sqr(r0) - sqr(x1) + sqr(x0)) / 2 / (x0 - x1);
-    A = 1; B = -2 * y1; Cc = sqr(x1) + sqr(xx) - 2 * x1 * xx + sqr(y1) - sqr(r1);
-    delta = sqr(B) - 4 * A * Cc;
-    if (delta < 0) return r;
-    if (delta === 0) {
-      xx = -B / 2 / A; yy = N - xx * (x0 - x1) / (y0 - y1);
-      r.para1 = paraArcSansTol(donneAnglePolaireDans02Pi(xx - x0, yy - y0), t01, t02, r.para1);
-      r.para2 = paraArcSansTol(donneAnglePolaireDans02Pi(xx - x1, yy - y1), t11, t12, r.para2);
+    var a = (r0 * r0 - r1 * r1 + d * d) / (2 * d), h2 = (r0 - a) * (r0 + a);
+    if (!(h2 >= 0)) return r;
+    var ux = dx / d, uy = dy / d, px = x0 + a * ux, py = y0 + a * uy;
+    if (h2 === 0) {   // cercles tangents (delta = 0 dans l'original)
+      r.para1 = paraArcSansTol(donneAnglePolaireDans02Pi(px - x0, py - y0), t01, t02, r.para1);
+      r.para2 = paraArcSansTol(donneAnglePolaireDans02Pi(px - x1, py - y1), t11, t12, r.para2);
       r.n = (r.para1 >= 0 && r.para1 <= 1 && r.para2 >= 0 && r.para2 <= 1) ? 1 : 0;
       return r;
     }
-    xx1 = (-B + Math.sqrt(delta)) / 2 / A; yy1 = N - xx1 * (x0 - x1) / (y0 - y1);
-    r.para1 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x0, yy1 - y0), t01, t02, r.para1);
-    r.para2 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x1, yy1 - y1), t11, t12, r.para2);
-    xx1 = (-B - Math.sqrt(delta)) / 2 / A; yy1 = N - xx1 * (x0 - x1) / (y0 - y1);
-    r.para3 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x0, yy1 - y0), t01, t02, r.para3);
-    r.para4 = paraArcSansTol(donneAnglePolaireDans02Pi(xx1 - x1, yy1 - y1), t11, t12, r.para4);
+    var h = Math.sqrt(h2);
+    var xa = px - h * uy, ya = py + h * ux, xb = px + h * uy, yb = py - h * ux, t;
+    if (xb > xa || (xb === xa && yb > ya)) { t = xa; xa = xb; xb = t; t = ya; ya = yb; yb = t; }
+    r.para1 = paraArcSansTol(donneAnglePolaireDans02Pi(xa - x0, ya - y0), t01, t02, r.para1);
+    r.para2 = paraArcSansTol(donneAnglePolaireDans02Pi(xa - x1, ya - y1), t11, t12, r.para2);
+    r.para3 = paraArcSansTol(donneAnglePolaireDans02Pi(xb - x0, yb - y0), t01, t02, r.para3);
+    r.para4 = paraArcSansTol(donneAnglePolaireDans02Pi(xb - x1, yb - y1), t11, t12, r.para4);
     n = 0;
     if (r.para1 >= 0 && r.para1 <= 1 && r.para2 >= 0 && r.para2 <= 1) n++;
     if (r.para3 >= 0 && r.para3 <= 1 && r.para4 >= 0 && r.para4 <= 1) {
       n++;
-      if (n === 1) { r.para3 = r.para1; r.para2 = r.para4; } // bogue d'origine conservé
+      if (n === 1) { r.para1 = r.para3; r.para2 = r.para4; }
     }
     r.n = n;
     return r;

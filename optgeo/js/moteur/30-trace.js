@@ -313,11 +313,16 @@
         }
         if (nnx === 0) agp = (nny > 0) ? PI / 2 : -PI / 2;
         else { agp = Math.atan(nny / nnx); if (nnx < 0) agp = agp + PI; }
-        // Réfléchis : l'original teste estou du point sonde (voir MOTEUR.md)
-        if (es === INT.INTERIEUR && reflechit(g.reflechisortant, unrefracte)) {
+        // Réfléchis. Défaut de l'original corrigé à la demande de l'enseignant (2026-11-20) :
+        // unit222.pas (lentille épaisse 34343-34388 et 34680-34723, arcs de polycercle
+        // 36110-36154) applique reflechisortant au rayon qui entre (sonde à l'intérieur) et
+        // reflechientrant au rayon qui sort : l'inverse des libellés « Rayon réfléchi (sens
+        // entrant / sortant) », des côtés droits, du polyèdre, du prisme et de la sphère.
+        // Ici chaque réglage fait ce qu'il annonce.
+        if (es === INT.INTERIEUR && reflechit(g.reflechientrant, unrefracte)) {
           agp = agp + PI / 2; reflexionDioptre(agp);
         }
-        if (es === INT.EXTERIEUR && reflechit(g.reflechientrant, unrefracte)) {
+        if (es === INT.EXTERIEUR && reflechit(g.reflechisortant, unrefracte)) {
           agp = agp - PI / 2; reflexionDioptre(agp);
         }
       }

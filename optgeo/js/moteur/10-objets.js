@@ -460,8 +460,12 @@
     return s;
   }
   var CHAMPS_MILIEU = ['indicerouge', 'indicebleu', 'indicevert', 'couleurbord', 'couleurfond', 'reflechientrant', 'reflechisortant'];
-  var DEFAUTS_MILIEU = { indicerouge: 1.5, indicebleu: 1.5, indicevert: 1.5, couleurbord: C.clBlack, couleurfond: C.clAqua,
-    reflechientrant: REFLECHI.JAMAIS, reflechisortant: REFLECHI.SI_PAS_REFRACTE };
+  // Milieu neuf : valeurs de la création à la souris dans OptGeo (ray1.pas 1303, 1376, 1489,
+  // 1696, 1723, 2858 : create(..., 1.4, 1.8, 1.6, ..., jamaisreflechi, jamaisreflechi) ;
+  // saisiesphere.lfm, ItemIndex = 1 « Jamais ») : n rouge 1,4, n bleu 1,8, n vert 1,6 (milieu
+  // dispersif) et réflexion « jamais » des deux côtés. Un fichier .opt garde ses propres valeurs.
+  var DEFAUTS_MILIEU = { indicerouge: 1.4, indicebleu: 1.8, indicevert: 1.6, couleurbord: C.clBlack, couleurfond: C.clAqua,
+    reflechientrant: REFLECHI.JAMAIS, reflechisortant: REFLECHI.JAMAIS };
 
   function dispersif(g) {
     return (g.indicerouge !== g.indicevert) || (g.indicevert !== g.indicebleu) || (g.indicerouge !== g.indicebleu);
@@ -556,9 +560,12 @@
       var toto = [null, s[1], s[2], s[3], s[1], s[2], s[3]];
       g.anglepolaire = new Array(5); g.nx = new Array(5); g.ny = new Array(5);
       for (i = 1; i <= 2; i++) g.anglepolaire[i] = angleArctan(toto[i + 1].ax - toto[i].ax, toto[i + 1].ay - toto[i].ay);
-      // côté 3 : bogue d'origine conservé (anglepolaire[i] avec i = 2 après la boucle)
+      // côté 3 (C → A) : défaut de l'original corrigé à la demande de l'enseignant (2026-11-20).
+      // unit222.pas:39554 écrit anglepolaire[nombresommet]:=anglepolaire[i]-Pi*2 avec i = 2
+      // (variable de la boucle précédente) : angle du côté 2 au lieu du côté 3, donc normale et
+      // réfraction fausses sur ce côté (prisme pointe en haut tourné d'environ 69° à 158°).
       var a3 = angleArctanBrut(toto[1].ax - toto[3].ax, toto[1].ay - toto[3].ay);
-      if (a3 > PI) a3 = g.anglepolaire[2] - 2 * PI;
+      if (a3 > PI) a3 = a3 - 2 * PI;
       g.anglepolaire[3] = a3;
       var aire = 0;
       for (i = 1; i <= 3; i++) aire = aire + 0.5 * (s[i].ax * s[i + 1].ay - s[i].ay * s[i + 1].ax);
@@ -891,8 +898,8 @@
     libelle: 'Lentille épaisse', md: 'mdlec',
     champs: ['s1x', 's1y', 's2x', 's2y', 'r1', 'r2', 'diametre', 'couleurfond', 'couleuraxe', 'axefocal',
       'indicerouge', 'indicebleu', 'indicevert', 'reflechientrant', 'reflechisortant'],
-    defauts: { couleurfond: C.clAqua, couleuraxe: C.clRed, axefocal: true, indicerouge: 1.5, indicebleu: 1.5, indicevert: 1.5,
-      reflechientrant: REFLECHI.JAMAIS, reflechisortant: REFLECHI.SI_PAS_REFRACTE },
+    defauts: { couleurfond: C.clAqua, couleuraxe: C.clRed, axefocal: true, indicerouge: 1.4, indicebleu: 1.8, indicevert: 1.6,
+      reflechientrant: REFLECHI.JAMAIS, reflechisortant: REFLECHI.JAMAIS },   // ray1.pas 1696
     points: [['s1x', 's1y'], ['s2x', 's2y']],
     calculer: calculerLec
   };

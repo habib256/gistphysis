@@ -385,5 +385,161 @@ titre('Prolongements virtuels et segments fantômes');
   controle(t.segments[1].fantome && !t.segments[0].fantome, 'segment 2 fantôme');
 }
 
+/* Outils vectoriels pour les calculs indépendants ci-dessous */
+const V = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1]], sub: (a, b) => [a[0] - b[0], a[1] - b[1]], mul: (a, k) => [a[0] * k, a[1] * k],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1], rot: (a, t) => [a[0] * Math.cos(t) - a[1] * Math.sin(t), a[0] * Math.sin(t) + a[1] * Math.cos(t)],
+  unit: (a) => { const l = Math.hypot(a[0], a[1]); return [a[0] / l, a[1] / l]; }
+};
+/** Snell-Descartes vectoriel : d unitaire, m normale unitaire tournée vers le rayon incident ; null si réflexion totale. */
+function snellVec(d, m, n1, n2) {
+  const c = -V.dot(d, m), r = n1 / n2, k = 1 - r * r * (1 - c * c);
+  return k < 0 ? null : V.unit(V.add(V.mul(d, r), V.mul(m, r * c - Math.sqrt(k))));
+}
+const reflechiVec = (d, u) => V.sub(d, V.mul(u, 2 * V.dot(d, u)));
+/**
+ * Tracé indépendant dans un polygone convexe d'indice n (air autour), réflexion « jamais » :
+ * points d'impact successifs et direction finale, ou arrêt sur une réflexion totale.
+ */
+function traverserPolygone(S, n, P, d) {
+  const g = [S.reduce((a, p) => a + p[0], 0) / S.length, S.reduce((a, p) => a + p[1], 0) / S.length];
+  const pts = [P];
+  for (let k = 0; k < 10; k++) {
+    let best = null;
+    S.forEach((A, i) => {
+      const B = S[(i + 1) % S.length], e = V.sub(B, A), den = d[0] * e[1] - d[1] * e[0];
+      if (den === 0) return;
+      const w = V.sub(A, P), t = (w[0] * e[1] - w[1] * e[0]) / den, u = (w[0] * d[1] - w[1] * d[0]) / den;
+      if (t > 1e-9 && u >= 0 && u <= 1 && (!best || t < best.t)) best = { t, A, B };
+    });
+    if (!best) return { pts, d, arret: false };
+    const I = V.add(P, V.mul(d, best.t)), e = V.unit(V.sub(best.B, best.A));
+    let nOut = [e[1], -e[0]];
+    if (V.dot(nOut, V.sub(V.mul(V.add(best.A, best.B), 0.5), g)) < 0) nOut = V.mul(nOut, -1);
+    const entre = V.dot(d, nOut) < 0;
+    const d2 = snellVec(d, entre ? nOut : V.mul(nOut, -1), entre ? 1 : n, entre ? n : 1);
+    pts.push(I);
+    if (!d2) return { pts, d, arret: true };
+    P = I; d = d2;
+  }
+  return { pts, d, arret: false };
+}
+/** Compare le tracé du moteur (segments d'un seul rayon) au tracé indépendant ; renvoie l'écart max ou un message. */
+function ecartTrace(segs, att) {
+  const attendu = att.arret ? att.pts.length - 1 : att.pts.length;
+  if (segs.length !== attendu) return 'segments : ' + segs.length + ' au lieu de ' + attendu;
+  let e = 0;
+  for (let i = 1; i < att.pts.length; i++) e = Math.max(e, Math.hypot(segs[i - 1].a2x - att.pts[i][0], segs[i - 1].a2y - att.pts[i][1]));
+  if (!att.arret) e = Math.max(e, Math.abs(normAngle(angleSeg(segs[segs.length - 1]) - Math.atan2(att.d[1], att.d[0]))) * 1000);
+  return e;
+}
+
+/* ------------------------------------------------------------------ */
+titre('Prisme tourné de 0 à 360° (pas de 0,25°) : rayons visant le milieu de chaque face, Snell calculé à part sur chaque face ; tolérance 1e-9');
+{
+  // Défaut de l'original corrigé (unit222.pas:39554) : normale du côté 3 fausse de 69° à 158° environ.
+  const n = 1.5, G = [500, 500], A0 = [500, 600], B0 = [500 - 100 * Math.sin(60 * deg) * 1.0, 450];
+  const fautes = [];
+  let nb = 0, pire = 0;
+  for (let q = 0; q < 1440; q++) {
+    const a = q * 0.25 * deg;
+    const A = V.add(G, V.rot(V.sub(A0, G), a)), B = V.add(G, V.rot(V.sub(B0, G), a));
+    const H = V.sub(G, V.mul(V.sub(A, G), 0.5)), Cc = V.sub(V.mul(H, 2), B), S = [A, B, Cc];
+    for (let f = 0; f < 3; f++) for (const inc of [-35 * deg, 25 * deg]) {
+      const P1 = S[f], P2 = S[(f + 1) % 3], M = V.mul(V.add(P1, P2), 0.5), e = V.unit(V.sub(P2, P1));
+      let nIn = [e[1], -e[0]]; if (V.dot(nIn, V.sub(G, M)) < 0) nIn = V.mul(nIn, -1);
+      const d = V.rot(nIn, inc), P = V.sub(M, V.mul(d, 300));
+      const s = scene();
+      ajouter(s, 'prisme', { gx: G[0], gy: G[1], ax: A[0], ay: A[1], bx: B[0], by: B[1], indicerouge: n, indicevert: n, indicebleu: n,
+        couleurbord: 0, couleurfond: C.clAqua, reflechientrant: 2, reflechisortant: 2 });
+      rayon(s, P[0], P[1], Math.atan2(d[1], d[0]), C.clRed, { nombremaxenfant: 0 });
+      const r = ecartTrace(s.tracer().segments, traverserPolygone(S, n, P, d));
+      nb++;
+      if (typeof r === 'string' || r > 1e-9) { if (fautes.length < 5) fautes.push((q * 0.25) + '° face ' + (f + 1) + ' : ' + r); fautes.n = (fautes.n || 0) + 1; }
+      else pire = Math.max(pire, r);
+    }
+  }
+  controle(fautes.length === 0, nb + ' rayons : impacts et direction émergente conformes au calcul indépendant (écart max ' + pire.toExponential(1) + ')',
+    (fautes.n || 0) + ' écarts, dont ' + fautes.join(' ; '));
+}
+
+/* ------------------------------------------------------------------ */
+titre('Prisme neuf (n rouge 1,4 ; vert 1,6 ; bleu 1,8) et lumière blanche : chaque couleur suit Snell, tolérance 1e-9');
+{
+  const s = scene();
+  const p = OptGeo.objetParDefaut(s, 'prisme', 500, 500);
+  ajouter(s, 'prisme', p);
+  const g = s.geometrie(s.objets[0].id), S = [1, 2, 3].map((i) => [g.messommets[i].ax, g.messommets[i].ay]);
+  const M = V.mul(V.add(S[0], S[1]), 0.5), d = V.unit([Math.cos(30 * deg), Math.sin(30 * deg)]), P = V.sub(M, V.mul(d, 200));
+  rayon(s, P[0], P[1], 30 * deg, C.clBlack, { nombremaxenfant: 0 });
+  const t = s.tracer().segments, dirs = {};
+  [[C.clRed, 1.4], [C.clGreen, 1.6], [C.clBlue, 1.8]].forEach(([c, n]) => {
+    const segs = t.filter((sg) => sg.couleur === c), att = traverserPolygone(S, n, P, d), r = ecartTrace(segs, att);
+    controle(typeof r === 'number' && r <= 1e-9 && !att.arret, 'couleur ' + c + ' (n = ' + n + ') : trajet conforme au calcul indépendant', r);
+    dirs[c] = Math.atan2(att.d[1], att.d[0]);
+  });
+  controle(Math.abs(dirs[C.clRed] - dirs[C.clBlue]) > 10 * deg, 'les couleurs sont séparées (rouge et bleu à plus de 10°)',
+    (dirs[C.clRed] - dirs[C.clBlue]) / deg);
+}
+
+/* ------------------------------------------------------------------ */
+titre('Réglages « rayon réfléchi (sens entrant / sortant) » : lentille épaisse, arc et côté droit de polycercle, sphère, polyèdre ; tolérance 1e-9');
+{
+  // Défaut de l'original corrigé (lentille épaisse et arcs de polycercle : réglages inversés).
+  // Réflexion totale d'un rayon qui sort : seul « sortant » compte (1 toujours, 4 si pas réfracté : réfléchi ;
+  // 2 jamais, 3 si réfracté : le rayon s'arrête). Rayon qui entre (réfracté) : seul « entrant » compte
+  // (1 toujours, 3 si réfracté : rayon réfléchi enfant ; 2, 4 : rien).
+  const n = 1.5, diag = Math.hypot(1000, 1000);
+  const cas = [];
+  // lentille épaisse biconvexe : face 2 de centre (230, 500), R = 300
+  cas.push({ nom: 'lentille épaisse (face 2)', type: 'lec', p: { s1x: 470, s1y: 500, s2x: 530, s2y: 500, r1: -300, r2: 300, diametre: 200,
+    couleurfond: C.clAqua, couleuraxe: C.clRed, axefocal: true }, c: [230, 500], R: 300, phi: 10 * deg,
+    dedans: (P) => Math.hypot(P[0] - 770, P[1] - 500) < 300 && Math.hypot(P[0] - 230, P[1] - 500) < 300 && Math.abs(P[1] - 500) < 100 });
+  // lentille épaisse : face 1 de centre (770, 500)
+  cas.push({ nom: 'lentille épaisse (face 1)', type: 'lec', p: cas[0].p, c: [770, 500], R: 300, phi: (180 - 8) * deg, dedans: cas[0].dedans });
+  // polycercle en D : arc de centre (cx, 500)
+  const cx = (560 * 560 - 450 * 450 - 150 * 150) / (2 * (560 - 450));
+  const D = { sommets: [{ x: 450, y: 350 }, { x: 450, y: 650 }], mess: [{ x: 450, y: 500 }, { x: 560, y: 500 }], rectiligne: [true, false] };
+  const dansD = (P) => P[0] > 450 && Math.hypot(P[0] - cx, P[1] - 500) < 560 - cx;
+  cas.push({ nom: 'arc de polycercle', type: 'polycercle', p: D, c: [cx, 500], R: 560 - cx, phi: 25 * deg, dedans: dansD });
+  // côtés droits et autres milieux (même convention, déjà juste dans l'original) : normale u sortante en I
+  cas.push({ nom: 'côté droit de polycercle', type: 'polycercle', p: D, I: [450, 520], u: [-1, 0], dedans: dansD });
+  cas.push({ nom: 'polyèdre', type: 'polyhedre', p: { sommets: [{ x: 400, y: 400 }, { x: 600, y: 400 }, { x: 600, y: 600 }, { x: 400, y: 600 }] },
+    I: [600, 470], u: [1, 0], dedans: (P) => P[0] > 400 && P[0] < 600 && P[1] > 400 && P[1] < 600 });
+  cas.push({ nom: 'sphère', type: 'sphere', p: { cx: 500, cy: 500, rayon: 150 }, c: [500, 500], R: 150, phi: 40 * deg,
+    dedans: (P) => Math.hypot(P[0] - 500, P[1] - 500) < 150 });
+  cas.forEach((k) => {
+    const I = k.I || V.add(k.c, [k.R * Math.cos(k.phi), k.R * Math.sin(k.phi)]);
+    const u = k.u || V.unit(V.sub(I, k.c));   // normale sortante (milieux convexes ici)
+    const tracer = (ent, sor, P, d, enfants) => {
+      const s = scene();
+      ajouter(s, k.type, Object.assign({}, k.p, { indicerouge: n, indicevert: n, indicebleu: n, reflechientrant: ent, reflechisortant: sor }));
+      rayon(s, P[0], P[1], Math.atan2(d[1], d[0]), C.clRed, { nombremaxenfant: enfants });
+      return s.tracer().segments;
+    };
+    // 1) réflexion totale d'un rayon qui sort (incidence 55° > angle limite 41,8°)
+    const d = V.rot(u, 55 * deg), P = V.sub(I, V.mul(d, 30)), r = reflechiVec(d, u);
+    controle(k.dedans(P), k.nom + ' : départ à l’intérieur');
+    for (let ent = 1; ent <= 4; ent++) for (let sor = 1; sor <= 4; sor++) {
+      const t = tracer(ent, sor, P, d, 0), attenduRefl = (sor === 1 || sor === 4);
+      const impact = t.length >= 1 && Math.hypot(t[0].a2x - I[0], t[0].a2y - I[1]) < 1e-9;
+      const ok = attenduRefl
+        ? impact && t.length >= 2 && Math.hypot(t[1].a1x - I[0], t[1].a1y - I[1]) < 1e-9 && Math.abs(normAngle(angleSeg(t[1]) - Math.atan2(r[1], r[0]))) < 1e-9
+        : impact && t.length === 1;
+      controle(ok, k.nom + ', réflexion totale, entrant ' + ent + ' sortant ' + sor + ' : ' + (attenduRefl ? 'rayon réfléchi' : 'rayon arrêté'),
+        t.slice(0, 2).map((sg) => [sg.a1x, sg.a1y, sg.a2x, sg.a2y].map((v) => v.toFixed(3)).join(',')).join(' | '));
+    }
+    // 2) rayon qui entre (incidence 30°) : réfléchi partiel = rayon enfant
+    const d2 = V.rot(V.mul(u, -1), 30 * deg), P2 = V.sub(I, V.mul(d2, 200)), r2 = reflechiVec(d2, u);
+    controle(!k.dedans(P2), k.nom + ' : départ à l’extérieur');
+    for (let ent = 1; ent <= 4; ent++) for (let sor = 1; sor <= 4; sor++) {
+      const t = tracer(ent, sor, P2, d2, 3), attenduEnfant = (ent === 1 || ent === 3);
+      const enfant = t.some((sg) => Math.hypot(sg.a1x - I[0], sg.a1y - I[1]) < diag / 5000 && Math.abs(normAngle(angleSeg(sg) - Math.atan2(r2[1], r2[0]))) < 1e-9);
+      controle(Math.hypot(t[0].a2x - I[0], t[0].a2y - I[1]) < 1e-9 && enfant === attenduEnfant,
+        k.nom + ', rayon entrant, entrant ' + ent + ' sortant ' + sor + ' : ' + (attenduEnfant ? 'rayon réfléchi enfant' : 'pas de réfléchi'));
+    }
+  });
+}
+
 console.log('\nPhysique : ' + reussis + ' contrôles réussis, ' + echecs + ' échoués.');
 process.exit(echecs ? 1 : 0);

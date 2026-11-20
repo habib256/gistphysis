@@ -206,5 +206,188 @@ function sceneComplete() {
   controle(!s.tracer().tronque, 'tracé de la scène des objets par défaut');
 }
 
+/* ---------------- Polycercle : poignées des sommets et des arcs (unit222.pas 22374-22598) ---------------- */
+{
+  const EXT = OptGeo.INTERIEUR.EXTERIEUR;
+  const mil15 = { indicerouge: 1.5, indicevert: 1.5, indicebleu: 1.5, reflechientrant: 2, reflechisortant: 4 };
+  // Pour chaque côté circulaire : sommets sur le cercle, point de l'arc sur la médiatrice.
+  function invariants(s, id, quoi) {
+    const g = s.geometrie(id), o = s.objet(id), n = o.sommets.length;
+    let ecartCercle = 0, ecartMediatrice = 0;
+    for (let k = 0; k < n; k++) if (!o.rectiligne[k]) {
+      const a = o.sommets[k], b = o.sommets[(k + 1) % n], m = o.mess[k], c = g.mescentres[k + 1], R = g.rayon[k + 1];
+      ecartCercle = Math.max(ecartCercle, Math.abs(Math.hypot(a.x - c.ax, a.y - c.ay) - R), Math.abs(Math.hypot(b.x - c.ax, b.y - c.ay) - R));
+      const l = Math.hypot(b.x - a.x, b.y - a.y);
+      ecartMediatrice = Math.max(ecartMediatrice, Math.abs((m.x - (a.x + b.x) / 2) * (b.x - a.x) + (m.y - (a.y + b.y) / 2) * (b.y - a.y)) / l);
+    }
+    controle(ecartCercle < 1e-9, quoi + ' : sommets sur le cercle de leur arc', ecartCercle);
+    controle(ecartMediatrice < 1e-9, quoi + ' : point de l’arc sur la médiatrice', ecartMediatrice);
+  }
+  // flèche signée / corde d'un côté (même côté et même angle au centre si elle est conservée)
+  function flecheRelative(o, k) {
+    const n = o.sommets.length, a = o.sommets[k], b = o.sommets[(k + 1) % n], m = o.mess[k];
+    const l = Math.hypot(b.x - a.x, b.y - a.y);
+    return ((b.x - a.x) * (m.y - (a.y + b.y) / 2) - (b.y - a.y) * (m.x - (a.x + b.x) / 2)) / l / l;
+  }
+  function deplacer(s, id, nom, x, y) {
+    const avant = JSON.parse(JSON.stringify(s.objet(id)));
+    const r = OptGeo.deplacerPoignee(s, id, nom, x, y);
+    controle(r.ok, 'déplacement ' + nom + ' accepté', r.erreur);
+    const o = s.objet(id), n = o.sommets.length;
+    let m;
+    if ((m = /^sommet(\d+)$/.exec(nom))) {
+      const i = +m[1] - 1;
+      controle(o.sommets[i].x === x && o.sommets[i].y === y, nom + ' : sommet à la position demandée');
+      for (let k = 0; k < n; k++) {
+        if (o.rectiligne[k]) continue;
+        if (k === i || k === (i - 1 + n) % n) {
+          const f0 = flecheRelative(avant, k), f1 = flecheRelative(o, k);
+          controle(Math.abs(f1 - f0) <= 1e-12 * Math.max(1, Math.abs(f0)), nom + ' : côté ' + (k + 1) + ', flèche / corde conservée (même côté, même angle au centre)', f0 + ' / ' + f1);
+        } else controle(o.mess[k].x === avant.mess[k].x && o.mess[k].y === avant.mess[k].y, nom + ' : arc ' + (k + 1) + ' non voisin inchangé');
+      }
+    } else if ((m = /^arc(\d+)$/.exec(nom))) {
+      const k = +m[1] - 1, a = o.sommets[k], b = o.sommets[(k + 1) % n], q = o.mess[k];
+      controle(JSON.stringify(o.sommets) === JSON.stringify(avant.sommets), nom + ' : sommets inchangés');
+      // projection orthogonale : (demandé − obtenu) parallèle à la corde
+      const l = Math.hypot(b.x - a.x, b.y - a.y);
+      controle(Math.abs((x - q.x) * (b.y - a.y) - (y - q.y) * (b.x - a.x)) / l < 1e-9, nom + ' : projection sur la médiatrice');
+    }
+    invariants(s, id, nom + ' → (' + x + ', ' + y + ')');
+  }
+
+  // Le cas du relecteur : polycercle en D, côté 1 droit, côté 2 en arc par (560, 500).
+  const s = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 1000 });
+  const id = s.ajouter('polycercle', Object.assign({ sommets: [{ x: 450, y: 350 }, { x: 450, y: 650 }],
+    mess: [{ x: 450, y: 500 }, { x: 560, y: 500 }], rectiligne: [true, false] }, mil15)).id;
+  invariants(s, id, 'polycercle en D');
+  deplacer(s, id, 'sommet1', 420, 330);
+  deplacer(s, id, 'arc2', 600, 560);
+  deplacer(s, id, 'sommet2', 470, 640);
+  deplacer(s, id, 'arc2', 520, 400);
+  // un rayon horizontal entre par le côté droit et ressort par l'arc
+  const o = s.objet(id), g = s.geometrie(id), c = g.mescentres[2], R = g.rayon[2];
+  const yr = (o.sommets[0].y + o.sommets[1].y) / 2;
+  s.ajouter('rayon', { ax: 100, ay: yr, kx: 50, ky: 0, couleur: C.clRed, nombremaxenfant: 0 });
+  const t = s.tracer().segments;
+  controle(t.length === 3, 'rayon horizontal : trois segments (entrée, traversée, sortie)', t.length);
+  if (t.length === 3) {
+    controle(Math.abs(Math.hypot(t[2].a1x - c.ax, t[2].a1y - c.ay) - R) < 1e-9, 'le rayon ressort par l’arc', Math.hypot(t[2].a1x - c.ax, t[2].a1y - c.ay) - R);
+    controle(g.estou((t[2].a1x + t[2].a2x) / 2, (t[2].a1y + t[2].a2y) / 2) === EXT && t[2].a2x === 1000, 'après l’arc, le rayon est à l’extérieur jusqu’au bord');
+  }
+
+  // Polycercle à trois arcs : chaque sommet puis chaque arc
+  const s2 = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 1000 });
+  const id2 = s2.ajouter('polycercle', Object.assign({ sommets: [{ x: 400, y: 400 }, { x: 600, y: 400 }, { x: 600, y: 600 }, { x: 400, y: 600 }],
+    mess: [{ x: 500, y: 370 }, { x: 630, y: 500 }, { x: 500, y: 600 }, { x: 420, y: 500 }], rectiligne: [false, false, true, false] }, mil15)).id;
+  invariants(s2, id2, 'polycercle à trois arcs');
+  [['sommet1', 380, 390], ['sommet2', 615, 380], ['sommet3', 620, 610], ['sommet4', 390, 620],
+   ['arc1', 470, 300], ['arc2', 700, 480], ['arc4', 450, 530]].forEach((d) => deplacer(s2, id2, d[0], d[1], d[2]));
+}
+
+/* ---------------- Milieux neufs : valeurs par défaut d'OptGeo (ray1.pas 1303…2858) ---------------- */
+{
+  const s = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 700 });
+  ['polyhedre', 'polycercle', 'lec', 'sphere', 'prisme'].forEach((t, i) => {
+    const r = s.ajouter(t, OptGeo.objetParDefaut(s, t, 150 + 170 * i, 600));
+    const o = r.ok && s.objet(r.id);
+    controle(o && o.indicerouge === 1.4 && o.indicebleu === 1.8 && o.indicevert === 1.6 && o.reflechientrant === 2 && o.reflechisortant === 2,
+      t + ' neuf : n rouge 1,4, n bleu 1,8, n vert 1,6, réflexion « jamais » (2, 2)', o && [o.indicerouge, o.indicebleu, o.indicevert, o.reflechientrant, o.reflechisortant].join(' '));
+  });
+  // (la dispersion de la lumière blanche par un prisme neuf est vérifiée dans physique.js)
+  // un fichier garde ses propres valeurs
+  const sf = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 700 });
+  sf.ajouter('prisme', Object.assign(OptGeo.objetParDefaut(sf, 'prisme', 500, 350), { indicerouge: 1.5, indicebleu: 1.5, indicevert: 1.5, reflechientrant: 2, reflechisortant: 4 }));
+  const relu = OptGeo.lireOpt(OptGeo.ecrireOpt(sf), { strict: true }).scene.objets[0];
+  controle(relu.indicerouge === 1.5 && relu.indicebleu === 1.5 && relu.indicevert === 1.5 && relu.reflechientrant === 2 && relu.reflechisortant === 4,
+    'un fichier garde ses indices et ses codes de réflexion');
+}
+
+/* ---------------- Polycercle à deux arcs : intersection de deux cercles robuste (unit222.pas:1124) ---------------- */
+{
+  const M = OptGeo.math, deg = PI / 180;
+  const mil15 = { indicerouge: 1.5, indicevert: 1.5, indicebleu: 1.5, reflechientrant: 2, reflechisortant: 4 };
+  // points de contrôle sur la médiatrice, à la flèche f (> 0 vers l'extérieur)
+  function bombe(S, f) {
+    const n = S.length, gx = S.reduce((a, p) => a + p.x, 0) / n, gy = S.reduce((a, p) => a + p.y, 0) / n;
+    return S.map((p, i) => {
+      const q = S[(i + 1) % n], ix = (p.x + q.x) / 2, iy = (p.y + q.y) / 2;
+      let nx = -(q.y - p.y), ny = q.x - p.x; const l = Math.hypot(nx, ny); nx /= l; ny /= l;
+      if (nx * (ix - gx) + ny * (iy - gy) < 0) { nx = -nx; ny = -ny; }
+      return { x: ix + f[i] * nx, y: iy + f[i] * ny };
+    });
+  }
+  const S = [{ x: 470, y: 400 }, { x: 470, y: 600 }, { x: 530, y: 600 }, { x: 530, y: 400 }];
+  const lentille = (S2, f) => Object.assign({ sommets: S2, mess: bombe(S2, f), rectiligne: [false, true, false, true] }, mil15);
+  const petits = [1e-12, 1e-10, 1e-9, 3e-9, 1e-8, 3e-8, 1e-7, 3e-7, 1e-6, 1e-4, 1e-2];
+  const angles = [];
+  for (let a = 0; a < 360; a++) angles.push(a);
+  [0, 90, 180, 270].forEach((a0) => petits.forEach((e) => { angles.push(a0 + e); angles.push(a0 - e + (a0 === 0 ? 360 : 0)); }));
+  // lentille biconvexe (arcs disjoints : acceptée) et arcs bombés vers l'intérieur qui se croisent (refusée)
+  const refusBiconvexe = [], acceptCroises = [];
+  angles.forEach((a) => {
+    const s = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 1000 });
+    const id = s.ajouter('polycercle', lentille(S, [30, 0, 30, 0])).id;
+    if (a && !s.tourner([id], a * deg, 500, 500).ok) refusBiconvexe.push(a);
+    const s2 = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 1000 });
+    const rot = (p) => ({ x: 500 + (p.x - 500) * Math.cos(a * deg) - (p.y - 500) * Math.sin(a * deg), y: 500 + (p.x - 500) * Math.sin(a * deg) + (p.y - 500) * Math.cos(a * deg) });
+    const r2 = s2.ajouter('polycercle', lentille(S.map(rot), [-45, 0, -45, 0]));
+    if (r2.ok || r2.erreur !== 'Deux côtés circulaires se coupent.') acceptCroises.push(a);
+  });
+  controle(refusBiconvexe.length === 0, 'lentille biconvexe en polycercle acceptée sous ' + angles.length + ' angles (0 à 360°, petits angles autour de 0, 90, 180, 270°)', refusBiconvexe.join(' '));
+  controle(acceptCroises.length === 0, 'arcs qui se croisent refusés sous les mêmes angles', acceptCroises.join(' '));
+  // centres exactement à la même hauteur (division par zéro dans l'original) : bon résultat
+  {
+    const s = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 1000 });
+    const id = s.ajouter('polycercle', lentille(S, [30, 0, 30, 0])).id, g = s.geometrie(id);
+    controle(g.mescentres[1].ay === g.mescentres[3].ay, 'lentille à 0° : centres exactement à la même hauteur (cas y0 = y1)');
+    const r = s.ajouter('polycercle', lentille(S.map((p) => ({ x: p.x, y: p.y + 300 })), [-45, 0, -45, 0]));
+    controle(!r.ok && r.erreur === 'Deux côtés circulaires se coupent.', 'cas y0 = y1 : arcs croisés refusés', r.erreur);
+  }
+  // sommets décalés de très peu
+  const refusDecales = [];
+  [1e-12, 1e-9, 1e-7, 1e-6, 1e-4, 1e-2, 1].forEach((d) => [[0, d], [0, -d], [d, 0], [d, d]].forEach((dd) => {
+    const S2 = S.map((p, i) => ({ x: p.x + (i >= 2 ? dd[0] : 0), y: p.y + (i >= 2 ? dd[1] : 0) }));
+    const r = new OptGeo.Scene({ xxmin: 0, xxmax: 1000, yymin: 0, yymax: 1000 }).ajouter('polycercle', lentille(S2, [30, 0, 30, 0]));
+    if (!r.ok) refusDecales.push(dd.join(','));
+  }));
+  controle(refusDecales.length === 0, 'lentille aux sommets décalés de 1e-12 à 1 : acceptée', refusDecales.join(' ; '));
+  // y0 = y1 : points communs justes, dans l'ordre de l'original (y décroissant à x égal)
+  const c = M.lesDeuxCerclesSeCoupentIls(0, 0, 8, 0, 5, 5, 0, 2 * PI, 0, 2 * PI);
+  const t0 = Math.atan2(3, 4);
+  controle(c.n === 2 && proche(c.para1, t0 / (2 * PI), 1e-15) && proche(c.para2, (PI - t0) / (2 * PI), 1e-15) &&
+    proche(c.para3, (2 * PI - t0) / (2 * PI), 1e-15) && proche(c.para4, (PI + t0) / (2 * PI), 1e-15), 'cercles de centres (0,0) et (8,0) : points (4, ±3)', JSON.stringify(c));
+  controle(M.lesDeuxCerclesSeCoupentIls(0, 0, 10, 0, 5, 5, 0, 2 * PI, 0, 2 * PI).n === 1, 'cercles tangents (y0 = y1) : un point commun');
+  controle(M.lesDeuxCerclesSeCoupentIls(0, 0, 11, 0, 5, 5, 0, 2 * PI, 0, 2 * PI).n === 0, 'cercles disjoints (y0 = y1) : aucun point commun');
+  controle(M.lesDeuxCerclesSeCoupentIls(0, 0, 0, 0, 5, 4, 0, 2 * PI, 0, 2 * PI).n === 0, 'cercles concentriques de rayons différents : aucun point commun');
+  controle(M.lesDeuxCerclesSeCoupentIls(0, 0, 0, 0, 5, 5, 0, 1, 0.5, 2).n === 1 && M.lesDeuxCerclesSeCoupentIls(0, 0, 0, 0, 5, 5, 0, 1, 1.5, 2).n === 0,
+    'même cercle : arcs qui se recouvrent (refus) ou non');
+  // cas non dégénérés : même résultat que la formule de l'original (division par y0 − y1)
+  function original(x0, y0, x1, y1, r0, r1, t01, t02, t11, t12) {
+    const sq = (x) => x * x, r = { n: 0, para1: 10, para2: 10, para3: 10, para4: 10 };
+    const pa = (th, a, b, p) => { if (th >= a && th <= b) p = (th - a) / (b - a); if (th - 2 * PI >= a && th - 2 * PI <= b) p = (th - 2 * PI - a) / (b - a); if (th + 2 * PI >= a && th + 2 * PI <= b) p = (th + 2 * PI - a) / (b - a); return p; };
+    const N = (sq(r1) - sq(r0) - sq(x1) + sq(x0) - sq(y1) + sq(y0)) / 2 / (y0 - y1), A = sq((x0 - x1) / (y0 - y1)) + 1;
+    const B = 2 * y0 * (x0 - x1) / (y0 - y1) - 2 * N * (x0 - x1) / (y0 - y1) - 2 * x0, Cc = sq(x0) + sq(y0) + sq(N) - sq(r0) - 2 * y0 * N, D = sq(B) - 4 * A * Cc;
+    if (D < 0) return r;
+    const xa = (-B + Math.sqrt(D)) / 2 / A, ya = N - xa * (x0 - x1) / (y0 - y1), xb = (-B - Math.sqrt(D)) / 2 / A, yb = N - xb * (x0 - x1) / (y0 - y1);
+    r.para1 = pa(M.donneAnglePolaireDans02Pi(xa - x0, ya - y0), t01, t02, 10); r.para2 = pa(M.donneAnglePolaireDans02Pi(xa - x1, ya - y1), t11, t12, 10);
+    r.para3 = pa(M.donneAnglePolaireDans02Pi(xb - x0, yb - y0), t01, t02, 10); r.para4 = pa(M.donneAnglePolaireDans02Pi(xb - x1, yb - y1), t11, t12, 10);
+    if (r.para1 >= 0 && r.para1 <= 1 && r.para2 >= 0 && r.para2 <= 1) r.n++;
+    if (r.para3 >= 0 && r.para3 <= 1 && r.para4 >= 0 && r.para4 <= 1) { r.n++; if (r.n === 1) { r.para1 = r.para3; r.para2 = r.para4; } }
+    return r;
+  }
+  let graine = 12345, nb = 0, diffN = 0, ecart = 0;
+  const alea = () => { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
+  for (let k = 0; k < 50000; k++) {
+    const x0 = alea() * 1000, y0 = alea() * 1000, x1 = alea() * 1000, y1 = alea() * 1000, r0 = 10 + alea() * 600, r1 = 10 + alea() * 600;
+    if (Math.abs(y1 - y0) < 0.1 * Math.abs(x1 - x0)) continue;
+    const a1 = alea() * 2 * PI, w1 = 0.2 + alea() * 5, a2 = alea() * 2 * PI, w2 = 0.2 + alea() * 5;
+    const u = original(x0, y0, x1, y1, r0, r1, a1, a1 + w1, a2, a2 + w2), w = M.lesDeuxCerclesSeCoupentIls(x0, y0, x1, y1, r0, r1, a1, a1 + w1, a2, a2 + w2);
+    nb++;
+    if (u.n !== w.n) diffN++;
+    else ['para1', 'para2', 'para3', 'para4'].forEach((p) => { ecart = Math.max(ecart, Math.abs(u[p] - w[p])); });
+  }
+  controle(diffN === 0 && ecart < 1e-9, nb + ' paires de cercles bien conditionnées : même nombre de points communs que la formule de l’original, mêmes positions à 1e-9 près', diffN + ' / ' + ecart);
+}
+
 console.log('\nAPI : ' + reussis + ' contrôles réussis, ' + echecs + ' échoués.');
 process.exit(echecs ? 1 : 0);

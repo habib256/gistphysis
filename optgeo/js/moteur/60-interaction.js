@@ -157,6 +157,50 @@
     return meilleur;
   }
 
+  /*
+   * Polycercle : OptGeo garde toujours le point de contrôle mess[k] d'un arc sur la
+   * médiatrice de sa corde (polycercle.create le suppose).
+   */
+
+  /**
+   * Sommet i (indice 0) déplacé en (x1, y1) : unit222.pas 22374-22508 (mdpolycercle, tprot = tpa1).
+   * Pour chacun des deux côtés voisins qui est un arc (côté i−1, du sommet i−1 au sommet i, et
+   * côté i, du sommet i au sommet i+1), le nouveau mess est sur la médiatrice de la nouvelle
+   * corde, du même côté qu'avant, à la distance dIS × (nouvelle corde) / dAB du milieu (dIS :
+   * ancienne flèche, dAB : ancienne corde) : la flèche suit la corde, l'arc garde son angle au centre.
+   */
+  function deplacerSommetPolycercle(p, i, x1, y1) {
+    var n = p.sommets.length, ancien = p.sommets[i];
+    function nouveauMess(k, f) {   // k : côté, f : son autre sommet (fixe)
+      var S = p.mess[k], ix = 0.5 * (f.x + ancien.x), iy = 0.5 * (f.y + ancien.y);
+      var dAB = Math.sqrt(sqr(ancien.x - f.x) + sqr(ancien.y - f.y));
+      var dIS = Math.sqrt(sqr(S.x - ix) + sqr(S.y - iy));
+      if (dAB === 0) return;
+      var q = dIS / dAB;
+      if ((ancien.x - f.x) * (S.y - iy) - (ancien.y - f.y) * (S.x - ix) < 0)
+        p.mess[k] = { x: (y1 - f.y) * q + 0.5 * (f.x + x1), y: -(x1 - f.x) * q + 0.5 * (f.y + y1) };
+      else
+        p.mess[k] = { x: -(y1 - f.y) * q + 0.5 * (f.x + x1), y: (x1 - f.x) * q + 0.5 * (f.y + y1) };
+    }
+    var kp = (i - 1 + n) % n, ks = i;
+    if (!p.rectiligne[kp]) nouveauMess(kp, p.sommets[kp]);
+    if (!p.rectiligne[ks]) nouveauMess(ks, p.sommets[(i + 1) % n]);
+    p.sommets[i] = { x: x1, y: y1 };
+  }
+
+  /**
+   * Point de l'arc k (indice 0) déplacé en (x1, y1) : unit222.pas 22570-22598 (tprot = tpce) :
+   * projection orthogonale de (x1, y1) sur la médiatrice de la corde du côté k.
+   */
+  function deplacerArcPolycercle(p, k, x1, y1) {
+    var n = p.sommets.length, a = p.sommets[k], b = p.sommets[(k + 1) % n];
+    var AiAj = Math.sqrt(sqr(a.x - b.x) + sqr(a.y - b.y));
+    if (AiAj === 0) return;
+    var ux = (a.y - b.y) / AiAj, uy = -(a.x - b.x) / AiAj;
+    var ix = (a.x + b.x) / 2, iy = (a.y + b.y) / 2, l = (x1 - ix) * ux + (y1 - iy) * uy;
+    p.mess[k] = { x: ix + l * ux, y: iy + l * uy };
+  }
+
   /**
    * Déplace une poignée en (x, y) : modifie les paramètres de l'objet (refusé si
    * l'objet deviendrait invalide, comme dans OptGeo).
@@ -197,10 +241,14 @@
         if (nom === 'a1') { p.rint = Math.sqrt(sqr(x - g.cx) + sqr(y - g.cy)); p.anglepolaire = M.donneAnglePolaireDansPiPi(x - g.cx, y - g.cy); }
         else p.rext = Math.sqrt(sqr(x - g.cx) + sqr(y - g.cy));
         break;
-      case 'polyhedre': case 'polycercle':
+      case 'polyhedre':
         p = scene.parametres(id);
         if ((m = /^sommet(\d+)$/.exec(nom))) p.sommets[+m[1] - 1] = { x: x, y: y };
-        else if ((m = /^arc(\d+)$/.exec(nom))) p.mess[+m[1] - 1] = { x: x, y: y };
+        break;
+      case 'polycercle':
+        p = scene.parametres(id);
+        if ((m = /^sommet(\d+)$/.exec(nom))) deplacerSommetPolycercle(p, +m[1] - 1, x, y);
+        else if ((m = /^arc(\d+)$/.exec(nom))) deplacerArcPolycercle(p, +m[1] - 1, x, y);
         break;
       case 'prisme':
         if (nom === 'sommet') { p.ax = x; p.ay = y; } else { p.bx = x; p.by = y; }
