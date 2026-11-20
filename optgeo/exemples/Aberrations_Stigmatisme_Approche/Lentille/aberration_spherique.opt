@@ -1,0 +1,90 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+2
+ 0.00000000000000E+0000  2.00000000000000E+0003  0.00000000000000E+0000  5.81000000000000E+0002
+FALSE
+UNITE
+mm
+OPTIONS GRILLE
+FALSE
+FALSE
+ 1.00000000000000E+0002 2.00000000000000E+0001
+OPTIONS NORMALES
+FALSE
+FALSE
+ 5.00000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+FALSE
+
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+0
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+0
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+0
+Nombre de sources ponctuelles:
+1
+Numero 1
+20  1.37254901960784E+0001  3.00000000000000E+0002  7.84313725490196E+0002  2.25000000000000E+0002  7.96078431372549E+0002  3.75000000000000E+0002 255 1 10
+
+
+FALSE
+FALSE
+
+Nombre d'ondes planes:
+0
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+0
+Nombre de lames semi reflechissantes:
+0
+Nombre de polyhedres:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+0
+Nombre de miroirs coniques:
+0
+Nombre de textes:
+1
+Numero 1
+Aberration sphérique
+ 3.29411764705882E+0002  9.60000000000000E+0001
+0 -2147483640
+Arial
+12
+no
+no
+fsunderline
+no
+fpDefault
+Nombre de lentilles epaisses:
+1
+Numero 1
+ 1.14950980392157E+0003  2.95000000000000E+0002  1.19950980392157E+0003  2.95000000000000E+0002 -4.00000000000000E+0002  4.00000000000000E+0002  5.00000000000000E+0002
+16776960 255
+TRUE
+ 2.00000000000000E+0000  2.00000000000000E+0000  2.00000000000000E+0000
+2
+2
+Nombre d'angles:
+0
+Nombre de traits:
+0

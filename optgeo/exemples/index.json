@@ -1,0 +1,397 @@
+{
+ "source": "Exemples fournis avec OptGeo 3.03 (Jean-Marie Biansan, GPL v2 ou ultérieure). Fichiers .opt copiés tels quels ; commentaires .txt en UTF-8 (sans BOM). Dossier « Miroir_Sphérique » renommé « Miroir_Spherique ».",
+ "exemples": [
+  {
+   "categorie": "Aberrations et stigmatisme approché — aberration chromatique",
+   "titre": "Correction de l’aberration chromatique par un doublet",
+   "fichier": "Aberrations_Stigmatisme_Approche/Aberration_Chromatique/Correction_par_Doublet.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — aberration chromatique",
+   "titre": "Aberration chromatique d’une lentille",
+   "fichier": "Aberrations_Stigmatisme_Approche/Aberration_Chromatique/aberration.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — dioptre sphérique",
+   "titre": "Dioptre sphérique : stigmatisme approché (objet à distance finie)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Dioptre_Spherique/objet_distance_finie_stigmatisme_approche.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Dioptre_Spherique/objet_distance_finie_stigmatisme_approche.txt",
+   "description": "Dioptre sphérique: stigmatisme approché\n\nObjet ponctuel sur l'axe.\nLe dioptre sphérique est  éclairé par un faisceau ne comportant que des rayons proches de l'axe et peu inclinés sur celuic-ci. On est alors dans les conditions de Gauss, il y a stigmatisme approché."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — dioptre sphérique",
+   "titre": "Dioptre sphérique : caustique (objet à l’infini)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Dioptre_Spherique/objet_infini_caustique.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Dioptre_Spherique/objet_infini_caustique.txt",
+   "description": "Dioptre sphérique: mise en évidence de la caustique\n\nLe dioptre sphérique est éclairé par un faisceau parallèle à l'axe comportant des rayons éloignés de l'axe. On n'est pas dans les conditions de Gauss, il n'y a pas stigmatisme approché. Les rayons réfractés se concentrent près d'une courbe appelée caustique."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — dioptre sphérique",
+   "titre": "Dioptre sphérique : stigmatisme approché (objet à l’infini)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Dioptre_Spherique/objet_infini_stigmatisme_approche.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Dioptre_Spherique/objet_infini_stigmatisme_approche.txt",
+   "description": "Dioptre sphérique: stigmatisme approché\n\nOn reprend l'exemple du fichier \"objet_infini_caustique\", mais en diaphragmant fortement le faisceau:\nle dioptre sphérique est alors éclairé par un faisceau parallèle à l'axe  et ne comportant que des rayons proches de l'axe. On est alors dans les conditions de Gauss, il y a stigmatisme approché."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — lentille",
+   "titre": "Lentille : aberration de sphéricité",
+   "fichier": "Aberrations_Stigmatisme_Approche/Lentille/aberration_spherique.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Lentille/aberration_spherique.txt",
+   "description": "Aberration de sphéricité\n\nLa lentille convergente  de grande ouverture est éclairée par un objet ponctuel. Les rayons proches de l'axe convergent en sortie au foyer. Les rayons marginaux coupent l'axe en sortie en des points plus proches de la lentille que le foyer. C'est l'aberration sphérique."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — lentille",
+   "titre": "Lentille convergente : aberrations (objet à l’infini hors de l’axe)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Lentille/aberrations_objet_infini_hors_axe.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Lentille/aberrations_objet_infini_hors_axe.txt",
+   "description": "Lentille convergente: aberrations\n\nEpaisseur de la lentille: 50mm; rayons de courbure des faces: 700mm pour chacune.\n\nElle est éclairée par une onde plane dont la direction est inclinée par rapport à l'axe optique. On n'est pas dans les conditions de Gauss, il n'y a pas stigmatisme."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — lentille",
+   "titre": "Lentille convergente : aberrations (objet à l’infini sur l’axe)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Lentille/aberrations_objet_infini_sur_axe.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Lentille/aberrations_objet_infini_sur_axe.txt",
+   "description": "Lentille convergente: aberrations\n\nEpaisseur de la lentille: 50mm; rayons de courbure des faces: 700mm pour chacune.\n\nElle est éclairée par une onde plane de direction parallèle à l'axe optique. Tous les rayons ne sont pas proches de l'axe, on n'est pas dans les conditions de Gauss, il n'y a pas stigmatisme."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — lentille",
+   "titre": "Lentille convergente : foyer image",
+   "fichier": "Aberrations_Stigmatisme_Approche/Lentille/foyer_image.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Lentille/foyer_image.txt",
+   "description": "Lentille convergente: foyer image\n\nEpaisseur de la lentille: 50mm; rayons de courbure des faces: 700mm pour chacune.\n\nElle est éclairée par une onde plane de direction parallèle à l'axe optique. Tous les rayons  sont proches de l'axe, on est dans les conditions de Gauss. les rayons transmis convergent au foyer image."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — lentille",
+   "titre": "Réduction de l’aberration sphérique",
+   "fichier": "Aberrations_Stigmatisme_Approche/Lentille/reduction_aberration_spherique.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Lentille/reduction_aberration_spherique.txt",
+   "description": "Réduction de l'aberration sphérique\n\nEn général, on réduit l'aberration en plaçant la lentille de telle façon que sa face la plus bombée soit placée du coté des rayons les moins inclinés."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir parabolique",
+   "titre": "Miroir parabolique : caustique",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/caustique_objet_infini.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/caustique_objet_infini.txt",
+   "description": "Miroir parabolique, visualisation de la caustique\n\nSource à l'infini; les rayons incidents ne sont pas faiblement inclinés sur l'axe optique, il n'y a pas stigmatisme approché.\nLes rayons réfléchis sont denses au voisinage d'une courbe appelée caustique."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir parabolique",
+   "titre": "Miroir parabolique : objet à distance finie",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/objet_distance_finie.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/objet_distance_finie.txt",
+   "description": "Miroir parabolique\n\nObjet ponctuel à distance finie, sur l'axe focal; les rayons incidents ne sont pas faiblement inclinés sur l'axe optique, il n'y a pas stigmatisme approché."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir parabolique",
+   "titre": "Miroir parabolique : stigmatisme approché (objet à distance finie)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/stigmatisme_approche_objet_distance_finie.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/stigmatisme_approche_objet_distance_finie.txt",
+   "description": "Miroir parabolique\n\nObjet ponctuel à distance finie, sur l'axe focal; les rayons incidents  sont  faiblement inclinés sur l'axe optique, il y a  stigmatisme approché."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir parabolique",
+   "titre": "Miroir parabolique : stigmatisme approché (objet à l’infini)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/stigmatisme_approche_objet_infini.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/stigmatisme_approche_objet_infini.txt",
+   "description": "Miroir parabolique, stigmatisme approché\n\nSource à l'infini proche de l'axe: les rayons réfléchis passent très prés d'un unique point situé dans le plan focal image; il y a stigmatisme approché."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir parabolique",
+   "titre": "Miroir parabolique : stigmatisme rigoureux (objet à l’infini sur l’axe)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/stigmatisme_rigoureux.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Parabolique/stigmatisme_rigoureux.txt",
+   "description": "Miroir parabolique: stigmatisme rigoureux\n\nLe miroir parabolique est rigoureusement stigmatique pour le couple (objet à l'infini sur l'axe, foyer)."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir sphérique",
+   "titre": "Miroir sphérique seul",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/base.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir sphérique",
+   "titre": "Miroir sphérique : caustique (objet à l’infini)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/caustique_objet_infini.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/caustique_objet_infini.txt",
+   "description": "Miroir sphèrique, existence d'une caustique\n\nLe miroir, concave, est éclairée par un faisceau parallèle à l'axe. Les rayons incidents ne sont pas tous proches de l'axe, on n'est donc pas dans les conditions de Gauss. Les rayons réfléchis sont denses au voisinage d'une courbe appelée caustique."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir sphérique",
+   "titre": "Miroir sphérique : caustique (objet à l’infini hors de l’axe)",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/caustique_objet_infini_hors_axe.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/caustique_objet_infini_hors_axe.txt",
+   "description": "Miroir sphèrique, existence d'une caustique\n\nLe miroir, concave, est éclairée par un faisceau parallèle, dont la direction n'est pas parallèle à l'axe du miroir. Les rayons incidents ne sont pas tous proches de l'axe ni afiblement inclinés sur l'axe, on n'est donc pas dans les conditions de Gauss. Les rayons réfléchis sont denses au voisinage d'une courbe appelée caustique."
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir sphérique",
+   "titre": "Miroir sphérique : foyer image",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/foyer_image.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/foyer_image.txt",
+   "description": "Miroir sphérique, foyer\n\nLe miroir, concave, est éclairée par un faisceau parallèle à l'axe, fortement collimaté. Les rayons incidents sont  proches de l'axe, on est  dans les conditions de Gauss. Les rayons réfléchis convergent au foyer image, qui est aussi le foyer objet pour un miroir sphérique"
+  },
+  {
+   "categorie": "Aberrations et stigmatisme approché — miroir sphérique",
+   "titre": "Miroir sphérique : stigmatisme approché",
+   "fichier": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/stigmatisme_approche.opt",
+   "fichierTexte": "Aberrations_Stigmatisme_Approche/Miroir_Spherique/stigmatisme_approche.txt",
+   "description": "Miroir sphérique, stigmatisme approché\n\nLe miroir, concave, est éclairé par un objet ponctuel. Les rayons incidents sont  proches de l'axe, et peu inclinés sur l'axe. On est  dans les conditions de Gauss. Les rayons réfléchis convergent en A', image de A."
+  },
+  {
+   "categorie": "Exemples classiques — lentilles minces",
+   "titre": "Lentille convergente : objet réel avant le foyer objet",
+   "fichier": "Exemples_Classiques/Lentilles/lentille_convergente_1.opt",
+   "fichierTexte": "Exemples_Classiques/Lentilles/lentille_convergente_1.txt",
+   "description": "Lentille mince convergente\n\nAvec objet réel placé avant le foyer objet: image réelle renversée placée après le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+  },
+  {
+   "categorie": "Exemples classiques — lentilles minces",
+   "titre": "Lentille convergente : objet réel entre le foyer objet et la lentille",
+   "fichier": "Exemples_Classiques/Lentilles/lentille_convergente_2.opt",
+   "fichierTexte": "Exemples_Classiques/Lentilles/lentille_convergente_2.txt",
+   "description": "Lentille mince convergente\n\nAvec objet réel placé après le foyer objet: image virtuelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+  },
+  {
+   "categorie": "Exemples classiques — lentilles minces",
+   "titre": "Lentille convergente : objet virtuel",
+   "fichier": "Exemples_Classiques/Lentilles/lentille_convergente_3.opt",
+   "fichierTexte": "Exemples_Classiques/Lentilles/lentille_convergente_3.txt",
+   "description": "Lentille mince convergente\n\nAvec objet virtuel: image réelle droite placée avant le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+  },
+  {
+   "categorie": "Exemples classiques — lentilles minces",
+   "titre": "Lentille divergente : objet réel",
+   "fichier": "Exemples_Classiques/Lentilles/lentille_divergente_1.opt",
+   "fichierTexte": "Exemples_Classiques/Lentilles/lentille_divergente_1.txt",
+   "description": "Lentille mince divergente\n\nAvec objet réel: image virtuelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+  },
+  {
+   "categorie": "Exemples classiques — lentilles minces",
+   "titre": "Lentille divergente : objet virtuel avant le foyer objet",
+   "fichier": "Exemples_Classiques/Lentilles/lentille_divergente_2.opt",
+   "fichierTexte": "Exemples_Classiques/Lentilles/lentille_divergente_2.txt",
+   "description": "Lentille mince divergente\n\nAvec objet virtuel placé avant le foyer objet: image réelle droite.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+  },
+  {
+   "categorie": "Exemples classiques — lentilles minces",
+   "titre": "Lentille divergente : objet virtuel après le foyer objet",
+   "fichier": "Exemples_Classiques/Lentilles/lentille_divergente_3.opt",
+   "fichierTexte": "Exemples_Classiques/Lentilles/lentille_divergente_3.txt",
+   "description": "Lentille mince divergente\n\nAvec objet virtuel placé après le foyer objet: image virtuelle renversée placée avant le foyer image.\n\nOn peut déplacer le point source: cliquer sur le bouton \"Déplacer\"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en \"rotation\"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton \"Fin dép.\"."
+  },
+  {
+   "categorie": "Exemples classiques — télescopes",
+   "titre": "Télescope de Cassegrain",
+   "fichier": "Exemples_Classiques/Telescopes/telescope_cassegrain.opt",
+   "fichierTexte": "Exemples_Classiques/Telescopes/telescope_cassegrain.txt",
+   "description": "Télescope de type Cassegrain\n\nLes dimensions selon l'axe sont celles du télescope du Pic de Midi (d'après pbe de concours TPE 1995):\n- miroir primaire sphérique de rayon de courbure 19,972m, et troué\n- miroir secondaire sphérique de rayon de courbure 4,465m\n- distance entre sommets: 8,184m\n\nles dimensions perpendiculaires à l'axe ne sont pas respectées.\n\nOn envoie une onde plane incidente de direction parallèle à l'axe."
+  },
+  {
+   "categorie": "Exemples classiques — télescopes",
+   "titre": "Télescope de Newton",
+   "fichier": "Exemples_Classiques/Telescopes/telescope_newton.opt",
+   "fichierTexte": "Exemples_Classiques/Telescopes/telescope_newton.txt",
+   "description": "Télescope de type Newton\n\nLe miroir primaire est sphérique, de focale 400mm\nLe miroir secondaire est plan est à 45° de l'axe du télescope.\nL'oculaire a son plan focal objet tangent au tube du télescope.\nLa distance entre le foyer du miroir primaire et le centre du miroir secondaire est égale au rayon du tube du télescope.\n\nOn envoie un faisceau de lumière parallèle faisant un angle petit avec l'axe du télescope.\n\nEn passant en zoom x10, on vérifie que les rayons émergents sont parallèles entre eux: l'oeil peut observer sans accomoder."
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Arc-en-ciel primaire",
+   "fichier": "Exemples_Classiques/arc_en_ciel_primaire.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Arc-en-ciel secondaire",
+   "fichier": "Exemples_Classiques/arc_en_ciel_secondaire.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Mesure d’une distance focale par autocollimation",
+   "fichier": "Exemples_Classiques/autocollimation.opt",
+   "fichierTexte": "Exemples_Classiques/autocollimation.txt",
+   "description": "Mesure de distance focale par autocollimation\n\nThéorie\nLe point source (centre du diaphragme) est placé au foyer objet de la lentille. Dans ces conditions, l'image finale (par, successivement: traversée de la lentille; réflexion sur le miroir; traversée de la lentille) est située dans le plan du diaphragme. Et ce, quelles que soient l'inclinaison et la position du miroir. Si la distance entre le point source et la lentille est différente de la focale, alors l'image finale n'est pas, en général, dans le plan du diaphragme (si elle l'est par hasard, elle ne l'est plus quand on translate le miroir).\n\nManipulations\nCliquer sur le bouton \"Déplacer\", puis observer ce qui se passe en translatant le miroir (curseur au dessus du centre du miroir, clic simple pour le sélectionner, déplacement pour effectuer la translation, clic simple final pour re poser le miroir, clic sur le bouton \"Fin dép\" pour sortir du mode déplacement). Puis en modifiant l'inclinaison du miroir (même méthode que pour la translation, mais en utilisant l'une ou l'autre des extrémités du miroir)."
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Cardioïde",
+   "fichier": "Exemples_Classiques/cardioide.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Miroir primaire parabolique troué (Cassegrain)",
+   "fichier": "Exemples_Classiques/cassegrain.opt",
+   "fichierTexte": "Exemples_Classiques/cassegrain.txt",
+   "description": "Miroir primaire parabolique troué.\nMiroir secondaire hyperbolique"
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Lunette astronomique : cercle oculaire",
+   "fichier": "Exemples_Classiques/cercle_oculaire.opt",
+   "fichierTexte": "Exemples_Classiques/cercle_oculaire.txt",
+   "description": "Lunette astronomique\n\nOn visualise ici le \"cercle oculaire\", zone perpendiculaire à l'axe optique et de plus petite dimension contenant tous les rayons qui sont passés par l'oculaire. C'est aussi l'image par l'oculaire de l'objectif. L'oeil doit être placé au niveau du cercle oculaire. Le diamètre du cercle oculaire (qui est égal à celui de l'objectif divisé par le grossissement) doit être inférieur à celui de la pupille (environ 6mm)."
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Coronographe",
+   "fichier": "Exemples_Classiques/coronographe.opt",
+   "fichierTexte": "Exemples_Classiques/coronographe.txt",
+   "description": "- Disque occulteur: dans le plan focal image de (L1); intercepte les rayons issus du disque solaire (en rouge); les rayons issus de la couronne solaire (en vert et bleu) ne sont pas interceptés.\n\n- Diaphragme de Lyot: son centre est conjugué de (O1) (centre optique de (L1)) par (Lc); il intercepte la lumière parasite qui serait diffractée par la monture de l'objectif (L1).\n\n- Si on note F'1 le foyer image de (L1), F' son image par (Lc) et F'' l'image de F' par (L2), (L2) est placée et sa focale choisie de telle façon que le grandissement soit de -1 pour F'->F\": on a donc O2F\"=2f'2 et O2F'=-2f'2.\n\n- Enfin, F\" est confondu avec le foyer objet de l'oculaire, qui donne une image finale à l'infini."
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Coronographe : lumière parasite",
+   "fichier": "Exemples_Classiques/coronographe_lumiere_parasite.opt",
+   "fichierTexte": "Exemples_Classiques/coronographe_lumiere_parasite.txt",
+   "description": "- Disque occulteur: dans le plan focal image de (L1); intercepte les rayons issus du disque solaire (en rouge); les rayons issus de la couronne solaire (en vert et bleu) ne sont pas interceptés.\n\n- Diaphragme de Lyot: son centre est conjugué de (O1) (centre optique de (L1)) par (Lc); il intercepte la lumière parasite qui serait diffractée par la monture de l'objectif (L1).\n\n- Si on note F'1 le foyer image de (L1), F' son image par (Lc) et F'' l'image de F' par (L2), (L2) est placée et sa focale choisie de telle façon que le grandissement soit de -1 pour F'->F\": on a donc O2F\"=2f'2 et O2F'=-2f'2.\n\n- Enfin, F\" est confondu avec le foyer objet de l'oculaire, qui donne une image finale à l'infini."
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Dispersion de la lumière par un prisme",
+   "fichier": "Exemples_Classiques/dispersion_prisme.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Fibre optique à saut d’indice",
+   "fichier": "Exemples_Classiques/filbre_saut_indice.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Exemples classiques",
+   "titre": "Lunette astronomique",
+   "fichier": "Exemples_Classiques/lunette_astronomique.opt",
+   "fichierTexte": "Exemples_Classiques/lunette_astronomique.txt",
+   "description": "Lunette astronomique\n\nObjectif: focale 300mm\nOculaire: focale 50mm\nGrossissement théorique 6."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : coin d’air équivalent",
+   "fichier": "Michelson/coin_air_equivalent.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : flux renvoyé vers l’entrée",
+   "fichier": "Michelson/michelson1.opt",
+   "fichierTexte": "Michelson/michelson1.txt",
+   "description": "Michelson\n\nCette simulation montre qu'on perd une partie du flux lumineux incident, renvoyé dans le volume d'entrée du Michelson. \nEn général, on ne fait pas figurer ces rayons \"perdus\"."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : rayons « perdus » cachés",
+   "fichier": "Michelson/michelson2.opt",
+   "fichierTexte": "Michelson/michelson2.txt",
+   "description": "Michelson\n\nLa même chose que dans l'exemple \"michelson1\", mais on cache les rayons qui repartent vers le volume d'entrée. Ceci se fait à l'aide de l'icone en forme de fantôme, dans la 2ème barre d'outil."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : réflexion sur M1 puis sur la séparatrice",
+   "fichier": "Michelson/michelson3.opt",
+   "fichierTexte": "Michelson/michelson3.txt",
+   "description": "Michelson\n\nVisualisation du premier type de rayon auquel on s'intéresse: réflexion sur (M1) puis sur la sépératrice. Les autres segments de rayons sont cachés à l'aide de l'icone en forme de fantôme."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : construction symétrique par rapport à la séparatrice",
+   "fichier": "Michelson/michelson4.opt",
+   "fichierTexte": "Michelson/michelson4.txt",
+   "description": "Michelson\n\nOn peut remplacer le cheminement du rayon qui subit réflexion sur (M1) puis sur la séparatrice par son symétrique par rapport à la séparatrice. On vérifie que les rayons sont bien confondus en sortie."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : source ponctuelle, rayons qui interfèrent",
+   "fichier": "Michelson/michelson5.opt",
+   "fichierTexte": "Michelson/michelson5.txt",
+   "description": "Michelson\n\nAvec une source ponctuelle, la construction des rayons venant interférer en un point du volume de sortie. On utilise la construction symétrique pour un des rayons, comme dans l'exemple \"michelson4\"."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : épaisseur de la séparatrice",
+   "fichier": "Michelson/michelson6.opt",
+   "fichierTexte": "Michelson/michelson6.txt",
+   "description": "Michelson\n\nOn tient compte maintenant de l'épaisseur de la séparatrice, la simulation met en évidence le problème des différences de marche supplémentaires introduites par la traversée de la lame."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : séparatrice épaisse et compensatrice",
+   "fichier": "Michelson/michelson7.opt",
+   "fichierTexte": "Michelson/michelson7.txt",
+   "description": "Michelson\n\nOn tient compte maintenant de l'épaisseur de la séparatrice, la simulation met en évidence le problème des différences de marche supplémentaires introduites par la traversée de la lame."
+  },
+  {
+   "categorie": "Interféromètre de Michelson",
+   "titre": "Michelson : séparatrice et compensatrice, incidence oblique",
+   "fichier": "Michelson/michelson8.opt",
+   "fichierTexte": "Michelson/michelson8.txt",
+   "description": "Michelson\n\nOn tient compte maintenant de l'épaisseur de la séparatrice, la simulation met en évidence le problème des différences de marche supplémentaires introduites par la traversée de la lame."
+  },
+  {
+   "categorie": "Réseaux",
+   "titre": "Réseau en réflexion",
+   "fichier": "Reseaux/reseau_en_reflexion.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Réseaux",
+   "titre": "Réseau en transmission",
+   "fichier": "Reseaux/reseau_en_transmission.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Stigmatisme rigoureux",
+   "titre": "Miroir elliptique : stigmatisme rigoureux entre les foyers",
+   "fichier": "Stigmatisme_Rigoureux/miroir_elliptique.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Stigmatisme rigoureux",
+   "titre": "Miroir hyperbolique : stigmatisme rigoureux",
+   "fichier": "Stigmatisme_Rigoureux/miroir_hyperbolique.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Stigmatisme rigoureux",
+   "titre": "Miroir hyperbolique (2)",
+   "fichier": "Stigmatisme_Rigoureux/miroir_hyperbolique2.opt",
+   "fichierTexte": null,
+   "description": ""
+  },
+  {
+   "categorie": "Stigmatisme rigoureux",
+   "titre": "Miroir parabolique : stigmatisme rigoureux",
+   "fichier": "Stigmatisme_Rigoureux/miroir_parabolique.opt",
+   "fichierTexte": "Stigmatisme_Rigoureux/miroir_parabolique.txt",
+   "description": "Miroir parabolique: stigmatisme rigoureux\n\nLe miroir parabolique est rigoureusement stigmatique pour le couple (objet à l'infini sur l'axe, foyer)."
+  },
+  {
+   "categorie": "Stigmatisme rigoureux",
+   "titre": "Miroir plan : stigmatisme rigoureux",
+   "fichier": "Stigmatisme_Rigoureux/miroir_plan.opt",
+   "fichierTexte": "Stigmatisme_Rigoureux/miroir_plan.txt",
+   "description": "Miroir plan\n\nIl est rigoureusement stigmatique pour tout couple de points symétriques par rapport à son plan"
+  },
+  {
+   "categorie": "Stigmatisme rigoureux",
+   "titre": "Points de Weierstrass du dioptre sphérique",
+   "fichier": "Stigmatisme_Rigoureux/weierstrass.opt",
+   "fichierTexte": "Stigmatisme_Rigoureux/weierstrass.txt",
+   "description": "Points de Weierstrass du dioptre sphérique\n\nLe dioptre sphérique est rigoureusement stigmatique pour un couple de points appelés points de Weierstrass. Le chemin optique (AA') est nul (avec la convention habituelle pour les portions virtuelles: chemin compté négativement avec l'indice du milieu où se propage le prolongement réel du rayon)."
+  }
+ ]
+}

@@ -1,0 +1,4 @@
+Miroir parabolique, visualisation de la caustique
+
+Source à l'infini; les rayons incidents ne sont pas faiblement inclinés sur l'axe optique, il n'y a pas stigmatisme approché.
+Les rayons réfléchis sont denses au voisinage d'une courbe appelée caustique.

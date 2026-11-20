@@ -1,0 +1,3 @@
+Michelson
+
+On peut remplacer le cheminement du rayon qui subit réflexion sur (M1) puis sur la séparatrice par son symétrique par rapport à la séparatrice. On vérifie que les rayons sont bien confondus en sortie.

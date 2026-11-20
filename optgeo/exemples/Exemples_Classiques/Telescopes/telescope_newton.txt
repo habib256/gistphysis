@@ -1,0 +1,10 @@
+Télescope de type Newton
+
+Le miroir primaire est sphérique, de focale 400mm
+Le miroir secondaire est plan est à 45° de l'axe du télescope.
+L'oculaire a son plan focal objet tangent au tube du télescope.
+La distance entre le foyer du miroir primaire et le centre du miroir secondaire est égale au rayon du tube du télescope.
+
+On envoie un faisceau de lumière parallèle faisant un angle petit avec l'axe du télescope.
+
+En passant en zoom x10, on vérifie que les rayons émergents sont parallèles entre eux: l'oeil peut observer sans accomoder.

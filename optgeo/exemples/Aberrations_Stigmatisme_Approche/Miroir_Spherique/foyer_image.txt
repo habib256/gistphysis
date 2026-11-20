@@ -1,0 +1,3 @@
+Miroir sphérique, foyer
+
+Le miroir, concave, est éclairée par un faisceau parallèle à l'axe, fortement collimaté. Les rayons incidents sont  proches de l'axe, on est  dans les conditions de Gauss. Les rayons réfléchis convergent au foyer image, qui est aussi le foyer objet pour un miroir sphérique

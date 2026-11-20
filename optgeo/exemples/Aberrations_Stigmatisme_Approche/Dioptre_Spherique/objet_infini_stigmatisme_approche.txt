@@ -1,0 +1,4 @@
+Dioptre sphérique: stigmatisme approché
+
+On reprend l'exemple du fichier "objet_infini_caustique", mais en diaphragmant fortement le faisceau:
+le dioptre sphérique est alors éclairé par un faisceau parallèle à l'axe  et ne comportant que des rayons proches de l'axe. On est alors dans les conditions de Gauss, il y a stigmatisme approché.

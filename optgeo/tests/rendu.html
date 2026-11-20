@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OptGeo — test du rendu</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 12px; background: #f4f4f4; color: #222; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  .grille { display: flex; flex-wrap: wrap; gap: 10px; }
+  figure { margin: 0; background: #fff; border: 1px solid #ccc; padding: 4px; }
+  figcaption { font-size: 12px; max-width: 400px; }
+  canvas { display: block; }
+  .seul canvas { border: 1px solid #999; }
+  .err { color: #b00; }
+</style>
+</head>
+<body>
+<h1>OptGeo (moteur JS) — rendu des exemples</h1>
+<p>Paramètres : <code>?ex=Chemin/fichier.opt&amp;l=1000&amp;h=640</code> pour un seul exemple ;
+sans <code>ex</code>, tous les exemples (par le serveur), ou une partie avec <code>de=0&amp;a=12</code>. En <code>file://</code>, choisir un fichier :
+<input type="file" id="fichier" accept=".opt"></p>
+<div id="sortie" class="grille"></div>
+
+<script src="../js/moteur/00-base.js"></script>
+<script src="../js/moteur/10-objets.js"></script>
+<script src="../js/moteur/20-scene.js"></script>
+<script src="../js/moteur/30-trace.js"></script>
+<script src="../js/moteur/40-opt.js"></script>
+<script src="../js/moteur/50-rendu.js"></script>
+<script src="../js/moteur/60-interaction.js"></script>
+<script>
+(function () {
+  'use strict';
+  var sortie = document.getElementById('sortie');
+  var params = new URLSearchParams(location.search);
+
+  function dessiner(texte, titre, largeur, hauteur) {
+    var fig = document.createElement('figure');
+    var cap = document.createElement('figcaption');
+    try {
+      var r = OptGeo.lireOpt(texte);
+      var c = document.createElement('canvas');
+      var dpr = window.devicePixelRatio || 1;
+      c.width = largeur * dpr; c.height = hauteur * dpr;
+      c.style.width = largeur + 'px'; c.style.height = hauteur + 'px';
+      var ctx = c.getContext('2d');
+      ctx.scale(dpr, dpr);
+      var vue = OptGeo.creerVue(r.scene.options, largeur, hauteur);
+      var t = r.scene.tracer();
+      var rep = +params.get('repete') || 1, t0 = performance.now();
+      for (var k = 0; k < rep; k++) OptGeo.dessinerScene(ctx, r.scene, vue, { trace: t });
+      var dr = (performance.now() - t0) / rep;
+      fig.appendChild(c);
+      cap.textContent = titre + ' — ' + t.segments.length + ' segments, tracé ' + t.dureeMs.toFixed(1) + ' ms, dessin ' + dr.toFixed(1) + ' ms' +
+        (r.avertissements.length ? ' — ' + r.avertissements.join(' ; ') : '');
+    } catch (e) {
+      cap.className = 'err'; cap.textContent = titre + ' : ' + e.message;
+    }
+    fig.appendChild(cap);
+    sortie.appendChild(fig);
+  }
+
+  document.getElementById('fichier').addEventListener('change', function (ev) {
+    var f = ev.target.files[0]; if (!f) return;
+    f.arrayBuffer().then(function (b) {
+      sortie.innerHTML = ''; sortie.className = 'seul';
+      dessiner(OptGeo.depuisOctets(new Uint8Array(b)), f.name, 1000, 640);
+    });
+  });
+
+  var ex = params.get('ex');
+  var l = +params.get('l') || (ex ? 1000 : 400), h = +params.get('h') || (ex ? 640 : 260);
+  if (location.protocol === 'file:') return;
+  if (ex) {
+    sortie.className = 'seul';
+    fetch('../exemples/' + ex).then(function (r) { return r.arrayBuffer(); })
+      .then(function (b) { dessiner(OptGeo.depuisOctets(new Uint8Array(b)), ex, l, h); document.title = 'pret'; });
+  } else {
+    fetch('../exemples/index.json').then(function (r) { return r.json(); }).then(function (idx) {
+      var de = +params.get('de') || 0, a = params.get('a') ? +params.get('a') : idx.exemples.length;
+      return idx.exemples.slice(de, a).reduce(function (p, e) {
+        return p.then(function () {
+          return fetch('../exemples/' + e.fichier).then(function (r) { return r.arrayBuffer(); })
+            .then(function (b) { dessiner(OptGeo.depuisOctets(new Uint8Array(b)), e.titre, l, h); });
+        });
+      }, Promise.resolve());
+    }).then(function () { document.title = 'pret'; });
+  }
+})();
+</script>
+</body>
+</html>

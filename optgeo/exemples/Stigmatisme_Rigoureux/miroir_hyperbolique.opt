@@ -1,0 +1,104 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+10
+ 0.0000000000000000E+0000  1.0200000000000000E+0003  0.0000000000000000E+0000  5.8100000000000000E+0002
+TRUE
+UNITE
+mm
+OPTIONS GRILLE
+FALSE
+FALSE
+ 5.0000000000000000E+0001 2.0000000000000000E+0001
+OPTIONS NORMALES
+FALSE
+FALSE
+ 5.0000000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+FALSE
+
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+0
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+0
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+0
+Nombre de sources ponctuelles:
+1
+Numero 1
+10  5.2000000000000000E+0002  3.2000000000000000E+0002  5.0750000000000000E+0002  3.8550000000000000E+0002  4.9850000000000000E+0002  2.1450000000000000E+0002 255 1 10
+
+(2)
+FALSE
+FALSE
+
+Nombre d'ondes planes:
+0
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+0
+Nombre de lames semi reflechissantes:
+0
+Nombre de polyhedres:
+0
+Nombre de prismes:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+0
+Nombre de miroirs coniques:
+1
+Numero 1
+ 5.2000000000000000E+0002  3.2000000000000000E+0002  1.5000000000000000E+0000  2.0000000000000000E+0002  3.1415926535897900E+0000  1.6501746413544700E+0000  4.6043772556846400E+0000
+0 16711680
+TRUE
+TRUE
+TRUE
+Nombre de textes:
+1
+Numero 1
+Miroir hyperbolique: rigoureusement stigmatique pour ses foyers
+ 5.4000000000000000E+0001  1.2000000000000000E+0002
+0 -2147483640
+Arial
+14
+no
+no
+fsunderline
+no
+fpDefault
+Nombre de lentilles epaisses:
+0
+Nombre d'angles:
+0
+Nombre de traits:
+0
+Nombre d'oeils:
+0
+Nombre de mesures de distances
+0
+Nombre de groupes:
+0
+couleur fond simulation
+16777215
+empennage
+position
+500
+taille
+5

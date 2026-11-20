@@ -1,0 +1,83 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+ 1
+ 0.00000000000000E+0000  1.02000000000000E+0003  0.00000000000000E+0000  6.09000000000000E+0002
+TRUE
+UNITE
+mm
+OPTIONS GRILLE
+FALSE
+FALSE
+ 5.00000000000000E+0001 3.00000000000000E+0001
+OPTIONS NORMALES
+TRUE
+FALSE
+ 5.00000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+TRUE
+(3,6,9)
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+0
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+0
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+1
+Numero 1
+ 7.30000000000000E+0001  5.23000000000000E+0002  2.45000000000000E+0002 -8.00000000000000E+0000 0 1 1
+
+
+Nombre de sources ponctuelles:
+0
+Nombre d'ondes planes:
+0
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+0
+Nombre de lames semi reflechissantes:
+0
+Nombre de polyhedres:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+1
+Numero 1
+ 4.15000000000000E+0002  3.69000000000000E+0002  1.65559656921606E+0002  1.32900000000000E+0000  1.34300000000000E+0000  1.33500000000000E+0000
+0 16776960
+2
+1
+Nombre de miroirs coniques:
+0
+Nombre de textes:
+1
+Numero 1
+Arc en ciel primaire; l'angle d'incidence de 59,6° correspond au minimum de déviation
+ 4.30000000000000E+0002  1.19000000000000E+0002
+0 -2147483640
+Arial Narrow
+12
+fsbold
+no
+no
+no
+fpDefault
+Nombre de lentilles epaisses:
+0
+Nombre d'angles:
+0

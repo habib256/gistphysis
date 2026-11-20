@@ -1,0 +1,3 @@
+Dioptre sphérique: mise en évidence de la caustique
+
+Le dioptre sphérique est éclairé par un faisceau parallèle à l'axe comportant des rayons éloignés de l'axe. On n'est pas dans les conditions de Gauss, il n'y a pas stigmatisme approché. Les rayons réfractés se concentrent près d'une courbe appelée caustique.

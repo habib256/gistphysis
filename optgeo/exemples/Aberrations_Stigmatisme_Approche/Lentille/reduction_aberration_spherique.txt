@@ -1,0 +1,3 @@
+Réduction de l'aberration sphérique
+
+En général, on réduit l'aberration en plaçant la lentille de telle façon que sa face la plus bombée soit placée du coté des rayons les moins inclinés.

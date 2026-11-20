@@ -1,0 +1,86 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+1
+ 0.00000000000000E+0000  1.02000000000000E+0003  0.00000000000000E+0000  6.09000000000000E+0002
+TRUE
+UNITE
+mm
+OPTIONS GRILLE
+TRUE
+FALSE
+ 5.00000000000000E+0001 5.00000000000000E+0001
+OPTIONS NORMALES
+TRUE
+FALSE
+ 5.00000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+FALSE
+
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+0
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+0
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+0
+Nombre de sources ponctuelles:
+0
+Nombre d'ondes planes:
+1
+Numero 1
+10  2.31675231243577E+0002  1.90771084337350E+0002  3.77389516957862E+0001  1.58277108433735E+0002  1.19115508037642E+0000  3.76408115925292E+0002 255 1 10
+
+
+FALSE
+
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+0
+Nombre de lames semi reflechissantes:
+0
+Nombre de polyhedres:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+0
+Nombre de miroirs coniques:
+1
+Numero 1
+ 5.00000000000000E+0002  3.50000000000000E+0002  1.00000000000000E+0000  2.00000000000000E+0002  0.00000000000000E+0000  5.10000000000000E+0000  7.50000000000000E+0000
+0 16711680
+TRUE
+TRUE
+TRUE
+Nombre de textes:
+1
+Numero 1
+Miroir parabolique, visualisation de la caustique
+ 1.82404933196300E+0002  6.28915662650602E+0001
+0 -2147483640
+Arial Black
+12
+no
+no
+fsunderline
+no
+fpDefault
+Nombre de lentilles epaisses:
+0
+Nombre d'angles:
+0

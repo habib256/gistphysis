@@ -1,0 +1,8 @@
+            Mesure de distance focale par autocollimation
+
+Théorie
+Le point source (centre du diaphragme) est placé au foyer objet de la lentille. Dans ces conditions, l'image finale (par, successivement: traversée de la lentille; réflexion sur le miroir; traversée de la lentille) est située dans le plan du diaphragme. Et ce, quelles que soient l'inclinaison et la position du miroir. Si la distance entre le point source et la lentille est différente de la focale, alors l'image finale n'est pas, en général, dans le plan du diaphragme (si elle l'est par hasard, elle ne l'est plus quand on translate le miroir).
+
+Manipulations
+Cliquer sur le bouton "Déplacer", puis observer ce qui se passe en translatant le miroir (curseur au dessus du centre du miroir, clic simple pour le sélectionner, déplacement pour effectuer la translation, clic simple final pour re poser le miroir, clic sur le bouton "Fin dép" pour sortir du mode déplacement). Puis en modifiant l'inclinaison du miroir (même méthode que pour la translation, mais en utilisant l'une ou l'autre des extrémités du miroir).
+

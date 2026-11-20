@@ -1,0 +1,82 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+1
+ 0.00000000000000E+0000  1.02000000000000E+0003  0.00000000000000E+0000  5.81000000000000E+0002
+TRUE
+UNITE
+mm
+OPTIONS GRILLE
+FALSE
+FALSE
+ 5.00000000000000E+0001 2.00000000000000E+0001
+OPTIONS NORMALES
+TRUE
+FALSE
+ 5.00000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+FALSE
+
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+1
+Numero 1
+ 5.60000000000000E+0002  1.00000000000000E+0002  5.60000000000000E+0002  5.00000000000000E+0002 1 0
+TRUE
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+0
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+0
+Nombre de sources ponctuelles:
+2
+Numero 1
+5  1.85000000000000E+0002  1.25000000000000E+0002  5.39000000000000E+0002  2.06000000000000E+0002  5.24000000000000E+0002  2.40000000000000E+0002 255 1 10
+
+(2)
+FALSE
+FALSE
+
+Numero 2
+5  3.40000000000000E+0002  5.18000000000000E+0002  4.89000000000000E+0002  3.59000000000000E+0002  5.33000000000000E+0002  4.30000000000000E+0002 16711680 1 10
+
+(2)
+FALSE
+FALSE
+
+Nombre d'ondes planes:
+0
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+0
+Nombre de lames semi reflechissantes:
+0
+Nombre de polyhedres:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+0
+Nombre de miroirs coniques:
+0
+Nombre de textes:
+0
+Nombre de lentilles epaisses:
+0
+Nombre d'angles:
+0
+Nombre de traits:
+0

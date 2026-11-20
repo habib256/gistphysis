@@ -1,0 +1,141 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+1
+ 0.00000000000000E+0000  1.02000000000000E+0003  0.00000000000000E+0000  6.09000000000000E+0002
+TRUE
+UNITE
+mm
+OPTIONS GRILLE
+TRUE
+FALSE
+ 5.00000000000000E+0001 5.00000000000000E+0001
+OPTIONS NORMALES
+FALSE
+FALSE
+ 5.00000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+TRUE
+(4,9)
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+2
+Numero 1
+ 2.50000000000000E+0002  4.50000000000000E+0002  2.40000000000000E+0002  1.99000000000000E+0002 1 0
+TRUE
+Numero 2
+ 6.04000000000000E+0002  5.00000000000000E+0002  3.50000000000000E+0002  5.00000000000000E+0002 1 0
+TRUE
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+0
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+1
+Numero 1
+ 4.58000000000000E+0002  1.89000000000000E+0002  3.00000000000000E+0000  7.40000000000000E+0001 255 1 10
+
+
+Nombre de sources ponctuelles:
+0
+Nombre d'ondes planes:
+0
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+0
+Nombre de lames semi reflechissantes:
+1
+Numero 1
+ 3.50000000000000E+0002  4.50000000000000E+0002  6.00000000000000E+0002  2.00000000000000E+0002 1 0
+Nombre de polyhedres:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+0
+Nombre de miroirs coniques:
+0
+Nombre de textes:
+6
+Numero 1
+S
+ 4.49000000000000E+0002  1.89000000000000E+0002
+0 -2147483640
+Arial Narrow
+12
+fsbold
+no
+no
+no
+fpDefault
+Numero 2
+Volume de sortie
+ 8.13000000000000E+0002  3.60000000000000E+0002
+0 -2147483640
+Arial Narrow
+14
+no
+no
+no
+no
+fpDefault
+Numero 3
+Volume d'entrée
+ 4.10000000000000E+0002  1.00000000000000E+0002
+0 -2147483640
+Arial Narrow
+14
+no
+no
+no
+no
+fpDefault
+Numero 4
+(M1)
+ 6.10000000000000E+0002  5.12000000000000E+0002
+0 -2147483640
+Arial Narrow
+14
+no
+no
+no
+no
+fpDefault
+Numero 5
+(M2)
+ 2.21000000000000E+0002  1.95000000000000E+0002
+0 -2147483640
+Arial Narrow
+14
+no
+no
+no
+no
+fpDefault
+Numero 6
+(SC)
+ 6.00000000000000E+0002  1.90000000000000E+0002
+0 -2147483640
+Arial Narrow
+14
+no
+no
+no
+no
+fpDefault
+Nombre de lentilles epaisses:
+0
+Nombre d'angles:
+0

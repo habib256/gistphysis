@@ -1,0 +1,10 @@
+Télescope de type Cassegrain
+
+Les dimensions selon l'axe sont celles du télescope du Pic de Midi (d'après pbe de concours TPE 1995):
+- miroir primaire sphérique de rayon de courbure 19,972m, et troué
+- miroir secondaire sphérique de rayon de courbure 4,465m
+- distance entre sommets: 8,184m
+
+les dimensions perpendiculaires à l'axe ne sont pas respectées.
+
+On envoie une onde plane incidente de direction parallèle à l'axe.

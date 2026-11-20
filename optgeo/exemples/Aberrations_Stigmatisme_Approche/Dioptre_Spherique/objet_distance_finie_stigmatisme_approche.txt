@@ -1,0 +1,4 @@
+Dioptre sphérique: stigmatisme approché
+
+Objet ponctuel sur l'axe.
+Le dioptre sphérique est  éclairé par un faisceau ne comportant que des rayons proches de l'axe et peu inclinés sur celuic-ci. On est alors dans les conditions de Gauss, il y a stigmatisme approché.

@@ -1,0 +1,3 @@
+Points de Weierstrass du dioptre sphérique
+
+Le dioptre sphérique est rigoureusement stigmatique pour un couple de points appelés points de Weierstrass. Le chemin optique (AA') est nul (avec la convention habituelle pour les portions virtuelles: chemin compté négativement avec l'indice du milieu où se propage le prolongement réel du rayon).

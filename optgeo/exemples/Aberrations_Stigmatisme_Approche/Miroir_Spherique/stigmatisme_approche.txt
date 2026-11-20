@@ -1,0 +1,3 @@
+Miroir sphérique, stigmatisme approché
+
+Le miroir, concave, est éclairé par un objet ponctuel. Les rayons incidents sont  proches de l'axe, et peu inclinés sur l'axe. On est  dans les conditions de Gauss. Les rayons réfléchis convergent en A', image de A.

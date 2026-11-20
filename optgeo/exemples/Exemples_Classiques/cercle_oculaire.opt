@@ -1,0 +1,120 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+6
+ 0.00000000000000E+0000  2.50000000000000E+0002 -7.00000000000000E+0001  7.00000000000000E+0001
+FALSE
+UNITE
+mm
+OPTIONS GRILLE
+TRUE
+FALSE
+ 1.00000000000000E+0001 1.00000000000000E+0001
+OPTIONS NORMALES
+TRUE
+FALSE
+ 5.00000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+FALSE
+
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+0
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+2
+Numero 1
+ 4.00000000000000E+0001 -5.00000000000000E+0001  4.00000000000000E+0001  5.00000000000000E+0001  1.00000000000000E+0002 1 16711680 16711935
+TRUE
+Numero 2
+ 1.50000000000000E+0002 -3.00000000000000E+0001  1.50000000000000E+0002  3.00000000000000E+0001  1.00000000000000E+0001 1 16711680 16711935
+TRUE
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+0
+Nombre de sources ponctuelles:
+0
+Nombre d'ondes planes:
+2
+Numero 1
+3  5.04145728643216E+0001  4.69047619047619E+0001  2.04145728643216E+0001  5.19047619047619E+0001  4.46876558721055E+0000 -4.37700817579046E+0001 255 1 10
+
+
+FALSE
+
+Numero 2
+3  5.01005025125628E+0001 -4.69047619047619E+0001  2.01005025125628E+0001 -5.19047619047619E+0001  4.28353642635672E+0000  4.29970346124748E+0001 255 1 10
+
+
+FALSE
+
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+0
+Nombre de lames semi reflechissantes:
+0
+Nombre de polyhedres:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+0
+Nombre de miroirs coniques:
+0
+Nombre de textes:
+2
+Numero 1
+Position du cercle oculaire
+ 1.57035175879397E+0002  5.31746031746032E+0001
+0 -2147483640
+Arial Narrow
+12
+no
+no
+no
+no
+fpDefault
+Numero 2
+On peut reculer l'oeil pour mieux voir le cercle oculaire
+ 1.19032663316582E+0002 -4.96825396825397E+0001
+0 -2147483640
+Arial Narrow
+8
+no
+no
+no
+no
+fpDefault
+Nombre de lentilles epaisses:
+0
+Nombre d'angles:
+0
+Nombre de traits:
+1
+Numero 1
+ 1.64258793969849E+0002  4.46031746031746E+0001  1.60804020100503E+0002  1.19047619047619E+0001
+1  8388608
+ttrait
+tffleche
+pssolid
+10  10
+Nombre d'oeils:
+1
+Numero 1
+ 2.08228643216080E+0002 -1.42857142857143E+0000  1.60804020100502E+0002 -4.76190476190467E-0001 1 32768
+Nombre de mesures de distances
+0
+Nombre de groupes:
+0

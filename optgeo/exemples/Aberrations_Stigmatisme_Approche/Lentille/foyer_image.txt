@@ -1,0 +1,5 @@
+Lentille convergente: foyer image
+
+Epaisseur de la lentille: 50mm; rayons de courbure des faces: 700mm pour chacune.
+
+Elle est éclairée par une onde plane de direction parallèle à l'axe optique. Tous les rayons  sont proches de l'axe, on est dans les conditions de Gauss. les rayons transmis convergent au foyer image.

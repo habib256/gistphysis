@@ -1,0 +1,7 @@
+- Disque occulteur: dans le plan focal image de (L1); intercepte les rayons issus du disque solaire (en rouge); les rayons issus de la couronne solaire (en vert et bleu) ne sont pas interceptés.
+
+- Diaphragme de Lyot: son centre est conjugué de (O1) (centre optique de (L1)) par (Lc); il intercepte la lumière parasite qui serait diffractée par la monture de l'objectif (L1).
+
+- Si on note F'1 le foyer image de (L1), F' son image par (Lc) et F'' l'image de F' par (L2), (L2) est placée et sa focale choisie de telle façon que le grandissement soit de -1 pour F'->F": on a donc O2F"=2f'2 et O2F'=-2f'2.
+
+- Enfin, F" est confondu avec le foyer objet de l'oculaire, qui donne une image finale à l'infini.

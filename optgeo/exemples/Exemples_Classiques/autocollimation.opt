@@ -1,0 +1,89 @@
+NE PAS MODIFIER CE FICHIER
+VERSION
+1
+ 0.00000000000000E+0000  1.02000000000000E+0003  0.00000000000000E+0000  6.09000000000000E+0002
+TRUE
+UNITE
+mm
+OPTIONS GRILLE
+FALSE
+FALSE
+ 5.00000000000000E+0001 5.00000000000000E+0001
+OPTIONS NORMALES
+TRUE
+FALSE
+ 5.00000000000000E-0002
+0
+1
+0
+OPTIONS SEGMENTS FANTOMES
+FALSE
+
+NOMBRE POINTS TRACE SURFACE ONDE
+20
+Nombre de miroirs plans:
+1
+Numero 1
+ 6.26500000000000E+0002  1.99500000000000E+0002  6.68943089430894E+0002  4.95761904761905E+0002 1 0
+TRUE
+Nombre de miroirs concaves paraxiaux:
+0
+Nombre de miroirs convexes paraxiaux:
+0
+Nombre de miroirs concaves reels:
+0
+Nombre de miroirs convexes reels:
+0
+Nombre de lentiles minces convergentes:
+1
+Numero 1
+ 3.50000000000000E+0002  6.00000000000000E+0002  3.50000000000000E+0002  1.00000000000000E+0002  2.00000000000000E+0002 1 16711680 16711935
+TRUE
+Nombre de lentiles minces divergentes:
+0
+Nombre de rayons:
+0
+Nombre de sources ponctuelles:
+1
+Numero 1
+5  1.50000000000000E+0002  3.50000000000000E+0002  3.00000000000000E+0002  3.00000000000000E+0002  3.00000000000000E+0002  4.00000000000000E+0002 255 1 10
+
+
+FALSE
+FALSE
+
+Nombre d'ondes planes:
+0
+Nombre d'ecrans:
+0
+Nombre de diaphragmes:
+1
+Numero 1
+ 1.50000000000000E+0002  3.50000000000000E+0002  1.57079632679490E+0000  2.43300945451374E+0001 1.50000000000000E+0002 1 0
+Nombre de lames semi reflechissantes:
+0
+Nombre de polyhedres:
+0
+Nombre de polycercles:
+0
+Nombre de spheres:
+0
+Nombre de miroirs coniques:
+0
+Nombre de textes:
+1
+Numero 1
+Autocollimation
+ 3.50000000000000E+0002  5.00000000000000E+0001
+0 -2147483640
+Arial Narrow
+14
+fsbold
+no
+fsunderline
+no
+fpDefault
+Nombre de lentilles epaisses:
+0
+Nombre d'angles:
+0

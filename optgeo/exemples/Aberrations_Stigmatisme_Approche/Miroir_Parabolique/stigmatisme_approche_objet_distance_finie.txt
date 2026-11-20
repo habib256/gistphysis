@@ -1,0 +1,4 @@
+Miroir parabolique
+
+Objet ponctuel à distance finie, sur l'axe focal; les rayons incidents  sont  faiblement inclinés sur l'axe optique, il y a  stigmatisme approché.
+

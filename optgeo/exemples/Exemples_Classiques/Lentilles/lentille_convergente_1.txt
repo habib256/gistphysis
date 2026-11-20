@@ -1,0 +1,5 @@
+Lentille mince convergente
+
+Avec objet réel placé avant le foyer objet: image réelle renversée placée après le foyer image.
+
+On peut déplacer le point source: cliquer sur le bouton "Déplacer"; placer le courseur au dessus du cercle bleu qui apparait autour du point source: le curseur se transforme en "rotation"; faire un clic simple, et déplacer la souris; pour refixer le point source, refaire un clic simple. Pour quitter le mode déplacement, cliquer sur le bouton "Fin dép.".

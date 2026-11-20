@@ -1,0 +1,3 @@
+Michelson
+
+Visualisation du premier type de rayon auquel on s'intéresse: réflexion sur (M1) puis sur la sépératrice. Les autres segments de rayons sont cachés à l'aide de l'icone en forme de fantôme.

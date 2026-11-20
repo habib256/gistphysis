@@ -1,0 +1,3 @@
+Michelson
+
+Avec une source ponctuelle, la construction des rayons venant interférer en un point du volume de sortie. On utilise la construction symétrique pour un des rayons, comme dans l'exemple "michelson4".

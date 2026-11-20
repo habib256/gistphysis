@@ -1,0 +1,3 @@
+Michelson
+
+On tient compte maintenant de l'épaisseur de la séparatrice, la simulation met en évidence le problème des différences de marche supplémentaires introduites par la traversée de la lame.

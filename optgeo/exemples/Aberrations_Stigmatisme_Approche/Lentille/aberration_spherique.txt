@@ -1,0 +1,3 @@
+Aberration de sphéricité
+
+La lentille convergente  de grande ouverture est éclairée par un objet ponctuel. Les rayons proches de l'axe convergent en sortie au foyer. Les rayons marginaux coupent l'axe en sortie en des points plus proches de la lentille que le foyer. C'est l'aberration sphérique.

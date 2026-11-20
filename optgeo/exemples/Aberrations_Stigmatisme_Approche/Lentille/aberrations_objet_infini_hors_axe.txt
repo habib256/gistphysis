@@ -1,0 +1,5 @@
+Lentille convergente: aberrations
+
+Epaisseur de la lentille: 50mm; rayons de courbure des faces: 700mm pour chacune.
+
+Elle est éclairée par une onde plane dont la direction est inclinée par rapport à l'axe optique. On n'est pas dans les conditions de Gauss, il n'y a pas stigmatisme. 

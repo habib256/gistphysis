@@ -1,0 +1,5 @@
+Lunette astronomique
+
+Objectif: focale 300mm
+Oculaire: focale 50mm
+Grossissement théorique 6.

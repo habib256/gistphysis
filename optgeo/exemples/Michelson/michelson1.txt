@@ -1,0 +1,4 @@
+Michelson
+
+Cette simulation montre qu'on perd une partie du flux lumineux incident, renvoyé dans le volume d'entrée du Michelson. 
+En général, on ne fait pas figurer ces rayons "perdus".

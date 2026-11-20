@@ -1,0 +1,3 @@
+Lunette astronomique
+
+On visualise ici le "cercle oculaire", zone perpendiculaire à l'axe optique et de plus petite dimension contenant tous les rayons qui sont passés par l'oculaire. C'est aussi l'image par l'oculaire de l'objectif. L'oeil doit être placé au niveau du cercle oculaire. Le diamètre du cercle oculaire (qui est égal à celui de l'objectif divisé par le grossissement) doit être inférieur à celui de la pupille (environ 6mm).
