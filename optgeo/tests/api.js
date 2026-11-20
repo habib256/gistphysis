@@ -302,6 +302,39 @@ function sceneComplete() {
     'un fichier garde ses indices et ses codes de réflexion');
 }
 
+/* ---------------- Texte : taille de police négative = hauteur en pixels (TFont de Delphi) ---------------- */
+{
+  const fs = require('fs'), path = require('path');
+  const { DOSSIER_EXEMPLES } = require('./charger-moteur.js');
+  // police CSS valide pour Canvas : [italic ][bold ]<entier positif>px "<famille>", Arial, sans-serif
+  const valide = (css) => /^(italic )?(bold )?[1-9]\d*px "[^"]*", Arial, sans-serif$/.test(css);
+  const P = (g) => OptGeo.policeTexte(Object.assign({ policename: 'Arial', policefsbold: false, policefsitalic: false }, g));
+  const cas = [[-8, 8], [-13, 13], [-1, 1], [10, 13], [12, 16], [6, 8], [72, 96]];
+  cas.forEach(([t, px]) => {
+    const p = P({ policesize: t });
+    controle(p.px === px && valide(p.css) && p.css.startsWith(px + 'px '), 'taille ' + t + ' → ' + px + ' px (' + (t < 0 ? 'hauteur en pixels' : 'points × 96/72') + ')', p.css);
+  });
+  const pg = P({ policesize: -8, policefsbold: true, policefsitalic: true, policename: 'Default' });
+  controle(pg.css === 'italic bold 8px "Default", Arial, sans-serif', 'taille −8, gras italique, police « Default »', pg.css);
+  // le dessinateur passe bien cette police au canevas (Dessin factice : on relève la police demandée)
+  const polices = [];
+  const dFactice = { vue: { versEcran: (x, y) => [x, y] }, texte: (x, y, s, police) => polices.push(police), mesure: () => ({ l: 10, h: 10 }), style() {}, ctx: { beginPath() {}, moveTo() {}, lineTo() {}, stroke() {} } };
+  OptGeo.dessinateurs.texte(dFactice, { x: 0, y: 0, texte: 'm = 1', policesize: -8, policename: 'Default', policefsunderline: true });
+  controle(polices[0] === '8px "Default", Arial, sans-serif', 'dessin d’un texte à −8 : police « 8px » demandée au canevas', polices[0]);
+  // les deux exemples Reseaux : textes à −8, valeur lue et réécrite telle quelle, police dessinable
+  ['reseau_en_reflexion.opt', 'reseau_en_transmission.opt'].forEach((f) => {
+    const txt = fs.readFileSync(path.join(DOSSIER_EXEMPLES, 'Reseaux', f), 'utf8');
+    const s = OptGeo.lireOpt(txt, { strict: true }).scene, textes = s.objetsDuType('texte');
+    const relus = OptGeo.lireOpt(OptGeo.ecrireOpt(s), { strict: true }).scene.objetsDuType('texte');
+    const tailles = textes.map((t) => t.policesize), negatifs = tailles.filter((t) => t === -8).length;
+    const css = textes.map((t) => OptGeo.policeTexte(s.geometrie(t.id)).css);
+    controle(negatifs >= 3 && relus.map((t) => t.policesize).join(',') === tailles.join(','),
+      f + ' : ' + negatifs + ' textes à −8 sur ' + textes.length + ', tailles gardées telles quelles à la lecture et à l’écriture', tailles.join(','));
+    controle(css.every(valide) && css.every((c, i) => c.startsWith((tailles[i] === -8 ? 8 : Math.round(tailles[i] * 96 / 72)) + 'px ')),
+      f + ' : police CSS valide pour chaque texte (« 8px » pour les tailles −8)', css.join(' | '));
+  });
+}
+
 /* ---------------- Polycercle à deux arcs : intersection de deux cercles robuste (unit222.pas:1124) ---------------- */
 {
   const M = OptGeo.math, deg = PI / 180;

@@ -350,10 +350,21 @@
     d.trait(g.ap1x, g.ap1y, g.ap2x, g.ap2y, g.epaisseur, g.couleur);
     d.trait(g.ap1x, g.ap1y, g.a1x, g.a1y, 1, g.couleur, 'psdot');
   };
+  /**
+   * Police CSS d'un texte (TFont de Delphi/Lazarus) : taille positive = points (× 96/72 px),
+   * taille négative = hauteur des caractères en pixels (|taille| px), comme les textes à −8 des
+   * exemples Reseaux. La valeur lue dans le fichier (policesize) n'est jamais modifiée.
+   * @returns {{px: number, css: string}}
+   */
+  function policeTexte(g) {
+    var t = Number(g.policesize);
+    var px = t < 0 ? Math.round(-t) : Math.round(t * 96 / 72);
+    return { px: px, css: (g.policefsitalic ? 'italic ' : '') + (g.policefsbold ? 'bold ' : '') + px + 'px "' + g.policename + '", Arial, sans-serif' };
+  }
+  OptGeo.policeTexte = policeTexte;
   D.texte = function (d, g) {
     var p = d.vue.versEcran(g.x, g.y);
-    var px = Math.round(g.policesize * 96 / 72);
-    var police = (g.policefsitalic ? 'italic ' : '') + (g.policefsbold ? 'bold ' : '') + px + 'px "' + g.policename + '", Arial, sans-serif';
+    var pol = policeTexte(g), px = pol.px, police = pol.css;
     d.texte(p[0], p[1], g.texte, police, g.policecolor);
     if (g.policefsunderline || g.policefsstrikeout) {
       var m = d.mesure(g.texte, police), c = d.ctx;

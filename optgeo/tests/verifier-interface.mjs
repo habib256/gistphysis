@@ -17,7 +17,8 @@
 // ne déborde, zone de dessin non nulle, captures) ; l'app dans un cadre ; export PNG et SVG ;
 // scénarios tirés des exemples (SPEC §15) ; un contrôle par défaut de la relecture indépendante du
 // 20/11/2026 (fonction corrections) ; un contrôle par réserve de la seconde relecture du 21/11/2026
-// (corrections2, correctionsTaille aux six tailles, repriseProtegee). Firefox : chargement, exemples,
+// (corrections2, correctionsTaille aux six tailles, repriseProtegee) ; lien direct #exemple=… qui
+// n'écrase pas le travail sauvegardé (exempleParAdresse, Chrome et Firefox). Firefox : chargement, exemples,
 // création à la souris, tailles d'écran, exports, les défauts 1, 3, 4, 5, 12 de la première relecture
 // au doigt, et les réserves G1, G3, G10 et M1 de la seconde (correctionsFirefox, repriseProtegee).
 
@@ -519,6 +520,9 @@ async function essaisChrome(srv) {
       const recharger = async () => { await ev(p, `(setTimeout(()=>location.reload(),5),true)`); await pause(1500); await ev(p, OUTILS); };
       await recharger(); await ev(p, DEMARRER);
       await repriseProtegee((e) => ev(p, e), recharger, 'Chrome');
+      let k = 0;
+      const allerA = async (hash) => { await ev(p, `(setTimeout(()=>{location.href=${JSON.stringify(srv.base + '/index.html?n=')}+${++k}+'#'+${JSON.stringify(hash)}},5),true)`); await pause(1500); await ev(p, OUTILS); };
+      await exempleParAdresse((e) => ev(p, e), allerA, 'Chrome');
       verifier('Chrome : aucune erreur JavaScript (reprise)', !p.journal.erreurs.length, p.journal.erreurs);
       await fermer(p);
     }
@@ -1029,13 +1033,16 @@ async function corrections2(o) {
  * Seconde relecture, G10 : quitter ou recharger la page pendant « Reprendre le travail en cours ? »
  * n'écrase pas la sauvegarde. Fonctionne avec Chrome (ev) et Firefox (evf) ; recharger() recharge la page.
  */
-async function repriseProtegee(evx, recharger, N) {
-  const SAUVE = `(()=>{const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('dispersion_prisme.opt'))||OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));
+// travail de l'élève sauvegardé : un exemple ouvert puis marqué modifié (renvoie son nombre d'éléments)
+const SAUVE = `(()=>{const e=OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('dispersion_prisme.opt'))||OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('lentille_convergente_1.opt'));
     OGW.app.ouvrirTexteOpt(e.opt,e.fichier.split('/').pop(),'');while(document.querySelector('.dialogue'))OGW.fermerDernierDialogue();OGW.app.fermerPanneau();OGW.app.modifie=true;OGW.app.sauvegarderLocal();
     return JSON.parse(localStorage.getItem('optgeo-web:travail')).scene.objets.length})()`;
-  const stock = `(()=>{const s=JSON.parse(localStorage.getItem('optgeo-web:travail')||'null');return s?{nom:s.nom,n:s.scene.objets.length}:null})()`;
-  const question = `__attendre(()=>document.querySelector('.dialogue h2')&&document.querySelector('.dialogue h2').textContent==='Reprendre le travail en cours ?')`;
-  const quitter = `(()=>{window.dispatchEvent(new Event('beforeunload'));Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'));delete document.hidden;return true})()`;
+const STOCK = `(()=>{const s=JSON.parse(localStorage.getItem('optgeo-web:travail')||'null');return s?{nom:s.nom,n:s.scene.objets.length}:null})()`;
+const QUESTION_REPRISE = `__attendre(()=>document.querySelector('.dialogue h2')&&document.querySelector('.dialogue h2').textContent==='Reprendre le travail en cours ?')`;
+const QUITTER = `(()=>{window.dispatchEvent(new Event('beforeunload'));Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'));delete document.hidden;return true})()`;
+
+async function repriseProtegee(evx, recharger, N) {
+  const stock = STOCK, question = QUESTION_REPRISE, quitter = QUITTER;
   const n0 = await evx(SAUVE), s0 = await evx(stock);
   await recharger();
   const q1 = await evx(question);
@@ -1055,6 +1062,60 @@ async function repriseProtegee(evx, recharger, N) {
   const s3 = await evx(stock);
   verifier(N + ' : G10 — page quittée ou cachée pendant « Reprendre le travail en cours ? » : sauvegarde intacte, reprise proposée de nouveau ; « Nouvelle simulation » puis fermeture sans choix : intacte ; un élément ajouté : la sauvegarde suit',
     n0 > 0 && q1 && q2 && s1 && s1.n === n0 && s1.nom === s0.nom && s2 && s2.n === n0 && s3 && s3.n === 1 && s3.nom === null, {n0, s0, s1, s2, s3, q1: !!q1, q2: !!q2});
+}
+
+/**
+ * Lien direct vers un exemple (#exemple=…) alors qu'un travail est sauvegardé : l'exemple s'ouvre, la
+ * sauvegarde n'est pas écrasée tant que l'élève ne modifie rien, la boîte « Reprendre le travail en
+ * cours ? » propose de revenir au travail. allerA(hash) charge index.html?n=…#hash (nouvelle page).
+ */
+async function exempleParAdresse(evx, allerA, N) {
+  const EX = 'lentille_convergente_1.opt';
+  const scene = `({nom:OGW.app.nomFichier,n:OGW.app.scene.objets.length})`;
+  const boutons = `[...document.querySelectorAll('.dialogue .pied button')].map(b=>b.textContent.trim())`;
+  const clic = (re) => evx(`(async()=>{const b=[...document.querySelectorAll('.dialogue .pied button')].find(b=>${re}.test(b.textContent));if(!b)return false;b.click();await __image();return true})()`);
+  const attendre = `new Promise(r=>setTimeout(()=>r(true),700))`;
+  const ajouter = `(()=>{const o=OGW.app.scene.options,r=OGW.app.scene.ajouter('ecran',Object.assign({},OptGeo.types.ecran.defauts,{a1x:o.xxmin+10,a1y:o.yymin+10,a2x:o.xxmin+10,a2y:o.yymax-10}));OGW.app.memoriser();return r.ok})()`;
+  const nEx = await evx(`OptGeo.lireOpt(OPTGEO_EXEMPLES.find(x=>x.fichier.endsWith('${EX}')).opt).scene.objets.length`);
+  const n0 = await evx(SAUVE), s0 = await evx(STOCK);
+  // 1. lien vers l'exemple : exemple affiché, question posée, sauvegarde intacte (même page quittée)
+  await allerA('exemple=' + EX);
+  const q1 = !!(await evx(QUESTION_REPRISE)), a1 = await evx(scene), b1 = await evx(boutons);
+  await evx(QUITTER);
+  const s1 = await evx(STOCK);
+  // 2. « Garder l'exemple », rien modifié : sauvegarde toujours intacte (attente de la sauvegarde différée, page quittée)
+  const g2 = await clic(/Garder/);
+  await evx(`(OGW.app.fermerPanneau(),OGW.app.dessinateur.toutVoir(),true)`); await evx(attendre); await evx(QUITTER);
+  const a2 = await evx(scene), s2 = await evx(STOCK);
+  verifier(N + ' : #exemple= avec un travail sauvegardé — l’exemple s’ouvre (' + a1.n + ' éléments), « Reprendre le travail en cours ? » proposé [' + b1.join(' / ') + '], sauvegarde intacte avant et après « Garder l’exemple » (page quittée)',
+    n0 > 0 && n0 !== nEx && q1 && a1.nom === EX && a1.n === nEx && b1.join('|') === 'Garder l’exemple|Reprendre' && s1 && s1.n === n0 && s1.nom === s0.nom &&
+    g2 && a2.nom === EX && s2 && s2.n === n0 && s2.nom === s0.nom, {n0, nEx, s0, q1, a1, b1, s1, g2, a2, s2});
+  // 3. lien rouvert : la question revient ; « Reprendre » rend le travail de l'élève
+  await allerA('exemple=' + EX);
+  const q3 = !!(await evx(QUESTION_REPRISE));
+  const r3 = await clic(/^\s*Reprendre\s*$/);
+  const a3 = await evx(scene); await evx(QUITTER); const s3 = await evx(STOCK);
+  verifier(N + ' : #exemple= rouvert : question de nouveau posée, « Reprendre » rend le travail sauvegardé (' + a3.n + ' éléments, ' + a3.nom + ')',
+    q3 && r3 && a3.n === n0 && a3.nom === s0.nom && s3 && s3.n === n0 && s3.nom === s0.nom, {q3, r3, a3, s3});
+  // 4. « Garder l'exemple » puis une modification : la sauvegarde suit l'exemple modifié
+  await allerA('exemple=' + EX);
+  const q4 = !!(await evx(QUESTION_REPRISE));
+  await clic(/Garder/); await evx(`(OGW.app.fermerPanneau(),true)`);
+  const m4 = await evx(ajouter); await evx(attendre);
+  const s4 = await evx(STOCK);
+  verifier(N + ' : #exemple=, « Garder l’exemple » puis un élément ajouté : la sauvegarde suit l’exemple modifié',
+    q4 && m4 && s4 && s4.nom === EX && s4.n === nEx + 1, {q4, m4, s4});
+  // 5. sans travail sauvegardé : l'exemple s'ouvre sans question et devient la sauvegarde ; lien rouvert (exemple intact) : pas de question
+  // (repriseEnAttente : la page quittée n'écrit plus rien, sinon beforeunload remettrait la sauvegarde effacée)
+  await evx(`(OGW.app.repriseEnAttente=true,localStorage.clear(),true)`);
+  await allerA('exemple=' + EX);
+  await evx(`__image()`);
+  const d5 = await evx(`!!document.querySelector('.dialogue')`), a5 = await evx(scene), s5 = await evx(STOCK);
+  await allerA('exemple=' + EX);
+  await evx(`__image()`);
+  const d6 = await evx(`!!document.querySelector('.dialogue')`), a6 = await evx(scene), s6 = await evx(STOCK);
+  verifier(N + ' : #exemple= sans travail sauvegardé, puis page rouverte avec l’exemple intact : exemple ouvert directement, sans question, et sauvegardé',
+    !d5 && a5.nom === EX && a5.n === nEx && s5 && s5.nom === EX && s5.n === nEx && !d6 && a6.n === nEx && s6 && s6.n === nEx, {d5, a5, s5, d6, a6, s6});
 }
 
 /** Seconde relecture : essais qui dépendent de la taille de l'écran (G2 barre de sélection, M2 bulle, M8 petit objet, M9 panneau en portrait). */
@@ -1252,6 +1313,9 @@ async function essaisFirefox(srv) {
     const recharger = async () => { await aller(); await evf(OUTILS); };
     await recharger(); await evf(DEMARRER);
     await repriseProtegee(evf, recharger, N);
+    let k = 0;
+    const allerA = async (hash) => { await f.send('browsingContext.navigate', {context, url: srv.base + '/index.html?n=' + (++k) + '#' + hash, wait: 'complete'}); await pause(500); await evf(OUTILS); };
+    await exempleParAdresse(evf, allerA, N);
     const erreurs = f.evenements.filter(e => e.method === 'log.entryAdded' && e.params.level === 'error').map(e => e.params.text);
     verifier(N + ' : aucune erreur JavaScript', erreurs.length === 0, erreurs);
   } finally {

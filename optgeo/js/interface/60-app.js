@@ -189,8 +189,10 @@
     app.nomFichier = nom; app.modifie = false;
     app.definirImageFond(null, true);
     app.remplacerScene(r.scene);
-    app.repriseEnAttente = false;
-    app.sauvegarderLocal();
+    // extra.proteger : exemple demandé par l'adresse alors qu'un travail est sauvegardé ; la sauvegarde
+    // n'est remplacée qu'à la première modification (marquerModifie) ou par un choix explicite
+    if (extra && extra.proteger) app.repriseEnAttente = true;
+    else { app.repriseEnAttente = false; app.sauvegarderLocal(); }
     var av = (r.avertissements || []).concat(r.nonPrisEnCharge && r.nonPrisEnCharge.length ? ['Non pris en charge : ' + r.nonPrisEnCharge.join(', ')] : []);
     if (av.length) app.signaler('Fichier ouvert avec ' + av.length + ' avertissement(s) : ' + av.slice(0, 3).join(' ; '), 'erreur');
     else app.signaler((extra && extra.exemple ? 'Exemple ouvert : ' : 'Fichier ouvert : ') + nom);
@@ -792,8 +794,8 @@
       var d;
       if (o.type === 'texte') {
         var g = s.geometrie(o.id); if (!g) return;
-        var px = g.policesize < 0 ? -g.policesize : Math.round(g.policesize * 96 / 72), e = vue.versEcran(g.x, g.y);
-        mesureTexte.font = px + 'px sans-serif';
+        var pol = OptGeo.policeTexte(g), px = pol.px, e = vue.versEcran(g.x, g.y);
+        mesureTexte.font = pol.css;
         var w = mesureTexte.measureText(g.texte || ' ').width, h = px * 1.2;
         var dx = Math.max(e[0] - p.x, 0, p.x - (e[0] + w)), dy = Math.max(e[1] - p.y, 0, p.y - (e[1] + h));
         d = Math.hypot(dx, dy);
@@ -1479,20 +1481,39 @@
     if (sauve && sauve.fond) { delete sauve.fond; OGW.stockage.ecrire('travail', sauve); }
     OGW.stockage.effacer('fond');
     app.nouvelleSimulation(OGW.espaceParDefaut(app), true);     // sans écraser la sauvegarde avant la réponse
+    var aReprendre = !!(sauve && sauve.scene && ((sauve.scene.objets && sauve.scene.objets.length) || sauve.scene.commentaire));
     if (exemple) {
       var f = decodeURIComponent(exemple[1]), e = (window.OPTGEO_EXEMPLES || []).filter(function (x) { return x.fichier === f || x.fichier.split('/').pop() === f; })[0];
-      if (e) { app.ouvrirTexteOpt(e.opt, e.fichier.split('/').pop(), e.description, { exemple: e.fichier }); return; }
+      // Lien direct vers un exemple : l'exemple s'ouvre, mais un travail sauvegardé n'est pas écrasé
+      // tant que l'élève ne modifie rien, et la boîte « Reprendre le travail en cours ? » le propose
+      // (sauf si la sauvegarde n'est que ce même exemple, intact : page rechargée).
+      if (e && app.ouvrirTexteOpt(e.opt, e.fichier.split('/').pop(), e.description, { exemple: e.fichier, proteger: aReprendre }) !== false) {
+        if (aReprendre && JSON.stringify(app.scene.versJSON()) !== JSON.stringify(sauve.scene)) proposerReprise(sauve, e.fichier.split('/').pop());
+        else { app.repriseEnAttente = false; app.sauvegarderLocal(); }
+        return;
+      }
     }
-    if (sauve && sauve.scene && ((sauve.scene.objets && sauve.scene.objets.length) || sauve.scene.commentaire)) {
-      var date = new Date(sauve.date);
-      app.repriseEnAttente = true;        // rien n'est écrit dans la sauvegarde avant la réponse de l'élève
-      OGW.Dialogue({ titre: 'Reprendre le travail en cours ?', corps: el('div', {}, [
-        el('p', { texte: (sauve.nom || 'Simulation sans nom') + ' : ' + sauve.scene.objets.length + ' élément(s), enregistrée automatiquement sur cet appareil le ' +
-          date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '.' })]),
+    if (aReprendre) proposerReprise(sauve, null);
+    else OGW.dialogueNouvelle(app, true);
+  }
+  /**
+   * Boîte « Reprendre le travail en cours ? ». Tant que l'élève n'a pas répondu (ou s'il a choisi
+   * l'autre bouton sans rien modifier), rien n'est écrit dans la sauvegarde (repriseEnAttente).
+   * @param {string|null} exempleOuvert nom de l'exemple ouvert par l'adresse (#exemple=…), ou null
+   */
+  function proposerReprise(sauve, exempleOuvert) {
+    var date = new Date(sauve.date);
+    app.repriseEnAttente = true;        // rien n'est écrit dans la sauvegarde avant la réponse de l'élève
+    var corps = [el('p', { texte: (sauve.nom || 'Simulation sans nom') + ' : ' + sauve.scene.objets.length + ' élément(s), enregistrée automatiquement sur cet appareil le ' +
+      date.toLocaleDateString('fr-FR') + ' à ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '.' })];
+    if (exempleOuvert) corps.push(el('p', { texte: 'Le lien a ouvert l’exemple «\u00a0' + exempleOuvert + '\u00a0». Si vous le gardez, votre travail reste sauvegardé tant que vous ne modifiez pas l’exemple.' }));
+    OGW.Dialogue({ titre: 'Reprendre le travail en cours ?', corps: el('div', {}, corps),
       boutons: [
         // « Nouvelle simulation » (ou Échap) : la sauvegarde reste protégée jusqu'à ce que l'élève
-        // crée vraiment une nouvelle simulation ou ouvre un fichier (la boîte suivante peut être fermée)
-        { texte: 'Nouvelle simulation', annuler: true, action: function () { setTimeout(function () { OGW.dialogueNouvelle(app, true); }, 0); } },
+        // crée vraiment une nouvelle simulation ou ouvre un fichier (la boîte suivante peut être fermée).
+        // « Garder l'exemple » (ou Échap) : protégée jusqu'à la première modification de l'exemple.
+        exempleOuvert ? { texte: 'Garder l’exemple', annuler: true }
+          : { texte: 'Nouvelle simulation', annuler: true, action: function () { setTimeout(function () { OGW.dialogueNouvelle(app, true); }, 0); } },
         { texte: 'Reprendre', principal: true, action: function () {
           app.repriseEnAttente = false;
           try {
@@ -1503,7 +1524,6 @@
             app.majInterface();
           } catch (x) { OGW.message('Sauvegarde illisible : ' + x.message); }
         } }] });
-    } else OGW.dialogueNouvelle(app, true);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', demarrer); else demarrer();
 })();

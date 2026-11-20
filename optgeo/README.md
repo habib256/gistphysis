@@ -6,7 +6,7 @@ L’application fonctionne sur tablette, téléphone et ordinateur, **sans Inter
 
 ## Lancer
 
-Ouvrir `index.html`, en `file://` comme par un serveur web. Les exemples sont embarqués dans `js/interface/exemples-embarques.js` (pas de requête). `index.html#exemple=autocollimation.opt` ouvre directement un exemple.
+Ouvrir `index.html`, en `file://` comme par un serveur web. Les exemples sont embarqués dans `js/interface/exemples-embarques.js` (pas de requête). `index.html#exemple=autocollimation.opt` ouvre directement un exemple ; si un travail est sauvegardé sur l’appareil, il n’est pas écrasé tant que l’exemple n’est pas modifié, et la boîte « Reprendre le travail en cours ? » propose d’y revenir (« Garder l’exemple » / « Reprendre »).
 
 Dans le site, l’app est faite pour un cadre adaptatif (`"cadre": "ecran"`) : elle remplit exactement la fenêtre qu’on lui donne. Le bouton « Plein écran » n’apparaît que hors d’un cadre (dans le site, la page qui l’entoure le fournit).
 
