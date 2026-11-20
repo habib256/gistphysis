@@ -1,0 +1,141 @@
+/* Les changements d'état de l'eau — mise en page
+   L'app remplit exactement la fenêtre (ou le cadre du site), à toute taille et dans les deux
+   orientations : en paysage, les commandes sont dans une colonne à droite ; en portrait, sous la scène.
+   Cibles tactiles d'au moins 44 px ; rien ne dépend du survol. */
+
+:root {
+  --fond: #10151c;
+  --panneau: #161d26;
+  --bouton: #1f2935;
+  --bord: rgba(255, 255, 255, .38);
+  --accent: #ffd166;
+  --texte: #f2f5f8;
+  --doux: #c9d3dd;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: var(--fond); color: var(--texte);
+  font: 15px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+#app { display: flex; flex-direction: column; height: 100%; width: 100%; }
+
+/* En-tête : les trois parties et le protocole */
+#entete { display: flex; gap: 6px; padding: 6px; flex: 0 0 auto; background: var(--panneau); }
+#parties { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; }
+#parties button { flex: 1 1 0; min-width: 0; }
+#b-protocole { flex: 0 0 auto; }
+
+button {
+  min-height: 44px; min-width: 44px; margin: 0; padding: 4px 6px;
+  border-radius: 9px; border: 1px solid var(--bord); background: var(--bouton); color: var(--texte);
+  font: inherit; font-weight: 600; line-height: 1.15; cursor: pointer; touch-action: manipulation;
+  overflow-wrap: normal; hyphens: manual;
+}
+button[aria-pressed="true"], button[aria-expanded="true"] { background: var(--accent); color: #111; border-color: var(--accent); }
+button.accent { border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+button.large { width: 100%; margin-top: 6px; }
+
+/* Zone principale */
+#principal { flex: 1 1 auto; min-height: 0; display: flex; }
+#vue { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; }
+#zone-scene { position: relative; flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden; background: #0b0f14; }
+#scene {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block;
+  touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+}
+
+.etiquette-scene {
+  position: absolute; margin: 0; padding: 3px 8px; border-radius: 8px;
+  background: rgba(10, 14, 20, .8); color: var(--texte); font-size: 13px; line-height: 1.25;
+  pointer-events: none;
+}
+#masses { left: 6px; top: 6px; max-width: calc(100% - 12px); }
+#masses .ligne { display: block; font-weight: 400; color: var(--doux); }
+#masses .total { font-weight: 700; }
+#masses .petit { font-size: 12px; }
+#mention-vapeur { right: 6px; top: 6px; max-width: 46%; border: 1px solid #c79bff; }
+#en-pause { left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 16px; font-weight: 700; }
+
+/* Expérience de fusion : la courbe à côté du bécher */
+#experience { display: none; }
+#app[data-partie="fusion"] #zone-scene { flex: 0.8 1 0; }
+#app[data-partie="fusion"] #experience {
+  display: flex; flex-direction: column; flex: 1.2 1 0; min-width: 0; min-height: 0; padding: 4px 6px; background: #0e1319;
+}
+#chrono { margin: 0 0 2px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#courbe { flex: 1 1 auto; min-height: 0; width: 100%; display: block; }
+
+/* Panneau des commandes */
+#panneau { flex: 0 0 auto; width: 244px; overflow-y: auto; padding: 6px; background: var(--panneau); -webkit-overflow-scrolling: touch; }
+#panneau h2 { margin: 2px 0 6px; font-size: 15px; }
+.grille-boutons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.aide { margin: 0 0 4px; font-size: 13px; color: var(--doux); min-height: 2.5em; }
+.reglage { display: block; margin: 8px 0 4px; font-size: 14px; }
+.reglage output { font-weight: 700; font-variant-numeric: tabular-nums; }
+.reglage input[type="range"] { display: block; width: 100%; height: 44px; margin: 0; accent-color: var(--accent); }
+.reglage select { display: block; width: 100%; min-height: 44px; margin-top: 4px; font: inherit; border-radius: 9px;
+  background: var(--bouton); color: var(--texte); border: 1px solid var(--bord); padding: 0 8px; }
+#communs { margin-top: 8px; }
+#lectures { font-size: 14px; font-variant-numeric: tabular-nums; }
+#lectures p { margin: 2px 0; }
+
+#tableau-zone { margin-top: 8px; max-height: 34vh; overflow-y: auto; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; }
+#tableau { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+#tableau caption { text-align: left; padding: 4px 6px; font-weight: 700; }
+#tableau th, #tableau td { padding: 3px 6px; text-align: right; border-top: 1px solid rgba(255,255,255,.12); }
+#tableau thead th { position: sticky; top: 0; background: var(--panneau); }
+
+/* Une partie à la fois */
+.pour { display: none; }
+#app[data-partie="bac-a-sable"] .pour[data-pour="bac-a-sable"],
+#app[data-partie="cycle"] .pour[data-pour="cycle"],
+#app[data-partie="fusion"] .pour[data-pour="fusion"] { display: block; }
+
+/* Fenêtres : protocole, confirmation */
+#protocole, #confirmation {
+  position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+  padding: 8px; background: rgba(0, 0, 0, .62);
+}
+#protocole[hidden], #confirmation[hidden] { display: none; }
+.boite {
+  width: 100%; max-width: 660px; max-height: 100%; overflow-y: auto; padding: 10px 16px 14px;
+  background: #18212b; border: 1px solid rgba(255,255,255,.3); border-radius: 12px;
+}
+.boite h2 { margin: 2px 0 8px; font-size: 18px; }
+.boite h3 { margin: 10px 0 4px; font-size: 15px; }
+.boite ol, .boite ul { margin: 0 0 6px; padding-left: 22px; }
+.boite li { margin-bottom: 5px; }
+.boite p { margin: 4px 0 8px; }
+#confirmation .boite { max-width: 420px; }
+
+[hidden] { display: none !important; }
+
+/* Portrait : la scène en haut, les commandes dessous */
+@media (max-aspect-ratio: 1/1) {
+  #principal { flex-direction: column; }
+  #panneau { width: auto; max-height: 44%; flex: 0 1 auto; }
+  .grille-boutons { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #app[data-partie="fusion"] #panneau { max-height: 40%; }
+  #app[data-partie="fusion"] #zone-scene, #app[data-partie="fusion"] #experience { flex: 1 1 0; }
+  .etiquette-scene { font-size: 12px; }
+  #tableau-zone { max-height: 150px; }
+  button { font-size: 14px; }
+}
+/* Très petites hauteurs (téléphone couché) */
+@media (max-height: 420px) {
+  #entete { padding: 4px 6px; }
+  button { font-size: 14px; }
+  .etiquette-scene { font-size: 12px; }
+}
+@media (min-width: 1500px) and (min-height: 900px) {
+  html, body { font-size: 16px; }
+  #panneau { width: 280px; }
+}

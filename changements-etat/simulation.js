@@ -1,0 +1,1028 @@
+// Les changements d'état de l'eau — moteur de simulation (sans affichage)
+// Version 1.0 — 20/11/2026
+// VERHILLE Arnaud
+// Copyleft GPL2
+//
+// La scène est une grille de cases. Chaque case contient UNE sorte de chose :
+//   - de l'air (case « gaz »), qui porte une quantité de vapeur d'eau (invisible), de minuscules
+//     gouttelettes d'eau liquide (visibles : nuage, brume, buée), un dépôt de givre en formation
+//     et de la pluie qui tombe ;
+//   - une petite quantité d'eau liquide ou de glace (bloc, ou grain : neige, glace pilée) ;
+//   - une paroi de verre, du sol (qui peut retenir de l'eau), de la roche, une plaque chaude ou froide.
+// Aucune case ne représente une particule : les cases sont des « petites quantités ».
+//
+// Énergie : chaque case d'eau (glace ou liquide) a une enthalpie massique h (J/g), comptée à
+// partir de la glace à 0 °C :
+//   glace sous 0 °C        h = 2,1 × T                     (h < 0)
+//   à 0 °C, glace + liquide 0 ≤ h ≤ 334                     (réserve de fusion : T reste à 0 °C)
+//   liquide                h = 334 + 4,18 × T              (0 ≤ T ≤ 100)
+//   à 100 °C, ébullition   h > 752 : réserve de vaporisation, T reste à 100 °C ; quand la case a
+//                          reçu 2 257 J/g de plus, elle devient une bulle de vapeur.
+// Le palier de température n'est donc pas programmé : il vient de ces réserves d'énergie.
+// L'énergie passe d'une case à l'autre par conduction (et par brassage dans un liquide agité).
+//
+// Vapeur : la quantité de vapeur qu'une case d'air peut contenir (saturation) croît avec la
+// température (formule de Magnus, forme de Clapeyron), au-dessus de l'eau liquide ou de la glace.
+// Au-delà, la vapeur se condense : en gouttelettes dans l'air (condensation liquide), en givre au
+// contact d'une surface sous 0 °C (condensation solide), ou sur l'eau elle-même. En dessous,
+// l'eau liquide s'évapore à sa surface (évaporation, à toute température) et la glace se
+// sublime. Les énergies de changement d'état sont comptées (refroidissement par évaporation,
+// réchauffement de l'air par la condensation).
+//
+// Masse : chaque transformation retire exactement ce qu'elle ajoute ailleurs. La masse totale
+// (glace + eau liquide + gouttelettes + pluie + vapeur + eau du sol) ne change pas, aux
+// arrondis du calcul près (vérifié par tests/verifier-physique.mjs).
+//
+// Pas à l'échelle : une case d'air saturée à 100 °C contient autant d'eau qu'une case d'eau
+// liquide. En réalité, la vapeur occupe environ 1 600 fois plus de place que l'eau liquide.
+
+'use strict';
+
+(function (racine) {
+  // ---- Sortes de cases -------------------------------------------------
+  const AIR = 0, EAU = 1, GLACE = 2, VERRE = 3, SOL = 4, ROCHE = 5, CHAUD = 6, FROID = 7;
+  const NB_TYPES = 8;
+  // Drapeaux
+  const GRAIN = 1;           // glace en grains (neige, grêle, glace pilée) : tombe et s'entasse
+  const VENUE_DU_CIEL = 2;   // eau liquide venue de la pluie (pour suivre son retour à l'océan)
+
+  // ---- Constantes physiques de l'eau (J/(g·°C), J/g) ---------------------
+  const C_GLACE = 2.1, C_EAU = 4.18, L_F = 334, L_V = 2257;
+  const H_EBU = L_F + 100 * C_EAU;     // enthalpie de l'eau liquide à 100 °C (752 J/g)
+  const hVapeur = T => L_F + L_V + C_EAU * T;   // vapeur (chaleur latente supposée constante)
+  const hLiquide = T => L_F + C_EAU * T;
+
+  function temperatureDe(t, h) {
+    if (t === GLACE) return h < 0 ? h / C_GLACE : 0;
+    if (h <= L_F) return 0;
+    if (h >= H_EBU) return 100;
+    return (h - L_F) / C_EAU;
+  }
+  function enthalpieDe(t, T) {
+    if (t === GLACE) return C_GLACE * Math.min(T, 0);
+    return L_F + C_EAU * Math.min(Math.max(T, 0), 100);
+  }
+
+  // ---- Saturation -------------------------------------------------------
+  // Quantité de vapeur d'une case d'air saturée, en « cases d'eau » : 1 à 100 °C (pas à
+  // l'échelle). Au-dessus de 100 °C (pression constante), la vapeur ne se condense plus.
+  const T_MIN = -80, T_MAX = 400, PAS_T = 0.05;
+  const N_TAB = Math.round((T_MAX - T_MIN) / PAS_T) + 1;
+  const TAB_L = new Float64Array(N_TAB), TAB_S = new Float64Array(N_TAB);
+  (function () {
+    const eL = T => 6.1094 * Math.exp(17.625 * T / (T + 243.04));    // hPa, au-dessus de l'eau
+    const eS = T => 6.1121 * Math.exp(22.587 * T / (T + 273.86));    // hPa, au-dessus de la glace
+    const rho = (T, e) => e / (T + 273.15);
+    const ref = rho(100, eL(100));
+    for (let k = 0; k < N_TAB; k++) {
+      const T = T_MIN + k * PAS_T;
+      const l = T <= 100 ? rho(T, eL(T)) / ref : 1 + (T - 100) * 0.2;
+      TAB_L[k] = l;
+      TAB_S[k] = T < 0 ? rho(T, eS(T)) / ref : l;
+    }
+  })();
+  function lireTable(tab, T) {
+    const x = (T - T_MIN) / PAS_T;
+    if (!(x > 0)) return tab[0];
+    if (x >= N_TAB - 1) return tab[N_TAB - 1];
+    const k = x | 0;
+    return tab[k] + (tab[k + 1] - tab[k]) * (x - k);
+  }
+  function penteTable(tab, T) {
+    const x = (T - T_MIN) / PAS_T;
+    let k = x | 0;
+    if (k < 0) k = 0; else if (k > N_TAB - 2) k = N_TAB - 2;
+    return (tab[k + 1] - tab[k]) / PAS_T;
+  }
+  const satLiquide = T => lireTable(TAB_L, T);
+  const satGlace = T => lireTable(TAB_S, T);
+
+  // ---- Hasard reproductible --------------------------------------------
+  function generateur(graine) {
+    let a = graine >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---- Réglages par défaut ---------------------------------------------
+  const DEFAUTS = {
+    gParCase: 1,          // masse (g) d'eau dans une case d'eau liquide pleine
+    dt: 0.5,              // durée simulée d'un pas (s) : chronomètre, plaque à puissance réglable
+    cAir: 1,              // capacité thermique d'une case d'air (même unité que 4,18 × masse d'une case)
+    cVerre: 1.5, cSol: 3, cPlaque: 3,
+    tChaud: 160, tFroid: -25,
+    puissance: null,      // W : plaque à puissance réglable ; null : plaque à température fixe
+    relaxAir: 0.01,       // l'air revient vers sa température ambiante (la pièce, l'atmosphère)
+    relaxSol: 0.02, relaxOcean: 0.002, relaxVerre: 0,
+    kEvap: 0.06,          // évaporation (et condensation) à la surface de l'eau liquide
+    evapMax: 0.05,        // plafond de l'écart à la saturation pris en compte pour l'évaporation
+    plafondAir: 0,        // > 0 : l'évaporation s'arrête à cette fraction de la saturation de l'air touché
+    kSubl: 0.01,          // sublimation (et condensation solide) à la surface de la glace
+    brassage: 0.5,        // brassage de la vapeur dans l'air (0 à 0,5)
+    distBrassage: 5,      // distance maximale du brassage (cases)
+    brassageAir: true,    // le brassage mélange aussi la chaleur et les gouttelettes (sinon : la vapeur seule)
+    brassageYMin: 0,      // pas de brassage au-dessus de cette ligne (cycle : couche d'air marin)
+    diffGouttelettes: 0.03, chuteGouttelettes: 0.01, absorptionGouttelettes: 0.25,
+    bordsSolides: true,   // les bords de la scène sont des murs (pièce, laboratoire)
+    depotGouttelettes: 0.05, // part des gouttelettes qui se dépose par pas sur une paroi touchée
+    seuilPluie: 0.05,     // gouttelettes par case au-delà desquelles se forment des gouttes de pluie
+    tauxPluie: 0.05, evapPluie: 0.05, seuilFlaque: 0.5, seuilGivre: 0.5,
+    conductionAir: 0.12,  // conduction entre deux cases d'air
+    pertes: 1,            // facteur des échanges de chaleur avec l'air et le sol (voir tableConduction)
+    convection: 0.6,      // montée de l'air chaud (probabilité de base)
+    convectionLiquide: 0.9, // montée de l'eau liquide plus chaude que celle du dessus
+    flottaison: 0.3,      // probabilité par pas qu'un grain de glace sous l'eau remonte
+    dispersion: 8,        // distance d'étalement d'un liquide vers un endroit plus bas
+    agitation: false, zoneAgitation: null,
+    sortieHaut: 0,        // > 0 : la vapeur au-delà de cette quantité part dans le reste de la pièce
+    aeration: 0.003,      // part de cet excès qui part à chaque pas (0,5 dans la ligne du haut)
+    vent: null,           // {fx, fy} : flux d'air sur les faces des cases (cycle de l'eau)
+    ventPeriodique: false, // l'air qui sort d'un côté de la scène rentre de l'autre
+    soleil: 0, colonnesSoleil: null,  // énergie apportée par pas à la surface de l'océan
+    ocean: null,          // masque des cases « océan » (réservoir à température ambiante)
+    sol: false,           // eau dans le sol (infiltration, écoulement souterrain, retour à l'océan)
+    capaciteSol: 0.4, kInfiltration: 0.05, kSolBas: 0.06, kSolCote: 0.02, kSortieSol: 0.05, kEvapSol: 0.01,
+    graine: 20261120,
+  };
+
+  // Conduction : fraction de l'écart de température échangée par pas entre deux voisines
+  // (rapportée à la plus petite des deux capacités thermiques). Toujours ≤ 0,5 : chaque échange
+  // rapproche les deux températures sans les inverser, le calcul reste stable.
+  // pertes : facteur appliqué aux échanges avec l'air et avec la paillasse ou le sol (pertes
+  // de chaleur vers la pièce), pour les scènes dont le pas de temps est court.
+  function tableConduction(kAir = 0.12, pertes = 1) {
+    const K = new Float64Array(NB_TYPES * NB_TYPES);
+    const poser = (a, b, k) => {
+      if (a !== b && (a === AIR || b === AIR || ((a === SOL || a === ROCHE) !== (b === SOL || b === ROCHE)))) k *= pertes;
+      K[a * NB_TYPES + b] = k; K[b * NB_TYPES + a] = k;
+    };
+    poser(EAU, EAU, 0.45); poser(GLACE, GLACE, 0.2); poser(EAU, GLACE, 0.45);
+    poser(AIR, AIR, kAir); poser(AIR, EAU, 0.04); poser(AIR, GLACE, 0.04);
+    poser(VERRE, VERRE, 0.25); poser(VERRE, EAU, 0.3); poser(VERRE, GLACE, 0.25); poser(VERRE, AIR, 0.015);
+    poser(SOL, SOL, 0.05); poser(SOL, ROCHE, 0.05); poser(ROCHE, ROCHE, 0.05);
+    for (const s of [SOL, ROCHE]) { poser(s, AIR, 0.03); poser(s, EAU, 0.05); poser(s, GLACE, 0.05); poser(s, VERRE, 0.05); }
+    for (const p of [CHAUD, FROID]) {
+      poser(p, EAU, 0.25); poser(p, GLACE, 0.25); poser(p, VERRE, 0.3); poser(p, AIR, 0.04);
+      poser(p, SOL, 0.02); poser(p, ROCHE, 0.01);
+    }
+    poser(CHAUD, CHAUD, 0.2); poser(FROID, FROID, 0.2);
+    return K;
+  }
+
+  class Monde {
+    constructor(nx, ny, reglages = {}) {
+      this.nx = nx; this.ny = ny;
+      const n = this.n = nx * ny;
+      this.r = Object.assign({}, DEFAUTS, reglages);
+      this.typ = new Uint8Array(n);
+      this.drap = new Uint8Array(n);
+      this.m = new Float64Array(n);     // eau liquide ou glace (cases d'eau), eau retenue (sol)
+      this.h = new Float64Array(n);     // enthalpie massique (cases d'eau)
+      this.T = new Float64Array(n);     // température (toutes les cases)
+      this.v = new Float64Array(n);     // vapeur d'eau (cases d'air)
+      this.d = new Float64Array(n);     // gouttelettes d'eau liquide en suspension (cases d'air)
+      this.c = new Float64Array(n);     // givre en formation (cases d'air au contact d'une surface froide)
+      this.p = new Float64Array(n);     // pluie qui tombe (cases d'air)
+      this.tAmb = new Float64Array(n);  // température vers laquelle reviennent l'air, le sol, l'océan
+      this.vu = new Uint32Array(n);     // « déjà déplacée à ce pas »
+      this.etiq = new Int32Array(n);    // blocs de glace (composantes connexes)
+      this.pile = new Int32Array(n);
+      this.membres = new Int32Array(n);
+      this.finX = new Int32Array(Math.max(nx, ny));
+      this.K = tableConduction(this.r.conductionAir, this.r.pertes);
+      this.alea = generateur(this.r.graine);
+      this.pas = 0;
+      this.temps = 0;           // durée simulée (s)
+      this.compteurs = {fusion: 0, solidification: 0, evaporation: 0, ebullition: 0, bulles: 0,
+        condensationLiquide: 0, condensationSolide: 0, sublimation: 0, pluie: 0,
+        infiltration: 0, versOcean: 0, pluieSurOcean: 0};
+      this.nbChaud = 0;
+      this.horsChamp = 0;       // eau partie dans le reste de la pièce (expérience de fusion)
+    }
+
+    // ---- Construction ---------------------------------------------------
+    poser(i, t, T, opts = {}) {
+      this.typ[i] = t; this.drap[i] = opts.drap || 0;
+      this.v[i] = this.d[i] = this.c[i] = this.p[i] = 0;
+      this.T[i] = T;
+      if (t === EAU || t === GLACE) {
+        this.m[i] = opts.m === undefined ? 1 : opts.m;
+        this.h[i] = enthalpieDe(t, T);
+        this.T[i] = temperatureDe(t, this.h[i]);
+      } else {
+        this.m[i] = opts.m || 0;
+        this.h[i] = 0;
+      }
+      if (t === AIR) this.v[i] = opts.v || 0;
+    }
+    rectangle(x0, y0, x1, y1, t, T, opts) {
+      for (let y = Math.max(0, y0); y <= Math.min(this.ny - 1, y1); y++)
+        for (let x = Math.max(0, x0); x <= Math.min(this.nx - 1, x1); x++) this.poser(y * this.nx + x, t, T, opts);
+    }
+
+    // ---- Lecture --------------------------------------------------------
+    capa(i) {
+      switch (this.typ[i]) {
+        case AIR: return this.r.cAir;
+        case EAU: return C_EAU * this.m[i];
+        case GLACE: return C_GLACE * this.m[i];
+        case VERRE: return this.r.cVerre;
+        case SOL: case ROCHE: return this.r.cSol;
+        case CHAUD: return this.r.puissance === null ? Infinity : this.r.cPlaque;
+        default: return Infinity;
+      }
+    }
+
+    // Masses en grammes, par état
+    masses() {
+      const {n, typ, m, v, d, c, p} = this, g = this.r.gParCase;
+      let glace = 0, liquide = 0, goutt = 0, vap = 0, sol = 0, pluie = 0;
+      for (let i = 0; i < n; i++) {
+        const t = typ[i];
+        if (t === AIR) { vap += v[i]; goutt += d[i]; glace += c[i]; pluie += p[i]; }
+        else if (t === EAU) liquide += m[i];
+        else if (t === GLACE) glace += m[i];
+        else if (t === SOL) sol += m[i];
+      }
+      const dehors = this.horsChamp;
+      return {glace: glace * g, liquide: (liquide + pluie) * g, gouttelettes: goutt * g, vapeur: vap * g,
+        sol: sol * g, pluie: pluie * g, dehors: dehors * g, total: (glace + liquide + pluie + goutt + vap + sol + dehors) * g};
+    }
+
+    // Température lue par un thermomètre dont le réservoir est en (x, y) (coordonnées de grille) :
+    // moyenne des cases de même nature (eau, air ou paroi) autour du réservoir.
+    lireTemperature(x, y) {
+      const {nx, ny, typ, T} = this;
+      const cx = Math.min(nx - 1, Math.max(0, Math.floor(x))), cy = Math.min(ny - 1, Math.max(0, Math.floor(y)));
+      const nature = t => (t === EAU || t === GLACE ? 1 : t === AIR ? 0 : 2);
+      const n0 = nature(typ[cy * nx + cx]);
+      let s = 0, k = 0;
+      for (let yy = cy - 1; yy <= cy + 1; yy++) for (let xx = cx - 1; xx <= cx + 1; xx++) {
+        if (xx < 0 || yy < 0 || xx >= nx || yy >= ny) continue;
+        const i = yy * nx + xx;
+        if (nature(typ[i]) === n0) { s += T[i]; k++; }
+      }
+      return s / k;
+    }
+
+    // ---- Un pas de simulation --------------------------------------------
+    avancer() {
+      this.pas++;
+      this.temps += this.r.dt;
+      this.deplacer();
+      if (this.pas % 3 === 0) this.blocs();
+      if (this.r.convection > 0 || this.r.convectionLiquide > 0) this.convection();
+      if (this.r.vent) this.advecter();
+      this.brasserVapeur();
+      if (this.r.sortieHaut) this.aerer();
+      this.gouttelettes();
+      this.pluie();
+      this.chaleur();
+      if (this.r.agitation && this.r.zoneAgitation) this.agiter();
+      this.etats();
+      if (this.r.sol) this.eauDuSol();
+      this.regrouper();
+      if (this.r.ocean) this.suivreRetourOcean();
+    }
+
+    echanger(i, j) {
+      const {typ, drap, m, h, T, v, d, c, p} = this;
+      let a;
+      a = typ[i]; typ[i] = typ[j]; typ[j] = a;
+      a = drap[i]; drap[i] = drap[j]; drap[j] = a;
+      a = m[i]; m[i] = m[j]; m[j] = a;
+      a = h[i]; h[i] = h[j]; h[j] = a;
+      a = T[i]; T[i] = T[j]; T[j] = a;
+      a = v[i]; v[i] = v[j]; v[j] = a;
+      a = d[i]; d[i] = d[j]; d[j] = a;
+      a = c[i]; c[i] = c[j]; c[j] = a;
+      a = p[i]; p[i] = p[j]; p[j] = a;
+    }
+
+    // ---- Mouvements : le liquide coule, les grains tombent, les bulles montent ----
+    deplacer() {
+      const {nx, ny, typ, drap, vu} = this, s = this.pas;
+      for (let y = ny - 1; y >= 0; y--) {
+        const versGauche = ((y + s) & 1) === 0;
+        const dir = versGauche ? -1 : 1;
+        for (let k = 0; k < nx; k++) {
+          const x = versGauche ? k : nx - 1 - k;
+          const i = y * nx + x;
+          if (vu[i] === s) continue;
+          const t = typ[i];
+          if (t === EAU) this.bougerEau(i, x, y, dir, s);
+          else if (t === GLACE && (drap[i] & GRAIN)) this.bougerGrain(i, x, y, dir, s);
+        }
+      }
+    }
+
+    // Case d'air entourée de liquide sur un côté : une bulle (elle monte d'une case par pas)
+    estBulle(j) {
+      const x = j % this.nx;
+      return (x > 0 && this.typ[j - 1] === EAU) || (x < this.nx - 1 && this.typ[j + 1] === EAU);
+    }
+
+    bougerEau(i, x, y, dir, s) {
+      const {nx, ny, typ, vu} = this;
+      const enBas = y < ny - 1;
+      if (enBas) {
+        const b = i + nx;
+        if (typ[b] === AIR && !(vu[b] === s && this.estBulle(b))) {
+          const bulle = this.estBulle(b);
+          this.echanger(i, b); vu[i] = vu[b] = s;
+          if (bulle) this.remuer(b, x);   // la bulle qui monte remue l'eau autour d'elle
+          return;
+        }
+        for (let e = 0; e < 2; e++) {
+          const dd = e === 0 ? dir : -dir, xx = x + dd;
+          if (xx < 0 || xx >= nx) continue;
+          const j = b + dd;
+          if (typ[j] === AIR && typ[i + dd] === AIR && vu[j] !== s) { this.echanger(i, j); vu[i] = vu[j] = s; return; }
+        }
+      }
+      // Étalement : vers un endroit plus bas, à portée (la surface devient horizontale)
+      const portee = this.r.dispersion;
+      for (let e = 0; e < 2; e++) {
+        const dd = e === 0 ? dir : -dir;
+        for (let k = 1; k <= portee; k++) {
+          const xx = x + dd * k;
+          if (xx < 0 || xx >= nx) break;
+          const j = i + dd * k;
+          if (typ[j] !== AIR || vu[j] === s) break;
+          if (enBas && typ[j + nx] === AIR) { this.echanger(i, j); vu[i] = vu[j] = s; return; }
+        }
+      }
+    }
+
+    // Une bulle qui monte remue l'eau : la partie « sensible » de l'énergie (jusqu'à 100 °C) des
+    // cases d'eau voisines s'égalise ; les réserves d'ébullition restent dans leur case.
+    remuer(i, x) {
+      const {nx, typ, m, h, T} = this;
+      for (let e = 0; e < 2; e++) {
+        const xx = x + (e === 0 ? -1 : 1);
+        if (xx < 0 || xx >= nx) continue;
+        const j = i + (e === 0 ? -1 : 1);
+        if (typ[j] !== EAU || h[j] < L_F || h[i] < L_F) continue;
+        const si = Math.min(h[i], H_EBU), sj = Math.min(h[j], H_EBU);
+        const moy = (si * m[i] + sj * m[j]) / (m[i] + m[j]);
+        h[i] += moy - si; h[j] += moy - sj;
+        T[i] = temperatureDe(EAU, h[i]); T[j] = temperatureDe(EAU, h[j]);
+      }
+    }
+
+    bougerGrain(i, x, y, dir, s) {
+      const {nx, ny, typ, vu} = this;
+      if (y < ny - 1) {
+        const b = i + nx;
+        if (typ[b] === AIR) { this.echanger(i, b); vu[i] = vu[b] = s; return; }
+        for (let e = 0; e < 2; e++) {
+          const dd = e === 0 ? dir : -dir, xx = x + dd;
+          if (xx < 0 || xx >= nx) continue;
+          const j = b + dd;
+          if (typ[j] === AIR && typ[i + dd] === AIR && vu[j] !== s) { this.echanger(i, j); vu[i] = vu[j] = s; return; }
+        }
+      }
+      // La glace flotte : un grain sous de l'eau liquide remonte
+      if (y > 0) {
+        const a = i - nx;
+        if (typ[a] === EAU && vu[a] !== s && this.alea() < this.r.flottaison) { this.echanger(i, a); vu[i] = vu[a] = s; }
+      }
+    }
+
+    // Blocs de glace : ils gardent leur forme. Un bloc sans appui tombe d'une case ; un bloc
+    // entièrement recouvert d'eau liquide remonte d'une case (la glace flotte).
+    blocs() {
+      const {n, nx, typ, drap, etiq, pile, membres} = this;
+      etiq.fill(-1);
+      let id = 0;
+      for (let i0 = 0; i0 < n; i0++) {
+        if (typ[i0] !== GLACE || (drap[i0] & GRAIN) || etiq[i0] !== -1) continue;
+        let nm = 0, sp = 0;
+        pile[sp++] = i0; etiq[i0] = id;
+        while (sp > 0) {
+          const i = pile[--sp];
+          membres[nm++] = i;
+          const x = i % nx;
+          const vois = [x > 0 ? i - 1 : -1, x < nx - 1 ? i + 1 : -1, i - nx, i + nx];
+          for (let k = 0; k < 4; k++) {
+            const j = vois[k];
+            if (j < 0 || j >= n) continue;
+            if (typ[j] === GLACE && !(drap[j] & GRAIN) && etiq[j] === -1) { etiq[j] = id; pile[sp++] = j; }
+          }
+        }
+        let tombe = true, monte = true;
+        for (let k = 0; k < nm && (tombe || monte); k++) {
+          const i = membres[k], b = i + nx, a = i - nx;
+          if (b >= n || (etiq[b] !== id && typ[b] !== AIR)) tombe = false;
+          if (a < 0 || (etiq[a] !== id && typ[a] !== EAU)) monte = false;
+        }
+        const liste = membres.subarray(0, nm);
+        if (tombe) {
+          liste.sort();
+          for (let k = nm - 1; k >= 0; k--) { const i = liste[k]; this.echanger(i, i + nx); etiq[i + nx] = id; etiq[i] = -2; }
+        } else if (monte) {
+          liste.sort();
+          for (let k = 0; k < nm; k++) { const i = liste[k]; this.echanger(i, i - nx); etiq[i - nx] = id; etiq[i] = -2; }
+        }
+        id++;
+      }
+    }
+
+    // ---- Air ---------------------------------------------------------------
+    // L'air plus chaud que l'air du dessus monte (il emporte sa vapeur et ses gouttelettes).
+    // De même, l'eau liquide plus chaude que celle du dessus monte (convection dans le liquide).
+    convection() {
+      const {nx, ny, typ, T, v, d, vu} = this, conv = this.r.convection, convL = this.r.convectionLiquide, s = this.pas;
+      for (let y = 1; y < ny; y++) {
+        for (let x = 0; x < nx; x++) {
+          const b = y * nx + x, a = b - nx;
+          const ta = typ[a], tb = typ[b];
+          if (ta === EAU && tb === EAU) {
+            const h = this.h, m = this.m;
+            if (h[b] > H_EBU) {
+              // Case qui accumule l'énergie de sa vaporisation (réserve d'ébullition) : elle reste là
+              // où arrive la chaleur (c'est là que naissent les bulles), mais l'eau chaude qui monte
+              // réchauffe l'eau du dessus jusqu'à 100 °C.
+              if (convL > 0 && h[a] < H_EBU) {
+                const Q = convL * Math.min((h[b] - H_EBU) * m[b], (H_EBU - h[a]) * m[a]);
+                h[b] -= Q / m[b]; h[a] += Q / m[a]; T[a] = temperatureDe(EAU, h[a]);
+              }
+            } else if (convL > 0 && T[b] > T[a] + 0.05 && vu[b] !== s && this.alea() < convL) { this.echanger(a, b); vu[a] = vu[b] = s; }
+            continue;
+          }
+          if (ta !== AIR || tb !== AIR) continue;
+          const dT = T[b] - T[a];
+          if (dT > 0.3 && this.alea() < conv * Math.min(1, dT / 5)) {
+            let z = T[a]; T[a] = T[b]; T[b] = z;
+            z = v[a]; v[a] = v[b]; v[b] = z;
+            z = d[a]; d[a] = d[b]; d[b] = z;
+          }
+        }
+      }
+    }
+
+    // Vent (cycle de l'eau) : transport de la vapeur et des gouttelettes par les flux sur les
+    // faces des cases (schéma décentré, conservatif : ce qui sort d'une case entre dans l'autre).
+    advecter() {
+      const {nx, ny, typ, v, d} = this, {fx, fy} = this.r.vent;
+      const periodique = this.r.ventPeriodique;
+      for (let y = 0; y < ny; y++) {
+        const ligne = y * (nx + 1);
+        for (let x = periodique ? 0 : 1; x < nx; x++) {
+          const F = fx[ligne + x];
+          if (F === 0) continue;
+          // x = 0 : l'air qui sort à droite de la scène rentre à gauche (et inversement)
+          const b = y * nx + x, a = x === 0 ? y * nx + nx - 1 : b - 1;
+          if (typ[a] !== AIR || typ[b] !== AIR) continue;
+          const de = F > 0 ? a : b, vers = F > 0 ? b : a, f = F > 0 ? F : -F;
+          let q = f * v[de]; v[de] -= q; v[vers] += q;
+          q = f * d[de]; d[de] -= q; d[vers] += q;
+        }
+      }
+      for (let y = 1; y < ny; y++) {
+        for (let x = 0; x < nx; x++) {
+          const F = fy[y * nx + x];
+          if (F === 0) continue;
+          const b = y * nx + x, a = b - nx;
+          if (typ[a] !== AIR || typ[b] !== AIR) continue;
+          const de = F > 0 ? a : b, vers = F > 0 ? b : a, f = F > 0 ? F : -F;
+          let q = f * v[de]; v[de] -= q; v[vers] += q;
+          q = f * d[de]; d[de] -= q; d[vers] += q;
+        }
+      }
+    }
+
+    // La vapeur se répand dans tout l'air qui lui est accessible (un gaz occupe tout l'espace) :
+    // mélange de l'air (sa vapeur, sa chaleur, ses gouttelettes) entre deux cases d'air alignées, sans traverser
+    // de paroi ni de liquide. Mélanger de l'air chaud et humide avec de l'air froid peut former de
+    // la brume : c'est ainsi qu'apparaît le panache au-dessus de l'eau qui bout.
+    brasserVapeur() {
+      const {nx, ny, typ, v, T, d, finX} = this, tout = this.r.brassageAir, f = this.r.brassage, R = this.r.distBrassage, yMin = this.r.brassageYMin;
+      if (f <= 0 || R <= 0) return;
+      const dist = 1 + Math.floor(this.alea() * R);
+      if ((this.pas & 1) === 0) {
+        for (let y = yMin; y < ny; y++) {
+          const base = y * nx;
+          for (let x = nx - 1; x >= 0; x--) {
+            const i = base + x;
+            finX[x] = typ[i] !== AIR ? -1 : (x + 1 < nx && typ[i + 1] === AIR ? finX[x + 1] : x);
+          }
+          for (let x = 0; x + dist < nx; x++) {
+            if (finX[x] < x + dist) continue;
+            const i = base + x, j = i + dist;
+            const q = f * (v[i] - v[j]);
+            v[i] -= q; v[j] += q;
+            if (tout) { const qT = f * (T[i] - T[j]), qd = f * (d[i] - d[j]); T[i] -= qT; T[j] += qT; d[i] -= qd; d[j] += qd; }
+          }
+        }
+      } else {
+        const pas = dist * nx;
+        for (let x = 0; x < nx; x++) {
+          for (let y = ny - 1; y >= 0; y--) {
+            const i = y * nx + x;
+            finX[y] = typ[i] !== AIR ? -1 : (y + 1 < ny && typ[i + nx] === AIR ? finX[y + 1] : y);
+          }
+          for (let y = yMin; y + dist < ny; y++) {
+            if (finX[y] < y + dist) continue;
+            const i = y * nx + x, j = i + pas;
+            const q = f * (v[i] - v[j]);
+            v[i] -= q; v[j] += q;
+            if (tout) { const qT = f * (T[i] - T[j]), qd = f * (d[i] - d[j]); T[i] -= qT; T[j] += qT; d[i] -= qd; d[j] += qd; }
+          }
+        }
+      }
+    }
+
+    // Bac à sable et expérience de fusion : la pièce est bien plus grande que la scène. La vapeur
+    // en excès (au-delà de l'humidité ordinaire de la pièce) part peu à peu dans le reste de la
+    // pièce, surtout par le haut de la scène (l'air chaud d'un panache, lui, ne se renouvelle
+    // pas avant de s'être mélangé à l'air de la pièce). Cette masse est comptée à part (horsChamp) et reste
+    // dans la masse totale d'eau.
+    aerer() {
+      const {n, nx, typ, v, d, T, tAmb} = this, vAmb = this.r.sortieHaut, k = this.r.aeration;
+      for (let i = 0; i < n; i++) {
+        if (typ[i] !== AIR) continue;
+        const exces = v[i] - vAmb;
+        if (exces <= 0) continue;
+        // seul l'air à la température de la pièce se renouvelle (pas l'air chaud d'un panache)
+        if (i >= nx && (T[i] - tAmb[i] > 3 || tAmb[i] - T[i] > 3)) continue;
+        const q = (i < nx ? 0.5 : k) * exces;
+        v[i] -= q; this.horsChamp += q;
+      }
+      for (let x = 0; x < nx; x++) {
+        if (typ[x] !== AIR) continue;
+        const q = 0.5 * d[x];
+        d[x] -= q; this.horsChamp += q;
+      }
+    }
+
+    // Les gouttelettes se répandent un peu, tombent lentement, rejoignent l'eau liquide qu'elles touchent.
+    gouttelettes() {
+      const {nx, ny, typ, d, m, h, T} = this, r = this.r;
+      const D = r.diffGouttelettes, chute = r.chuteGouttelettes, abs = r.absorptionGouttelettes;
+      for (let y = 0; y < ny; y++) {
+        for (let x = 0; x < nx; x++) {
+          const i = y * nx + x;
+          if (typ[i] !== AIR) continue;
+          const di = d[i];
+          if (x < nx - 1 && (di !== 0 || d[i + 1] !== 0) && typ[i + 1] === AIR) { const q = D * (d[i] - d[i + 1]); d[i] -= q; d[i + 1] += q; }
+          if (y < ny - 1 && (d[i] !== 0 || d[i + nx] !== 0) && typ[i + nx] === AIR) { const q = D * (d[i] - d[i + nx]); d[i] -= q; d[i + nx] += q; }
+        }
+      }
+      for (let y = ny - 2; y >= 0; y--) {
+        for (let x = 0; x < nx; x++) {
+          const i = y * nx + x;
+          if (typ[i] !== AIR || d[i] <= 0) continue;
+          const b = i + nx, tb = typ[b];
+          if (tb === AIR) { const q = chute * d[i]; d[i] -= q; d[b] += q; }
+          else if (tb === EAU || tb === GLACE) {
+            const q = abs * d[i];
+            d[i] -= q;
+            const mb = m[b];
+            h[b] = (h[b] * mb + q * hLiquide(T[i] > 0 ? T[i] : 0)) / (mb + q);
+            m[b] = mb + q;
+            T[b] = temperatureDe(tb, h[b]);
+          }
+        }
+      }
+    }
+
+    // Gouttes de pluie : nées des gouttelettes d'un nuage trop chargé ; elles tombent d'une
+    // case par pas, s'évaporent en partie dans l'air sec, s'infiltrent ou s'accumulent au sol.
+    pluie() {
+      const {nx, ny, typ, d, p, v, m, h, T} = this, r = this.r;
+      const seuil = r.seuilPluie, taux = r.tauxPluie;
+      for (let y = ny - 1; y >= 0; y--) {
+        for (let x = 0; x < nx; x++) {
+          const i = y * nx + x;
+          if (typ[i] !== AIR) continue;
+          if (d[i] > seuil) { const q = (d[i] - seuil) * taux; d[i] -= q; p[i] += q; this.compteurs.pluie += q; }
+          let pi = p[i];
+          if (pi <= 0) continue;
+          // évaporation de la pluie dans l'air non saturé
+          const manque = satLiquide(T[i]) - v[i];
+          if (manque > 0) {
+            let q = Math.min(pi, r.evapPluie * manque, 2 * r.cAir / L_V);
+            p[i] = pi -= q; v[i] += q; T[i] -= L_V * q / r.cAir;
+            this.compteurs.evaporation += q;
+            if (pi <= 0) continue;
+          }
+          if (y === ny - 1) { this.accumulerPluie(i); continue; }
+          const b = i + nx, tb = typ[b];
+          if (tb === AIR) { p[b] += pi; p[i] = 0; }
+          else if (tb === EAU || tb === GLACE) {
+            const mb = m[b];
+            h[b] = (h[b] * mb + pi * hLiquide(T[i] > 0 ? T[i] : 0)) / (mb + pi);
+            m[b] = mb + pi; T[b] = temperatureDe(tb, h[b]);
+            if (r.ocean && r.ocean[b]) this.compteurs.pluieSurOcean += pi;
+            p[i] = 0;
+          } else if (tb === SOL && r.sol) {
+            const place = r.capaciteSol - m[b];
+            if (place > 0) {
+              const q = Math.min(pi, place, r.kInfiltration * r.capaciteSol);
+              m[b] += q; p[i] = pi - q; this.compteurs.infiltration += q;
+            }
+            this.accumulerPluie(i);
+          } else this.accumulerPluie(i);
+        }
+      }
+    }
+    accumulerPluie(i) {
+      if (this.p[i] >= this.r.seuilFlaque) {
+        this.condenserCase(i, this.T[i] < 0 ? GLACE : EAU);
+        if (this.typ[i] === EAU) this.drap[i] |= VENUE_DU_CIEL;
+      }
+    }
+
+    // Une case d'air devient une case d'eau (liquide ou glace) : elle garde ses gouttelettes, sa
+    // pluie et son givre ; sa vapeur passe dans une case d'air voisine (ou se condense dans la case).
+    condenserCase(i, t) {
+      const {nx, n, typ, v, d, c, p, T, m, h, drap} = this;
+      const x = i % nx;
+      const voisines = [i - nx, x > 0 ? i - 1 : -1, x < nx - 1 ? i + 1 : -1, i + nx];
+      let vap = v[i];
+      for (const j of voisines) if (j >= 0 && j < n && typ[j] === AIR) { v[j] += vap; vap = 0; break; }
+      const Ti = T[i];
+      const M = d[i] + p[i] + c[i] + vap;
+      if (M <= 0) return;
+      const H = (d[i] + p[i]) * hLiquide(Ti > 0 ? Ti : 0) + c[i] * C_GLACE * (Ti < 0 ? Ti : 0) + vap * hVapeur(Ti);
+      typ[i] = t; drap[i] = 0;
+      m[i] = M; h[i] = H / M; T[i] = temperatureDe(t, h[i]);
+      v[i] = d[i] = c[i] = p[i] = 0;
+    }
+
+    // Une case d'eau épuisée redevient de l'air (à la température de l'eau)
+    viderCase(i) {
+      this.typ[i] = AIR; this.drap[i] = 0; this.m[i] = 0; this.h[i] = 0;
+      this.v[i] = this.d[i] = this.c[i] = this.p[i] = 0;
+    }
+
+    // ---- Chaleur -------------------------------------------------------------
+    ajouterEnergie(i, Q) {
+      const t = this.typ[i];
+      if (t === EAU || t === GLACE) {
+        const mi = this.m[i];
+        if (mi > 0) { this.h[i] += Q / mi; this.T[i] = temperatureDe(t, this.h[i]); }
+      } else if (t === AIR) this.T[i] += Q / this.r.cAir;
+      else {
+        const C = this.capa(i);
+        if (C !== Infinity) this.T[i] += Q / C;
+      }
+    }
+
+    chaleur() {
+      const {n, nx, ny, typ, T, m, h, tAmb, K} = this, r = this.r;
+      // Sources
+      if (r.puissance === null) {
+        for (let i = 0; i < n; i++) {
+          const t = typ[i];
+          if (t === CHAUD) T[i] = r.tChaud; else if (t === FROID) T[i] = r.tFroid;
+        }
+      } else {
+        let nb = 0;
+        for (let i = 0; i < n; i++) if (typ[i] === CHAUD) nb++; else if (typ[i] === FROID) T[i] = r.tFroid;
+        this.nbChaud = nb;
+        if (nb > 0) {
+          const dT = r.puissance * r.dt / r.gParCase / nb / r.cPlaque;
+          for (let i = 0; i < n; i++) if (typ[i] === CHAUD) T[i] += dT;
+        }
+      }
+      if (r.soleil > 0 && r.colonnesSoleil) {
+        for (const x of r.colonnesSoleil) {
+          for (let y = 0; y < ny; y++) {
+            const i = y * nx + x, t = typ[i];
+            if (t === AIR) continue;
+            if (t === EAU || t === GLACE) this.ajouterEnergie(i, r.soleil);
+            break;
+          }
+        }
+      }
+      // Conduction entre voisines (droite et bas), mise à jour au fur et à mesure (stable : k ≤ 0,5),
+      // puis retour de la case vers sa température ambiante (air de la pièce ou de l'atmosphère, sol, océan).
+      const cAir = r.cAir, cVerre = r.cVerre, cSol = r.cSol, cChaud = r.puissance === null ? Infinity : r.cPlaque;
+      const ocean = r.ocean, rA = r.relaxAir, rS = r.relaxSol, rV = r.relaxVerre, rO = r.relaxOcean;
+      for (let y = 0; y < ny; y++) {
+        const base = y * nx, bas = y < ny - 1;
+        for (let x = 0; x < nx; x++) {
+          const i = base + x, ti = typ[i], li = ti * NB_TYPES;
+          const condI = ti === EAU || ti === GLACE;
+          for (let e = 0; e < 2; e++) {
+            let j;
+            if (e === 0) { if (x === nx - 1) continue; j = i + 1; } else { if (!bas) continue; j = i + nx; }
+            const tj = typ[j], k = K[li + tj];
+            if (k === 0) continue;
+            const dT = T[i] - T[j];
+            if (dT < 1e-4 && dT > -1e-4) continue;
+            const ci = ti === AIR ? cAir : ti === EAU ? C_EAU * m[i] : ti === GLACE ? C_GLACE * m[i]
+              : ti === VERRE ? cVerre : (ti === SOL || ti === ROCHE) ? cSol : ti === CHAUD ? cChaud : Infinity;
+            const cj = tj === AIR ? cAir : tj === EAU ? C_EAU * m[j] : tj === GLACE ? C_GLACE * m[j]
+              : tj === VERRE ? cVerre : (tj === SOL || tj === ROCHE) ? cSol : tj === CHAUD ? cChaud : Infinity;
+            const Q = k * (ci < cj ? ci : cj) * dT;
+            if (condI) { h[i] -= Q / m[i]; T[i] = temperatureDe(ti, h[i]); }
+            else if (ci !== Infinity) T[i] -= Q / ci;
+            if (tj === EAU || tj === GLACE) { h[j] += Q / m[j]; T[j] = temperatureDe(tj, h[j]); }
+            else if (cj !== Infinity) T[j] += Q / cj;
+          }
+          if (ti === AIR) T[i] += rA * (tAmb[i] - T[i]);
+          else if (ti === SOL || ti === ROCHE) T[i] += rS * (tAmb[i] - T[i]);
+          else if (ti === VERRE) { if (rV > 0) T[i] += rV * (tAmb[i] - T[i]); }
+          else if (ocean && condI && ocean[i]) {
+            h[i] += rO * C_EAU * (tAmb[i] - T[i]);
+            T[i] = temperatureDe(ti, h[i]);
+          }
+        }
+      }
+    }
+
+    // Agitateur (expérience de fusion) : l'eau liquide et la glace pilée sont mélangées.
+    // Le brassage échange des cases voisines et égalise la partie « sensible » de l'énergie de
+    // l'eau liquide (les réserves d'ébullition restent dans leur case). L'énergie totale ne change pas.
+    agiter() {
+      const {nx, typ, drap, m, h, T, vu} = this, z = this.r.zoneAgitation, s = this.pas;
+      let sm = 0, sh = 0;
+      for (let y = z.y0; y <= z.y1; y++) for (let x = z.x0; x <= z.x1; x++) {
+        const i = y * nx + x;
+        if (typ[i] === EAU && h[i] >= L_F) { sm += m[i]; sh += m[i] * Math.min(h[i], H_EBU); }
+      }
+      if (sm > 0) {
+        const moy = sh / sm, a = 0.3;
+        for (let y = z.y0; y <= z.y1; y++) for (let x = z.x0; x <= z.x1; x++) {
+          const i = y * nx + x;
+          if (typ[i] !== EAU || h[i] < L_F) continue;
+          const sens = Math.min(h[i], H_EBU), reserve = h[i] - sens;
+          h[i] = sens + a * (moy - sens) + reserve;
+          T[i] = temperatureDe(EAU, h[i]);
+        }
+      }
+      const melangeable = i => typ[i] === EAU || (typ[i] === GLACE && (drap[i] & GRAIN));
+      for (let y = z.y0; y <= z.y1; y++) for (let x = z.x0; x <= z.x1; x++) {
+        const i = y * nx + x;
+        if (vu[i] === s || !melangeable(i) || this.alea() > 0.5) continue;
+        const dir = Math.floor(this.alea() * 4), dist = 1 + Math.floor(this.alea() * 2);
+        const xx = x + (dir === 0 ? dist : dir === 1 ? -dist : 0), yy = y + (dir === 2 ? dist : dir === 3 ? -dist : 0);
+        if (xx < z.x0 || xx > z.x1 || yy < z.y0 || yy > z.y1) continue;
+        const j = yy * nx + xx;
+        if (vu[j] === s || !melangeable(j) || typ[j] === typ[i]) continue;
+        this.echanger(i, j); vu[i] = vu[j] = s;
+      }
+    }
+
+    // ---- Changements d'état --------------------------------------------------
+    etats() {
+      const {n, nx, typ, drap, m, h, T, v, d, c, p} = this, r = this.r, cpt = this.compteurs;
+      for (let i = 0; i < n; i++) {
+        const t = typ[i];
+        if (t === EAU) {
+          if (h[i] < 0) { typ[i] = GLACE; drap[i] = 0; T[i] = temperatureDe(GLACE, h[i]); cpt.solidification += m[i]; }
+          else if (h[i] >= H_EBU + L_V) {
+            // ébullition : toute la case est devenue vapeur, c'est une bulle
+            const mi = m[i];
+            typ[i] = AIR; drap[i] = 0; m[i] = 0; h[i] = 0; T[i] = 100;
+            v[i] = mi; d[i] = c[i] = p[i] = 0;
+            cpt.ebullition += mi; cpt.bulles++;
+          }
+        } else if (t === GLACE) {
+          if (h[i] >= L_F) { typ[i] = EAU; drap[i] = 0; T[i] = temperatureDe(EAU, h[i]); cpt.fusion += m[i]; }
+        }
+      }
+      // Échanges de vapeur à la surface de l'eau et de la glace
+      for (let i = 0; i < n; i++) {
+        const t = typ[i];
+        if (t !== EAU && t !== GLACE) continue;
+        const x = i % nx;
+        if (i >= nx && typ[i - nx] === AIR) { this.surface(i, i - nx); if (typ[i] === AIR) continue; }
+        if (x > 0 && typ[i - 1] === AIR) { this.surface(i, i - 1); if (typ[i] === AIR) continue; }
+        if (x < nx - 1 && typ[i + 1] === AIR) { this.surface(i, i + 1); if (typ[i] === AIR) continue; }
+        if (i + nx < n && typ[i + nx] === AIR) this.surface(i, i + nx);
+      }
+      // Dans l'air : condensation (gouttelettes, givre), évaporation des gouttelettes, sublimation
+      const cAir = r.cAir, bords = r.bordsSolides, depot = r.depotGouttelettes;
+      for (let i = 0; i < n; i++) {
+        if (typ[i] !== AIR) continue;
+        const Ti = T[i];
+        const sL = satLiquide(Ti);
+        if (Ti >= 0 && d[i] === 0 && c[i] === 0 && v[i] <= sL) continue;   // rien à faire
+        const x = i % nx;
+        let solide = false, liquide = false, tj;
+        if (i >= nx) { tj = typ[i - nx]; if (tj === EAU) liquide = true; else if (tj !== AIR) solide = true; } else solide = solide || bords;
+        if (i + nx < n) { tj = typ[i + nx]; if (tj === EAU) liquide = true; else if (tj !== AIR) solide = true; } else solide = solide || bords;
+        if (x > 0) { tj = typ[i - 1]; if (tj === EAU) liquide = true; else if (tj !== AIR) solide = true; } else solide = solide || bords;
+        if (x < nx - 1) { tj = typ[i + 1]; if (tj === EAU) liquide = true; else if (tj !== AIR) solide = true; } else solide = solide || bords;
+        if (Ti < 0 && solide) {
+          // contre une surface sous 0 °C : condensation solide (givre)
+          const s = satGlace(Ti), ecart = v[i] - s;
+          const L = L_F + L_V;
+          if (ecart > 0) {
+            const q = 0.8 * ecart / (1 + L / cAir * penteTable(TAB_S, Ti));
+            v[i] -= q; c[i] += q; T[i] += L * q / cAir; cpt.condensationSolide += q;
+          } else if (c[i] > 0) {
+            const q = Math.min(c[i], -0.8 * ecart / (1 + L / cAir * penteTable(TAB_S, Ti)), 2 * cAir / L);
+            c[i] -= q; v[i] += q; T[i] -= L * q / cAir; cpt.sublimation += q;
+          }
+          if (d[i] > 0) {   // les gouttelettes gèlent sur la surface froide (givre)
+            const q = Math.min(d[i], 0.2 * d[i] + 1e-6);
+            d[i] -= q; c[i] += q; T[i] += L_F * q / cAir; cpt.solidification += q;
+          }
+          if (c[i] >= r.seuilGivre) this.condenserCase(i, GLACE);
+          continue;
+        }
+        if (c[i] > 0) {
+          if (Ti >= 0) {   // givre qui fond (fusion) en gouttelettes
+            const q = Math.min(c[i], 0.2 * c[i] + 1e-6, 2 * cAir / L_F);
+            c[i] -= q; d[i] += q; T[i] -= L_F * q / cAir; cpt.fusion += q;
+          } else {          // givre loin de toute surface : il se sublime ou grossit
+            const ecart = v[i] - satGlace(Ti);
+            const q = Math.max(-c[i], Math.min(v[i], 0.5 * ecart));
+            c[i] += q; v[i] -= q; T[i] += (L_F + L_V) * q / cAir;
+            if (q < 0) cpt.sublimation -= q; else cpt.condensationSolide += q;
+          }
+        }
+        if (liquide) continue;   // au contact de l'eau liquide, la vapeur se condense sur l'eau (voir surface)
+        if (solide && d[i] > 0) {   // les gouttelettes se déposent sur une paroi (buée) puis ruissellent
+          const q = depot * d[i];
+          d[i] -= q; p[i] += q;
+        }
+        const ecart = v[i] - sL;
+        if (ecart > 0) {
+          const q = 0.8 * ecart / (1 + L_V / cAir * penteTable(TAB_L, Ti));
+          v[i] -= q; d[i] += q; T[i] += L_V * q / cAir; cpt.condensationLiquide += q;
+        } else if (d[i] > 0) {
+          let q = -0.8 * ecart / (1 + L_V / cAir * penteTable(TAB_L, Ti));
+          if (q >= d[i] || d[i] < 1e-12) q = d[i];
+          d[i] -= q; v[i] += q; T[i] -= L_V * q / cAir; cpt.evaporation += q;
+        }
+      }
+    }
+
+    // Échange de vapeur entre une case d'eau (i) et une case d'air (j) :
+    // évaporation ou condensation liquide (eau liquide) ; sublimation ou condensation solide (glace).
+    // L'énergie de changement d'état est prise (ou rendue) à l'eau et à l'air, selon leurs capacités.
+    surface(i, j) {
+      const {typ, m, h, T, v} = this, r = this.r, cpt = this.compteurs;
+      const liquide = typ[i] === EAU;
+      const Ti = T[i];
+      let s = liquide ? satLiquide(Ti) : satGlace(Ti);
+      // Cycle de l'eau : l'air au-dessus de la mer est vite brassé ; l'évaporation s'arrête quand
+      // l'air touché approche de sa propre saturation (pas de brouillard posé sur l'océan).
+      if (r.plafondAir > 0 && liquide) { const sa = r.plafondAir * satLiquide(T[j]); if (sa < s) s = sa; }
+      const ecart = s - v[j];
+      const mi = m[i];
+      const Ci = (liquide ? C_EAU : C_GLACE) * mi, phi = Ci / (Ci + r.cAir);   // part prise à l'eau
+      const L = hVapeur(Ti) - h[i];   // énergie par gramme pour passer de la case à la vapeur
+      if (ecart > 0) {
+        // l'évaporation est limitée par le départ de la vapeur loin de la surface : son débit
+        // plafonne (sinon, près de 100 °C, elle prendrait toute l'énergie avant l'ébullition)
+        let q = (liquide ? r.kEvap : r.kSubl) * (ecart < r.evapMax ? ecart : r.evapMax);
+        if (q > mi) q = mi;
+        // L'énergie de vaporisation est prise à l'eau (sans la refroidir de plus de 3 °C par pas,
+        // ni geler de l'eau liquide) et, pour le reste, à l'air (au plus 3 °C par pas).
+        const parCase = liquide ? Math.max(0, Math.min(3 * C_EAU, h[i] - L_F)) : 3 * C_GLACE;
+        let E = q * L, eCase = Math.min(phi * E, (mi - q) * parCase), eAir = E - eCase;
+        if (eAir > 3 * r.cAir) {
+          q *= 3 * r.cAir / eAir;
+          E = q * L; eCase = Math.min(phi * E, (mi - q) * parCase); eAir = E - eCase;
+        }
+        if (q <= 0) return;
+        const reste = mi - q;
+        if (liquide) cpt.evaporation += q; else cpt.sublimation += q;
+        if (reste <= 1e-9) {
+          // la case est épuisée : tout ce qui reste passe dans l'air
+          v[j] += mi;
+          T[j] -= L * mi / r.cAir;
+          const Tair = T[j];
+          this.viderCase(i);
+          T[i] = Tair;
+          return;
+        }
+        v[j] += q;
+        h[i] -= eCase / reste;
+        m[i] = reste;
+        T[i] = temperatureDe(typ[i], h[i]);
+        T[j] -= eAir / r.cAir;
+      } else if (ecart < 0) {
+        // condensation sur l'eau (ou la glace)
+        const q = Math.min(v[j], -ecart * (liquide ? r.kEvap : r.kSubl) * 2, -0.5 * ecart);
+        if (q <= 0) return;
+        v[j] -= q;
+        const E = q * L;
+        h[i] = (h[i] * mi + q * h[i] + phi * E) / (mi + q);
+        m[i] = mi + q;
+        T[i] = temperatureDe(typ[i], h[i]);
+        T[j] += (1 - phi) * E / r.cAir;
+        if (liquide) cpt.condensationLiquide += q; else cpt.condensationSolide += q;
+      }
+    }
+
+    // ---- Eau du sol (cycle de l'eau) ------------------------------------------
+    eauDuSol() {
+      const {n, nx, typ, m, h, T, v} = this, r = this.r, cap = r.capaciteSol, cpt = this.compteurs, ocean = r.ocean;
+      for (let i = 0; i < n; i++) {
+        if (typ[i] !== SOL) continue;
+        const x = i % nx;
+        // infiltration : l'eau liquide posée sur le sol y entre
+        const a = i - nx;
+        if (a >= 0 && typ[a] === EAU && m[i] < cap && !(ocean && ocean[a])) {
+          let q = Math.min(m[a], r.kInfiltration * (cap - m[i]) * 4);
+          if (m[a] - q < 1e-6) q = m[a];
+          m[i] += q; m[a] -= q; cpt.infiltration += q;
+          if (m[a] <= 0) { const Ta = T[a]; this.viderCase(a); T[a] = Ta; }
+        }
+        // l'eau du sol descend…
+        const b = i + nx;
+        if (b < n && typ[b] === SOL && m[b] < cap && m[i] > 0) {
+          const q = Math.min(m[i], cap - m[b]) * r.kSolBas;
+          m[i] -= q; m[b] += q;
+        }
+        // … et se répand dans le sol
+        if (x < nx - 1 && typ[i + 1] === SOL) { const q = r.kSolCote * (m[i] - m[i + 1]); m[i] -= q; m[i + 1] += q; }
+        // elle rejoint l'océan là où le sol le touche
+        if (ocean && m[i] > 0) {
+          for (const j of [i + 1, i - 1, b]) {
+            if (j < 0 || j >= n || typ[j] !== EAU || !ocean[j]) continue;
+            const q = r.kSortieSol * m[i];
+            const mj = m[j];
+            h[j] = (h[j] * mj + q * hLiquide(Math.max(0, T[i]))) / (mj + q);
+            m[j] = mj + q; T[j] = temperatureDe(EAU, h[j]);
+            m[i] -= q; cpt.versOcean += q;
+          }
+        }
+        // le sol mouillé s'évapore un peu
+        if (a >= 0 && typ[a] === AIR && m[i] > 0) {
+          const manque = satLiquide(T[a]) - v[a];
+          if (manque > 0) {
+            const q = Math.min(m[i], r.kEvapSol * manque * (m[i] / cap), r.cAir / L_V);
+            m[i] -= q; v[a] += q; T[a] -= L_V * q / r.cAir; cpt.evaporation += q;
+          }
+        }
+      }
+    }
+
+    // ---- Regrouper les petites quantités d'eau liquide, partager les trop grosses -----
+    regrouper() {
+      const {n, nx, typ, drap, m, h, T, v} = this;
+      for (let i = 0; i < n; i++) {
+        const t = typ[i];
+        if (t !== EAU && t !== GLACE) continue;
+        const mi = m[i];
+        if (t === EAU && mi < 0.98) {
+          const x = i % nx;
+          const cand = [i + nx, x > 0 ? i - 1 : -1, x < nx - 1 ? i + 1 : -1];
+          for (const j of cand) {
+            if (j < 0 || j >= n || typ[j] !== EAU || m[j] >= 1) continue;
+            let q = Math.min(m[i], 1 - m[j]);
+            if (m[i] - q < 1e-6) q = m[i];
+            const mj = m[j];
+            h[j] = (h[j] * mj + q * h[i]) / (mj + q);
+            m[j] = mj + q; T[j] = temperatureDe(EAU, h[j]);
+            if (drap[i] & VENUE_DU_CIEL) {
+              if (this.r.ocean && this.r.ocean[j]) this.compteurs.versOcean += q;   // eau de pluie arrivée à l'océan
+              else drap[j] |= VENUE_DU_CIEL;
+            }
+            m[i] -= q;
+            if (m[i] <= 0) { const Ti = T[i]; this.viderCase(i); T[i] = Ti; break; }
+          }
+        } else if (mi > 1.5 && i >= nx && typ[i - nx] === AIR) {
+          // trop d'eau dans la case : la moitié en trop forme une nouvelle case au-dessus
+          const a = i - nx, Ta = T[a];
+          const vap = v[a], dd = this.d[a], cc = this.c[a], pp = this.p[a];
+          this.v[a] = 0; this.d[a] = 0; this.c[a] = 0; this.p[a] = 0;
+          const x = a % nx;
+          let place = -1;
+          for (const j of [a - nx, x > 0 ? a - 1 : -1, x < nx - 1 ? a + 1 : -1]) if (j >= 0 && typ[j] === AIR) { place = j; break; }
+          const q = mi - 1;
+          typ[a] = t; drap[a] = drap[i]; m[a] = q; h[a] = h[i]; T[a] = T[i];
+          m[i] = 1;
+          if (place >= 0) { v[place] += vap; this.d[place] += dd; this.c[place] += cc; this.p[place] += pp; }
+          else {
+            const extra = vap + dd + cc + pp;
+            h[a] = (h[a] * q + vap * hVapeur(Ta) + (dd + pp) * hLiquide(Math.max(0, Ta)) + cc * C_GLACE * Math.min(0, Ta)) / (q + extra);
+            m[a] = q + extra; T[a] = temperatureDe(t, h[a]);
+          }
+        }
+      }
+    }
+
+    // Eau de pluie arrivée dans l'océan (par ruissellement)
+    suivreRetourOcean() {
+      const {n, typ, drap, m} = this, ocean = this.r.ocean;
+      for (let i = 0; i < n; i++) {
+        if (typ[i] === EAU && (drap[i] & VENUE_DU_CIEL) && ocean[i]) {
+          this.compteurs.versOcean += m[i];
+          drap[i] &= ~VENUE_DU_CIEL;
+        }
+      }
+    }
+  }
+
+  const api = {
+    Monde, AIR, EAU, GLACE, VERRE, SOL, ROCHE, CHAUD, FROID, GRAIN, VENUE_DU_CIEL,
+    C_GLACE, C_EAU, L_F, L_V, H_EBU, temperatureDe, enthalpieDe, satLiquide, satGlace,
+  };
+  racine.ChangementsEtat = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Les changements d’état de l’eau</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app" data-partie="bac-a-sable">
+      <header id="entete">
+        <nav id="parties" aria-label="Parties de l’application">
+          <button type="button" data-partie="bac-a-sable">Bac à sable</button>
+          <button type="button" data-partie="cycle">Cycle de l’eau</button>
+          <button type="button" data-partie="fusion">Courbe de fusion</button>
+        </nav>
+        <button id="b-protocole" type="button" aria-expanded="false" aria-controls="protocole">Protocole</button>
+      </header>
+
+      <main id="principal">
+        <div id="vue">
+          <section id="zone-scene" aria-label="Scène">
+            <canvas id="scene" role="img" aria-label="Scène de la simulation"></canvas>
+            <div id="masses" class="etiquette-scene"></div>
+            <p id="mention-vapeur" class="etiquette-scene" hidden>Vapeur teintée : en réalité, la vapeur d’eau est invisible.</p>
+            <p id="en-pause" class="etiquette-scene" hidden>En pause</p>
+          </section>
+          <section id="experience" aria-label="Courbe température–temps">
+            <p id="chrono">Temps : 0 min 0 s</p>
+            <canvas id="courbe" role="img" aria-label="Courbe de la température en fonction du temps"></canvas>
+          </section>
+        </div>
+
+        <aside id="panneau" aria-label="Commandes">
+          <!-- Bac à sable -->
+          <div class="pour" data-pour="bac-a-sable">
+            <h2>Outils</h2>
+            <div class="grille-boutons" role="group" aria-label="Outils">
+              <button type="button" data-outil="glace">Glace</button>
+              <button type="button" data-outil="neige">Neige</button>
+              <button type="button" data-outil="eau">Eau liquide</button>
+              <button type="button" data-outil="verre">Paroi de verre</button>
+              <button type="button" data-outil="chaud">Chauffer</button>
+              <button type="button" data-outil="froid">Refroidir</button>
+              <button type="button" data-outil="thermometre">Thermo&shy;mètre</button>
+              <button type="button" data-outil="gomme">Gomme</button>
+            </div>
+            <p class="aide" id="aide-outil"></p>
+            <button type="button" id="b-pinceau" class="large">Pinceau : moyen</button>
+            <label class="reglage">Air de la pièce : <output id="v-air">20 °C</output>
+              <input id="r-air" type="range" min="-20" max="40" step="1" value="20" />
+            </label>
+          </div>
+          <!-- Cycle de l'eau -->
+          <div class="pour" data-pour="cycle">
+            <div class="grille-boutons">
+              <button type="button" id="b-soleil">Soleil</button>
+              <button type="button" id="b-vent">Vent (alizés)</button>
+              <button type="button" id="b-noms">Noms</button>
+              <button type="button" id="b-thermo-cycle">Thermo&shy;mètre</button>
+            </div>
+            <label class="reglage">Air au bord de la mer : <output id="v-mer">20 °C</output>
+              <input id="r-mer" type="range" min="10" max="30" step="1" value="20" />
+            </label>
+          </div>
+          <!-- Courbe de fusion -->
+          <div class="pour" data-pour="fusion">
+            <div class="grille-boutons">
+              <button type="button" id="b-demarrer" class="accent">Démarrer</button>
+              <button type="button" id="b-csv" aria-label="Télécharger le tableau des mesures (fichier CSV pour le tableur)">Tableau CSV</button>
+            </div>
+            <label class="reglage">Plaque chauffante : <output id="v-plaque">3</output>
+              <input id="r-plaque" type="range" min="0" max="6" step="1" value="3" />
+            </label>
+            <label class="reglage">Masse de glace
+              <select id="s-masse">
+                <option value="100">100 g</option>
+                <option value="150" selected>150 g</option>
+                <option value="200">200 g</option>
+              </select>
+            </label>
+            <button type="button" id="b-agitateur" class="large">Agitateur</button>
+            <div id="tableau-zone">
+              <table id="tableau">
+                <caption>Mesures (toutes les 30 s)</caption>
+                <thead><tr><th scope="col">Temps (min)</th><th scope="col">Température (°C)</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Commun -->
+          <div id="communs">
+            <div class="grille-boutons">
+              <button type="button" id="b-pause">Pause</button>
+              <button type="button" id="b-vitesse">Vitesse ×1</button>
+              <button type="button" id="b-vapeur">Montrer la vapeur</button>
+              <button type="button" id="b-repartition">Répar&shy;tition</button>
+              <button type="button" id="b-effacer" class="pour" data-pour="bac-a-sable">Tout effacer</button>
+              <button type="button" id="b-depart">Remettre à zéro</button>
+            </div>
+            <div id="lectures" aria-label="Thermomètres"></div>
+          </div>
+        </aside>
+      </main>
+
+      <section id="protocole" role="dialog" aria-modal="true" aria-labelledby="protocole-titre" hidden>
+        <div class="boite">
+          <h2 id="protocole-titre">Protocole</h2>
+          <div class="pour" data-pour="bac-a-sable">
+            <ol>
+              <li>Pose un thermomètre dans l’eau du bécher posé sur la plaque chauffante. Note la température toutes les 10 secondes environ. Que vois-tu apparaître dans l’eau ? Quelle est la température la plus haute que tu lis ?</li>
+              <li>Le second thermomètre est dans le bloc de glace. Comment sa température évolue-t-elle pendant que la glace fond ? Et une fois toute la glace fondue ?</li>
+              <li>Observe la flaque posée sur le sol : que devient-elle ? Quelle est sa température ?</li>
+              <li>Regarde au-dessus de l’eau qui bout. Active « Montrer la vapeur » : où se trouve la vapeur d’eau ? Compare avec ce que tu voyais avant.</li>
+              <li>Observe la plaque froide contre le mur de droite. Que se dépose dessus ? D’où vient cette eau ?</li>
+              <li>Pendant toutes ces transformations, relève plusieurs fois la masse totale d’eau. Active « Répartition » pour voir la masse de chaque état.</li>
+              <li>À toi : fais geler de l’eau, fonds de la neige, fais bouillir de l’eau dans un récipient que tu construis. Nomme chaque changement d’état que tu observes.</li>
+            </ol>
+            <p><strong>Outils</strong> : dessine au doigt ou à la souris. L’eau versée est à 20 °C, la glace à −10 °C, la neige à −5 °C. « Chauffer » et « Refroidir » posent une plaque chaude ou froide. Touche un thermomètre pour le déplacer.</p>
+          </div>
+          <div class="pour" data-pour="cycle">
+            <ol>
+              <li>Le Soleil chauffe l’océan. Vois-tu de l’eau quitter l’océan ? Active « Montrer la vapeur » pour repérer la vapeur d’eau, puis désactive-la.</li>
+              <li>Où les nuages apparaissent-ils ? Pose un thermomètre au bord de la mer, puis à l’altitude des nuages : compare les températures de l’air.</li>
+              <li>Suis l’eau de pluie : où va-t-elle ? Que devient l’eau qui entre dans le sol ?</li>
+              <li>Cache le Soleil (bouton « Soleil ») et observe pendant un moment. Qu’est-ce qui change ?</li>
+              <li>Arrête le vent (bouton « Vent »). Où vont alors la vapeur et les nuages ?</li>
+              <li>Baisse la température de l’air au bord de la mer, attends, puis regarde le sommet du Piton des Neiges.</li>
+              <li>Fais la liste des changements d’état de l’eau que tu as repérés, avec leur nom. « Noms » indique ce que l’on voit sur la scène.</li>
+            </ol>
+          </div>
+          <div class="pour" data-pour="fusion">
+            <ol>
+              <li>Règle la plaque chauffante et la masse de glace, puis appuie sur « Démarrer ». La température est relevée toutes les 30 secondes de la simulation.</li>
+              <li>Observe le bécher pendant l’expérience et note ce que tu vois à quelques instants (état de l’eau, glace, bulles…).</li>
+              <li>Entre le début de la fusion et la disparition du dernier morceau de glace, comment la température évolue-t-elle ? Réponds en citant deux mesures du tableau.</li>
+              <li>Télécharge le tableau (CSV), ouvre-le dans le tableur et trace la courbe T = f(t) (nuage de points reliés). Annote-la avec les états observés.</li>
+              <li>Recommence avec une autre masse de glace ou une autre puissance de chauffe : qu’est-ce qui change sur la courbe ?</li>
+              <li>Pour aller plus loin : continue de chauffer longtemps après la fusion. Que se passe-t-il vers 100 °C ? Que devient la masse d’eau dans le bécher ?</li>
+            </ol>
+          </div>
+          <h3>Ce que simplifie la simulation</h3>
+          <ul>
+            <li>La scène est découpée en petites zones : chacune contient une petite quantité de glace, d’eau liquide ou d’air (avec sa vapeur d’eau), ou un objet (paroi, sol, plaque).</li>
+            <li>L’eau est pure ; la pression ne change pas (1 atm).</li>
+            <li>Les durées sont accélérées.</li>
+            <li>Pas à l’échelle : en réalité, la vapeur d’eau occupe environ 1 600 fois plus de place que l’eau liquide ; ici, beaucoup moins.</li>
+            <li>La vapeur d’eau est invisible ; ce que l’on voit (nuage, brume, buée) est fait de minuscules gouttelettes d’eau liquide.</li>
+          </ul>
+          <button type="button" id="b-fermer-protocole" class="large accent">Fermer</button>
+        </div>
+      </section>
+
+      <section id="confirmation" role="alertdialog" aria-modal="true" aria-labelledby="confirmation-texte" hidden>
+        <div class="boite">
+          <p id="confirmation-texte"></p>
+          <div class="grille-boutons">
+            <button type="button" id="confirmation-oui" class="accent">Oui</button>
+            <button type="button" id="confirmation-non">Non</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script src="simulation.js"></script>
+    <script src="scenes.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changements d’état dans un cadre (test)</title>
+<link rel="icon" href="data:,">
+<style>html,body{margin:0;background:#eee}iframe{display:block;border:0;margin:20px auto 0}#espace{height:0}</style>
+</head>
+<body>
+<!-- Page de test : l'app dans un cadre de taille donnée (?w=360&h=640&partie=cycle), comme dans le site ;
+     ?bas=1 place le cadre loin sous le haut de la page (hors de l'écran au chargement). -->
+<div id="espace"></div>
+<iframe title="Changements d’état de l’eau" allow="fullscreen"></iframe>
+<script>
+  const q = new URLSearchParams(location.search);
+  const f = document.querySelector('iframe');
+  f.style.width = (q.get('w') || 984) + 'px';
+  f.style.height = (q.get('h') || 688) + 'px';
+  if (q.get('bas')) document.getElementById('espace').style.height = '3000px';
+  f.src = '../index.html#' + (q.get('partie') || 'bac-a-sable');
+</script>
+</body>
+</html>
