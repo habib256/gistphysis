@@ -571,7 +571,7 @@
     const petit = s < 3.2;   // scène petite (téléphone) : noms plus courts, hors de ce qu'ils nomment
     centre(CV, petit ? 'Cavité' : 'Poche d’eau souterraine (cavité)', petit ? 7 : 4, 1);
     placer('Source (résurgence)', inf.xResurgence + 7, inf.sortieCavite + 2);
-    centre(NA, 'Nappe phréatique', 1, 5, 3);
+    centre(NA, 'Nappe phréatique', petit ? -1 : 1, 5, petit ? 1 : 3);   // près de la nappe, pas sur la roche
     const xs = Math.round((inf.xSourceVent + inf.xSommet) / 2);
     placer('Sol perméable', xs - 4, inf.haut[xs - 4] + 1);
     if (!petit) centre(FI, 'Roche fissurée', 0, 1);
@@ -916,22 +916,7 @@
     return {x: Math.max(0.5, Math.min(etat.monde.nx - 0.5, g.x)), y: Math.max(0.5, Math.min(etat.monde.ny - 0.5, g.y))};
   }
 
-  function appliquerOutil(i) {
-    const monde = etat.monde, t = monde.typ[i];
-    switch (etat.outil) {
-      case 'glace': if (t === AIR) monde.poser(i, GLACE, -10); break;
-      case 'neige': if (t === AIR) monde.poser(i, GLACE, -5, {drap: GRAIN}); break;
-      case 'eau': if (t === AIR) monde.poser(i, EAU, 20); break;
-      case 'verre': if (t === AIR) monde.poser(i, VERRE, monde.tAmb[i]); break;
-      case 'chaud': if (t === AIR || t === VERRE || t === FROID) monde.poser(i, CHAUD, monde.r.tChaud); break;
-      case 'froid': if (t === AIR || t === VERRE || t === CHAUD) monde.poser(i, FROID, monde.r.tFroid); break;
-      case 'gomme':
-        if (t !== AIR) monde.poser(i, AIR, monde.tAmb[i]);
-        else { monde.d[i] = 0; monde.c[i] = 0; monde.p[i] = 0; }
-        break;
-      default: break;
-    }
-  }
+  function appliquerOutil(i) { etat.monde.appliquerOutil(etat.outil, i); }
 
   function peindreEn(g) {
     const monde = etat.monde, R = RAYONS_PINCEAU[etat.pinceau];

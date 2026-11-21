@@ -322,6 +322,34 @@ async function controler(nav, base) {
     await p.fermer();
   }
 
+  // 4 bis. Traits d'outils au hasard dans la page (graine fixe), à 360×640 : rien de non fini ni de négatif,
+  // la masse affichée reste un nombre
+  await nav.relancer();
+  {
+    const p = await ouvrir('/index.html#bac-a-sable', 360, 640);
+    const r = await p.ev(`(()=>{ const C = Changements, m = C.monde(); C.etat.enMarche = false;
+      let graine = 12345; const alea = () => { graine = (graine * 1103515245 + 12345) & 0x7fffffff; return graine / 0x7fffffff; };
+      const outils = ['glace', 'neige', 'eau', 'verre', 'chaud', 'froid', 'gomme'], nx = m.nx, ny = m.ny;
+      let premier = null, traits = 0;
+      for (let k = 1; k <= 12000 && !premier; k++) {
+        m.avancer();
+        if (k % 20 === 0) {
+          const o = outils[Math.floor(alea() * outils.length)], R = [1, 2.5, 4.5][Math.floor(alea() * 3)];
+          const gx = alea() * nx, gy = alea() * ny, gx2 = gx + (alea() - 0.5) * 30, gy2 = gy + (alea() - 0.5) * 30;
+          const n = Math.max(1, Math.ceil(Math.hypot(gx2 - gx, gy2 - gy) / Math.max(0.5, R * 0.6)));
+          for (let s = 1; s <= n; s++) { const cx = gx + (gx2 - gx) * s / n, cy = gy + (gy2 - gy) * s / n;
+            for (let y = Math.max(0, Math.floor(cy - R)); y <= Math.min(ny - 1, Math.ceil(cy + R)); y++) for (let x = Math.max(0, Math.floor(cx - R)); x <= Math.min(nx - 1, Math.ceil(cx + R)); x++)
+              if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= R * R + 0.3) m.appliquerOutil(o, y * nx + x); }
+          traits++;
+        }
+        if (k % 10 === 0) for (let i = 0; i < m.n; i++) if (!Number.isFinite(m.T[i]) || !Number.isFinite(m.v[i]) || m.v[i] < -1e-9 || m.m[i] < -1e-9) { premier = {pas: k}; break; }
+      }
+      C.dessiner();
+      return {traits, premier, masses: document.getElementById('masses').innerText.replace(/\\n/g, ' | ')}; })()`);
+    verifier(`${N} 360×640 : ${r.traits} traits d’outils au hasard en 12 000 pas, sans valeur non finie ni négative, masse affichée (« ${r.masses.slice(0, 40)}… »)`, !r.premier && /Masse totale d’eau : [0-9]/.test(r.masses) && !/NaN/.test(r.masses), r);
+    await p.fermer();
+  }
+
   // 5. Expérience de fusion : tableau et CSV
   await nav.relancer();
   {

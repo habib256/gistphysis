@@ -27,8 +27,8 @@
   // ---- Bac à sable ---------------------------------------------------------
   function bacASable(nx, ny, tAir = 20, {vide = false} = {}) {
     const monde = new Monde(nx, ny, {
-      gParCase: 1, dt: 0.5, relaxAir: 0.002, kEvap: 0.015, kSubl: 0.004, brassage: 0.05, distBrassage: 3, aeration: 0.03,
-      convection: 0.8, tChaud: 170, tFroid: -25, evapChaud: 0.05, fenetreAeration: 6, melangeLiquide: 0.03, nucleation: 0.5, seuilPluie: 0.06, seuilGivre: 0.3, dispersion: 8, diffGouttelettes: 0.08, depotGouttelettes: 0.01,
+      gParCase: 1, dt: 0.5, relaxAir: 0.002, kEvap: 0.015, kSubl: 0.004, brassage: 0.03, distBrassage: 3, aeration: 0.03,
+      convection: 0.8, tChaud: 170, tFroid: -25, evapChaud: 0.05, fenetreAeration: 6, melangeLiquide: 0.03, sitesBulles: true, seuilPluie: 0.06, seuilGivre: 0.3, dispersion: 8, diffGouttelettes: 0.08, depotGouttelettes: 0.01,
       sortieHaut: 0.5 * satLiquide(tAir),
     });
     monde.rectangle(0, 0, nx - 1, ny - 1, AIR, tAir);
@@ -86,7 +86,7 @@
       kEvap: 0.15, kEvapTerre: 0.01, plafondAir: 0.77, brassage: 0.3, distBrassage: 3, brassageYMin: 66, brassageHaut: 0.015, brassageAir: false, chaleurVapeur: 0,
       glissementNeige: true, convection: 0, convectionLiquide: 0, diffGouttelettes: 0.01,
       chuteGouttelettes: 0.004, seuilPluie: 0.0025, tauxPluie: 0.08, evapPluie: 0.004, seuilFlaque: 0.3, seuilGivre: 0.25, tailleGoutte: 0.002,
-      sol: true, solFixe: true, alterner: true, bordsSolides: false, conductionAir: 0, capaciteSol: 0.35, kInfiltration: 0.03, kNappe: 0.006, kSource: 0.2, kReservoir: 0.0002, kProfond: 0.0001, ventVariable: 12000,
+      sol: true, solFixe: true, alterner: true, bordsSolides: false, conductionAir: 0, capaciteSol: 0.35, kInfiltration: 0.03, kNappe: 0.006, kSource: 0.2, kReservoir: 0.0002, kProfond: 0.0001, kCavite: 0.0004, ventVariable: 12000,
       kSolBas: 0.025, kSolCote: 0.03, kSortieSol: 0.05, kEvapSol: 0.01, dispersion: 6, soleil: 0,
     });
     // Relief : haut du sol (ou du fond de l'océan) pour chaque colonne
@@ -175,6 +175,9 @@
     for (let x = 0; x < nx; x++) if (haut[x] > ySea + 1) colonnes.push(x);
     monde.r.colonnesSoleil = colonnes;
     monde.r.hautSol = haut;
+    // la cavité se vide lentement par son conduit (comme une source karstique) : la résurgence coule
+    // encore entre deux débordements
+    monde.r.cavite = {x0: cavite.x0, x1: cavite.x1, y0: cavite.y0, y1: cavite.y1, sortie: (CYCLE.sortieCavite) * nx + (xResurgence - 1)};
     // les deux bassins de l'océan (gauche et droite), mis au même niveau
     let g1 = 0; while (g1 + 1 < nx && haut[g1 + 1] > ySea + 1) g1++;
     let d0 = nx - 1; while (d0 - 1 > 0 && haut[d0 - 1] > ySea + 1) d0--;
@@ -202,12 +205,12 @@
   }
 
   // ---- Expérience : courbe de fusion -----------------------------------------
-  const FUSION = {nx: 56, ny: 68, x0: 16, x1: 39, yHaut: 22, yFond: 58, gParCase: 0.25, wattsParNiveau: 30, tGlace: -18, releve: 15};
+  const FUSION = {nx: 56, ny: 68, x0: 16, x1: 39, yHaut: 22, yFond: 58, gParCase: 0.25, wattsParNiveau: 40, tGlace: -18, releve: 15};
 
   function fusion(masse = 150, niveau = 3, agitation = true) {
     const {nx, ny, x0, x1, yHaut, yFond, gParCase} = FUSION;
     const monde = new Monde(nx, ny, {
-      gParCase, dt: 0.1, puissance: niveau * FUSION.wattsParNiveau, cPlaque: 3, relaxAir: 0.002, flottaison: 0, pertes: 0.12, nucleation: 0.5,
+      gParCase, dt: 0.1, puissance: niveau * FUSION.wattsParNiveau, cPlaque: 3, relaxAir: 0.002, flottaison: 0, pertes: 0.12, sitesBulles: true,
       relaxSol: 0.02, kEvap: 0.0004, kSubl: 0.0005, brassage: 0.3, distBrassage: 4, convection: 0.4,
       seuilPluie: 0.08, agitation, zoneAgitation: {x0, x1, y0: yHaut, y1: yFond - 1}, dispersion: 8,
     });

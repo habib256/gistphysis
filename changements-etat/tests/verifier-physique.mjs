@@ -269,14 +269,16 @@ if (partie(6, 'Cycle de l’eau : nuages, pluie, givre, océan')) {
   const froid = SC.cycle(10).monde;
   froid.r.soleil = 3;
   const glaces = [];
-  for (let k = 1; k <= 30000; k++) {
+  for (let k = 1; k <= 60000; k++) {
     froid.avancer();
     if (k % 5000) continue;
     let g = 0; for (let i = 0; i < froid.n; i++) if (froid.typ[i] === GLACE) g += froid.m[i];
     glaces.push(arrondi(g, 1));
   }
-  verifier(`air à 10 °C au bord de la mer, 30 000 pas : la glace du sommet ne grossit pas sans fin (${glaces.join(', ')} g)`,
-    glaces[5] <= 1.3 * Math.max(glaces[2], glaces[3]));
+  // (la glace varie d'un relevé à l'autre, de ±20 % : on compare des moyennes)
+  const moy = a => a.reduce((x, y) => x + y, 0) / a.length;
+  verifier(`air à 10 °C au bord de la mer, 60 000 pas : la glace du sommet ne grossit pas sans fin (${glaces.join(', ')} g ; moyenne de 35 000 à 60 000 pas au plus 1,3 fois celle de 15 000 à 30 000 pas)`,
+    moy(glaces.slice(6)) <= 1.3 * moy(glaces.slice(2, 6)));
   // sans vent : la vapeur monte encore (brassage)
   const calme = SC.cycle(20).monde;
   calme.r.soleil = 3; calme.r.vent = null;
@@ -524,7 +526,7 @@ if (partie(8, 'Longue durée du cycle, nappe, cavité au froid, glace chauffée 
         const ts = c.xs.map(x => monde.lireTemperature(x, c.y));
         ecartMax = Math.max(ecartMax, Math.max(...ts) - Math.min(...ts)); tMax = Math.max(tMax, ...ts);
       }
-      verifier(`${c.nom} : l’eau se mélange, l’écart entre le côté chauffé (où l’eau bout sur la plaque), le milieu et l’autre côté reste petit (au plus ${arrondi(ecartMax, 1)} °C ; jusqu’à ${arrondi(tMax, 1)} °C ; ${monde.compteurs.bulles} bulles)`, ecartMax <= 8);
+      verifier(`${c.nom} : l’eau se mélange, l’écart entre le côté chauffé (où l’eau bout sur la plaque), le milieu et l’autre côté reste petit (au plus ${arrondi(ecartMax, 1)} °C ; jusqu’à ${arrondi(tMax, 1)} °C ; ${monde.compteurs.bulles} bulles)`, ecartMax <= 5);
     }
   }
   {
