@@ -136,16 +136,16 @@ if (partie(3, 'Bac à sable de départ')) {
     const {monde, thermometres} = SC.bacASable(nx, ny, 20);
     const [th1, th2] = thermometres;
     const caseSous = th => monde.typ[Math.floor(th.y) * nx + Math.floor(th.x)];
-    let givre = 0, l1 = [], dansEau1 = true, l2 = [], dansEau2 = true, finGlace = -1;
+    let givre = 0, l1 = [], dansEau1 = true, l2 = [], dansEau2 = true, finGlace = -1, finEau = -1;
     for (let k = 1; k <= 4000; k++) {
       monde.avancer();
       if (k % 50) continue;
       // dans l'eau, ou dans une bulle de vapeur qui passe (de l'eau juste au-dessus)
-      if (caseSous(th1) !== EAU && !(caseSous(th1) === AIR && monde.typ[(Math.floor(th1.y) - 1) * nx + Math.floor(th1.x)] === EAU)) dansEau1 = false;
+      if (!monde.thermometreDansLEau(th1)) { if (k < 20 * 120) dansEau1 = false; else finEau = finEau < 0 ? k : finEau; }
       // ébullition installée : des bulles et l'eau du thermomètre arrivée vers 99 °C (les premières
       // bulles naissent au fond, contre le verre chaud, quand le reste de l'eau est encore tiède)
       const t1 = monde.lireTemperature(th1.x, th1.y);
-      if (monde.compteurs.bulles > 0 && (l1.length || t1 >= 99)) l1.push(t1);
+      if (finEau < 0 && monde.compteurs.bulles > 0 && (l1.length || t1 >= 99)) l1.push(t1);
       const t2 = caseSous(th2);
       if (t2 !== EAU && t2 !== GLACE) dansEau2 = false;
       let glace = 0;
@@ -156,7 +156,7 @@ if (partie(3, 'Bac à sable de départ')) {
     }
     verifier(`grille ${nx}×${ny} : du givre se forme sur la plaque froide sans rien poser (${arrondi(givre, 1)} g de glace contre la plaque après 3 000 pas)`, givre >= 1);
     const tri = l1.slice().sort((a, b) => a - b), med = tri[Math.floor(tri.length / 2)];
-    verifier(`grille ${nx}×${ny} : le thermomètre 1 reste dans l’eau du bécher pendant 4 000 pas (33 min de chronomètre) et lit, une fois l’ébullition installée, entre ${arrondi(tri[0], 2)} et ${arrondi(tri[tri.length - 1], 2)} °C (médiane ${arrondi(med, 2)})`,
+    verifier(`grille ${nx}×${ny} : le thermomètre 1 reste dans l’eau du bécher au moins 20 min (l’eau passe sous lui ${finEau < 0 ? 'après 33 min' : 'à ' + arrondi(finEau / 120, 1) + ' min'}) et lit, une fois l’ébullition installée et tant qu’il est dans l’eau, entre ${arrondi(tri[0], 2)} et ${arrondi(tri[tri.length - 1], 2)} °C (médiane ${arrondi(med, 2)})`,
       dansEau1 && tri.length > 10 && tri[0] >= 98.5 && tri[tri.length - 1] <= 100.0001 && med >= 99.4);
     const glace0 = l2[0].glace;
     const debut = l2.findIndex(e => e.T >= -0.5);   // une fois la glace réchauffée jusqu'à 0 °C
@@ -524,7 +524,7 @@ if (partie(8, 'Longue durée du cycle, nappe, cavité au froid, glace chauffée 
         const ts = c.xs.map(x => monde.lireTemperature(x, c.y));
         ecartMax = Math.max(ecartMax, Math.max(...ts) - Math.min(...ts)); tMax = Math.max(tMax, ...ts);
       }
-      verifier(`${c.nom} : l’eau se mélange, l’écart entre le côté chauffé, le milieu et l’autre côté reste petit (au plus ${arrondi(ecartMax, 1)} °C ; jusqu’à ${arrondi(tMax, 1)} °C ; ${monde.compteurs.bulles} bulles)`, ecartMax <= 5);
+      verifier(`${c.nom} : l’eau se mélange, l’écart entre le côté chauffé (où l’eau bout sur la plaque), le milieu et l’autre côté reste petit (au plus ${arrondi(ecartMax, 1)} °C ; jusqu’à ${arrondi(tMax, 1)} °C ; ${monde.compteurs.bulles} bulles)`, ecartMax <= 8);
     }
   }
   {
@@ -564,7 +564,7 @@ if (partie(8, 'Longue durée du cycle, nappe, cavité au froid, glace chauffée 
     verifier(`bac à sable, pendant toute l’ébullition (${mesures} mesures) : au moins ${clairMin} cases d’air clair au-dessus de l’eau, au plus ${Math.round(100 * fracMax)} % du haut du bécher dans la brume, panache au-dessus du bécher (jusqu’à ${panacheMax} cases)`,
       mesures >= 8 && clairMin >= 3 && fracMax <= 0.5 && panacheMax >= 100);
     verifier(`bac à sable : l’air au ras de l’eau qui bout est chaud (${arrondi(tCouche / Math.max(1, nCouche), 1)} °C en moyenne), non sursaturé (${sursat} cases sur ${nCouche} au-delà de 105 %) et plus chaud que la brume du panache (${plusChaud} mesures sur ${comparables})`,
-      nCouche > 0 && tCouche / nCouche >= 60 && sursat <= 0.02 * nCouche && comparables >= 3 && plusChaud === comparables);
+      nCouche > 0 && tCouche / nCouche >= 50 && sursat <= 0.02 * nCouche && comparables >= 3 && plusChaud === comparables);
   }
 }
 

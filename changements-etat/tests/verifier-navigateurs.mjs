@@ -337,6 +337,22 @@ async function controler(nav, base) {
     propre(p, 'fusion');
     await p.fermer();
   }
+  {
+    // 100 g, plaque 6 : l'eau qui bout passe sous le réservoir du thermomètre ; les relevés s'arrêtent
+    const p = await ouvrir('/index.html#fusion', 1024, 768);
+    const r = await p.ev(`(()=>{
+      const s = document.getElementById('s-masse'); s.value = '100'; s.dispatchEvent(new Event('change', {bubbles: true}));
+      const pl = document.getElementById('r-plaque'); pl.value = '6'; pl.dispatchEvent(new Event('input', {bubbles: true}));
+      document.getElementById('b-demarrer').click();
+      for (let k = 0; k < 40 && Changements.etat.fusion.statut === 'en-cours'; k++) Changements.avancer(1000);
+      const ms = Changements.etat.fusion.mesures, th = Changements.etat.thermometres[0];
+      return {statut: Changements.etat.fusion.statut, message: !document.getElementById('hors-eau').hidden, bouton: document.getElementById('b-demarrer').textContent,
+        derniere: ms.length ? ms[ms.length - 1].T : null, mini: Math.min(...ms.slice(ms.length - 20).map(x => x.T)), masse: Changements.etat.fusion.masse, niveau: Changements.etat.fusion.niveau};
+    })()`);
+    verifier(`${N} fusion, 100 g, plaque 6 : quand l’eau passe sous le thermomètre, les relevés s’arrêtent avec un message (« ${r.bouton} » ; dernier relevé ${r.derniere} °C, aucun relevé dans l’air)`,
+      r.statut === 'hors' && r.message && r.mini > 90, r);
+    await p.fermer();
+  }
 
   // 6. Onglets et adresse
   await nav.relancer();

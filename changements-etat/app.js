@@ -571,7 +571,7 @@
     const petit = s < 3.2;   // scène petite (téléphone) : noms plus courts, hors de ce qu'ils nomment
     centre(CV, petit ? 'Cavité' : 'Poche d’eau souterraine (cavité)', petit ? 7 : 4, 1);
     placer('Source (résurgence)', inf.xResurgence + 7, inf.sortieCavite + 2);
-    centre(NA, 'Nappe phréatique', 6, 5, 3);
+    centre(NA, 'Nappe phréatique', 1, 5, 3);
     const xs = Math.round((inf.xSourceVent + inf.xSommet) / 2);
     placer('Sol perméable', xs - 4, inf.haut[xs - 4] + 1);
     if (!petit) centre(FI, 'Roche fissurée', 0, 1);
@@ -617,9 +617,11 @@
       const pts = [];
       for (let x = tr.de; tr.pas < 0 ? x >= tr.a : x <= tr.a; x += tr.pas) {
         const fin = inf.haut[x] > inf.ySea + 1;                         // embouchure : la surface de l'océan
-        let local = 0, debit = 0;
-        for (let k = -3; k <= 3; k++) { local += eauColonne(x + k); const xx = x + k; if (xx >= 0 && xx < nx) debit += monde.debitColonne[xx]; }
-        pts.push({x: x + 0.5, y: fin ? inf.ySea + 0.6 : inf.haut[x] - 0.45, eau: Math.min(1, local / 1.2), debit: Math.min(1, debit / 2)});
+        let debit = 0;
+        for (let k = -3; k <= 3; k++) { const xx = x + k; if (xx >= 0 && xx < nx) debit += monde.debitColonne[xx]; }
+        // le ruban suit l'eau réellement présente dans la colonne (et sa voisine) : un lit à sec n'est pas dessiné
+        const local = eauColonne(x) + 0.5 * Math.max(eauColonne(x - 1), eauColonne(x + 1));
+        pts.push({x: x + 0.5, y: fin ? inf.ySea + 0.6 : inf.haut[x] - 0.45, eau: fin ? 1 : Math.min(1, local / 0.5), debit: Math.min(1, debit / 2)});
         if (fin) break;
       }
       if (pts.length < 3) continue;
@@ -741,6 +743,9 @@
   function enregistrerSiBesoin() {
     const f = etat.fusion;
     if (f.statut !== 'en-cours' || etat.partie !== 'fusion') return;
+    // l'eau qui bout s'en va : quand le réservoir du thermomètre n'est plus dans l'eau, les relevés
+    // s'arrêtent (une lecture dans l'air ne ferait pas partie de la courbe)
+    if (!etat.monde.thermometreDansLEau(etat.thermometres[0])) { f.statut = 'hors'; courbeARefaire = true; majBoutons(); return; }
     const t = etat.monde.temps - f.t0;
     while (t + 1e-6 >= f.prochaine) {
       const mes = {t: f.prochaine, T: lireThermoFusion()};
@@ -781,8 +786,8 @@
         const i = y * nx + x;
         if (typ[i] === EAU || typ[i] === GLACE) becher += m[i];
       }
-      lignes.push(`<span class="total">Eau dans le bécher : ${g(becher * monde.r.gParCase)}</span>`);
-      lignes.push(`<span class="ligne">Masse totale d’eau (avec l’air) : ${g(ms.total)}</span>`);
+      lignes.push(`<span class="total">Eau dans le bécher (glace et liquide) : ${g(becher * monde.r.gParCase)}</span>`);
+      lignes.push(`<span class="ligne">Masse totale d’eau, avec la vapeur déjà présente dans l’air de la salle : ${g(ms.total)}</span>`);
     } else {
       lignes.push(`<span class="total">Masse totale d’eau : ${g(ms.total)}</span>`);
       const t = monde.temps, min = Math.floor(t / 60 + 1e-9), sec = Math.floor(t - 60 * min + 1e-9);
@@ -846,9 +851,11 @@
     pause.textContent = etat.enMarche ? 'Pause' : 'Lecture';
     pause.setAttribute('aria-pressed', String(!etat.enMarche));
     $('en-pause').hidden = p === 'fusion' ? f.statut !== 'pause' : etat.enMarche;
+    $('hors-eau').hidden = !(p === 'fusion' && f.statut === 'hors');
     $('b-depart').textContent = p === 'bac-a-sable' ? 'Scène de départ' : 'Remettre à zéro';
     const dem = $('b-demarrer');
-    dem.textContent = f.statut === 'en-cours' ? 'Pause' : f.statut === 'pause' ? 'Reprendre' : 'Démarrer';
+    dem.textContent = f.statut === 'en-cours' ? 'Pause' : f.statut === 'pause' ? 'Reprendre' : f.statut === 'hors' ? 'Relevés terminés' : 'Démarrer';
+    dem.disabled = f.statut === 'hors';
     $('s-masse').disabled = f.statut !== 'pret';
     $('s-masse').value = String(f.masse);
     $('r-plaque').value = String(f.niveau);
@@ -1060,7 +1067,7 @@
     $('b-demarrer').addEventListener('click', () => {
       const f = etat.fusion;
       if (f.statut === 'pret') { f.statut = 'en-cours'; f.t0 = etat.monde.temps; f.prochaine = 0; enregistrerSiBesoin(); }
-      else f.statut = f.statut === 'en-cours' ? 'pause' : 'en-cours';
+      else if (f.statut !== 'hors') f.statut = f.statut === 'en-cours' ? 'pause' : 'en-cours';
       majBoutons(); dessiner();
     });
     $('r-plaque').addEventListener('input', e => {

@@ -27,8 +27,8 @@
   // ---- Bac à sable ---------------------------------------------------------
   function bacASable(nx, ny, tAir = 20, {vide = false} = {}) {
     const monde = new Monde(nx, ny, {
-      gParCase: 1, dt: 0.5, relaxAir: 0.002, kEvap: 0.015, kSubl: 0.004, brassage: 0.1, distBrassage: 3, kAirEau: 0.1,
-      convection: 0.8, tChaud: 170, tFroid: -25, evapChaud: 0.05, fenetreAeration: 6, melangeLiquide: 0.03, seuilPluie: 0.06, seuilGivre: 0.3, dispersion: 8, diffGouttelettes: 0.08, depotGouttelettes: 0.01,
+      gParCase: 1, dt: 0.5, relaxAir: 0.002, kEvap: 0.015, kSubl: 0.004, brassage: 0.05, distBrassage: 3, aeration: 0.03,
+      convection: 0.8, tChaud: 170, tFroid: -25, evapChaud: 0.05, fenetreAeration: 6, melangeLiquide: 0.03, nucleation: 0.5, seuilPluie: 0.06, seuilGivre: 0.3, dispersion: 8, diffGouttelettes: 0.08, depotGouttelettes: 0.01,
       sortieHaut: 0.5 * satLiquide(tAir),
     });
     monde.rectangle(0, 0, nx - 1, ny - 1, AIR, tAir);
@@ -70,7 +70,7 @@
   // Coupe sans échelle de l'île, d'une côte à l'autre, par le Piton des Neiges : l'altitude est
   // exagérée par rapport aux distances. Le vent vient de la gauche (côte au vent).
   // Sous la surface : une couche de sol perméable (où se forme la nappe phréatique) posée sur de
-  // la roche imperméable ; côté gauche, la couche de sol s'arrête au milieu de la pente : la nappe
+  // la roche peu perméable ; côté gauche, la couche de sol s'arrête au milieu de la pente : la nappe
   // y ressort (source) et donne une rivière. Côté droit, sous le sommet, une cavité dans la roche
   // volcanique (tunnel de lave), alimentée par l'eau qui traverse la roche fissurée : son trop-plein
   // ressort par une source (résurgence) qui donne une autre rivière. Les lits des rivières, creusés
@@ -86,7 +86,7 @@
       kEvap: 0.15, kEvapTerre: 0.01, plafondAir: 0.77, brassage: 0.3, distBrassage: 3, brassageYMin: 66, brassageHaut: 0.015, brassageAir: false, chaleurVapeur: 0,
       glissementNeige: true, convection: 0, convectionLiquide: 0, diffGouttelettes: 0.01,
       chuteGouttelettes: 0.004, seuilPluie: 0.0025, tauxPluie: 0.08, evapPluie: 0.004, seuilFlaque: 0.3, seuilGivre: 0.25, tailleGoutte: 0.002,
-      sol: true, solFixe: true, alterner: true, bordsSolides: false, conductionAir: 0, capaciteSol: 0.35, kInfiltration: 0.03, kNappe: 0.006, kSource: 0.2, kReservoir: 0.00003, kProfond: 0.0005, ventVariable: 12000,
+      sol: true, solFixe: true, alterner: true, bordsSolides: false, conductionAir: 0, capaciteSol: 0.35, kInfiltration: 0.03, kNappe: 0.006, kSource: 0.2, kReservoir: 0.0002, kProfond: 0.0001, ventVariable: 12000,
       kSolBas: 0.025, kSolCote: 0.03, kSortieSol: 0.05, kEvapSol: 0.01, dispersion: 6, soleil: 0,
     });
     // Relief : haut du sol (ou du fond de l'océan) pour chaque colonne
@@ -115,7 +115,7 @@
       }
     };
     // en tête de la ravine, le lit est creusé jusque sous la couche de sol : la source sort au contact
-    // de la roche imperméable, au pied de la couche de sol
+    // de la roche peu perméable, au pied de la couche de sol
     creuser(xCote - 2, xSourceVent, false, haut[xSourceVent + 1] + CYCLE.epaisseurSol + 1);
     creuser(xResurgence, xEst + 2, true);
     // embouchures et plages : le lit descend jusqu’à 3 cases sous le niveau de la mer (la rivière se
@@ -138,7 +138,7 @@
         if (y >= haut[x] && (dansCavite(x, y) || dansGalerie(x, y))) {
           monde.poser(i, AIR, tSousSol(y));                      // cavité et galerie, dans la roche
         } else if (y >= haut[x]) {
-          // Sol perméable (entre la source de gauche et le sommet) sur de la roche imperméable ;
+          // Sol perméable (entre la source de gauche et le sommet) sur de la roche peu perméable ;
           // sous le sommet, de la roche fissurée (perméable) mène l'eau jusqu'à la cavité
           const estSol = x > xSourceVent && x <= xFinSol && prof < CYCLE.epaisseurSol;
           const estFissure = x >= fissure.x0 && x <= fissure.x1 && y < cavite.y0 && prof >= CYCLE.epaisseurSol;
@@ -207,7 +207,7 @@
   function fusion(masse = 150, niveau = 3, agitation = true) {
     const {nx, ny, x0, x1, yHaut, yFond, gParCase} = FUSION;
     const monde = new Monde(nx, ny, {
-      gParCase, dt: 0.1, puissance: niveau * FUSION.wattsParNiveau, cPlaque: 3, relaxAir: 0.002, flottaison: 0, pertes: 0.12,
+      gParCase, dt: 0.1, puissance: niveau * FUSION.wattsParNiveau, cPlaque: 3, relaxAir: 0.002, flottaison: 0, pertes: 0.12, nucleation: 0.5,
       relaxSol: 0.02, kEvap: 0.0004, kSubl: 0.0005, brassage: 0.3, distBrassage: 4, convection: 0.4,
       seuilPluie: 0.08, agitation, zoneAgitation: {x0, x1, y0: yHaut, y1: yFond - 1}, dispersion: 8,
     });

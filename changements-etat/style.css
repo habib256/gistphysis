@@ -62,7 +62,8 @@ button.large { width: 100%; margin-top: 6px; }
 #masses .total { font-weight: 700; }
 #masses .petit { font-size: 12px; }
 #mention-vapeur { right: 6px; top: 6px; max-width: 46%; border: 1px solid #c79bff; }
-#en-pause { right: 8px; bottom: 8px; font-size: 15px; font-weight: 700; }   /* dans un coin : ne cache pas la scène */
+#en-pause { right: 8px; bottom: 8px; font-size: 15px; font-weight: 700; }
+#hors-eau { left: 50%; bottom: 8px; transform: translateX(-50%); font-weight: 700; max-width: calc(100% - 16px); text-align: center; }   /* dans un coin : ne cache pas la scène */
 
 /* Expérience de fusion : la courbe à côté du bécher */
 #experience { display: none; }
