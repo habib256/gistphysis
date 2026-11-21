@@ -130,6 +130,8 @@ button.large { width: 100%; margin-top: 6px; }
   #app[data-partie="fusion"] #panneau { max-height: 40%; }
   #app[data-partie="fusion"] #zone-scene, #app[data-partie="fusion"] #experience { flex: 1 1 0; }
   .etiquette-scene { font-size: 12px; }
+  #masses { font-size: 11px; padding: 3px 6px; }   /* téléphone : l'encadré des masses cache moins le ciel */
+  #masses .petit { font-size: 10px; }
   #tableau-zone { max-height: 150px; }
   button { font-size: 14px; }
 }

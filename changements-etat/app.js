@@ -369,7 +369,9 @@
       placees.push({x: sx - 7, y: sy - haut - 2, w: 14, h: haut + 9});   // la tige : les noms l'évitent
       const T = monde.lireTemperature(th.x, th.y);
       const nom = etat.thermometres.length > 1 ? (k + 1) + ' : ' : '';
-      etiquette(nom + nombre(T, 1) + ' °C', sx, sy - haut - 12, {taille: 13});
+      // petite scène : la lecture à côté de la tige, pour ne pas cacher le haut du récipient
+      if (vue.s < 3.5) etiquette(nom + nombre(T, 1) + ' °C', sx + 8, sy - haut * 0.55, {taille: 12, centre: false});
+      else etiquette(nom + nombre(T, 1) + ' °C', sx, sy - haut - 12, {taille: 13});
     });
   }
 
@@ -560,8 +562,8 @@
     }
     // les noms sont placés par ordre d'importance ; s'il n'y a pas la place, un nom est omis
     const taille = toile.width / dpr < 600 ? 11 : 13;
-    const placer = (texte, gx, gy) => { const [sx, sy] = versEcran(gx, gy); return etiquette(texte, sx, sy, {taille, facultative: true, decalageMax: 1}); };
-    const centre = (G, texte, dy = 0, min = 1) => { if (G.n >= min) placer(texte, G.x / G.n, G.y / G.n + dy); };
+    const placer = (texte, gx, gy, dec = 1) => { const [sx, sy] = versEcran(gx, gy); return etiquette(texte, sx, sy, {taille, facultative: true, decalageMax: dec}); };
+    const centre = (G, texte, dy = 0, min = 1, dec = 1) => { if (G.n >= min) placer(texte, G.x / G.n, G.y / G.n + dy, dec); };
     placer('Océan Indien', inf.xCote * 0.45, inf.ySea + 10);
     centre(RV, 'Rivière', -3, 2);
     centre(RA, 'Rivière', -3, 2);
@@ -569,14 +571,16 @@
     const petit = s < 3.2;   // scène petite (téléphone) : noms plus courts, hors de ce qu'ils nomment
     centre(CV, petit ? 'Cavité' : 'Poche d’eau souterraine (cavité)', petit ? 7 : 4, 1);
     placer('Source (résurgence)', inf.xResurgence + 7, inf.sortieCavite + 2);
-    centre(NA, 'Nappe phréatique', 6, 5);
+    centre(NA, 'Nappe phréatique', 6, 5, 3);
     const xs = Math.round((inf.xSourceVent + inf.xSommet) / 2);
     placer('Sol perméable', xs - 4, inf.haut[xs - 4] + 1);
     if (!petit) centre(FI, 'Roche fissurée', 0, 1);
-    placer('Roche imperméable', xs + 2, inf.haut[xs + 2] + 24);
+    placer('Roche (peu perméable)', xs + 2, inf.haut[xs + 2] + 24);
     placer('Piton des Neiges', inf.xSommet, inf.ySommet - 6);
-    centre(N, 'Nuage', 0, 40);
-    centre(P, 'Pluie', 3, 6);
+    // nuage : au-dessus de son centre ; pluie : un peu en dessous et du côté de la mer (pas en pile
+    // avec « Infiltration », placé plus bas sur la pente)
+    centre(N, 'Nuage', -3, 40);
+    if (P.n >= 6) placer('Pluie', P.x / P.n - 6, P.y / P.n + 2);
     centre(GV, 'Givre', -3, 1);
     centre(GL, 'Glace', 3, 1);
     // Infiltration : là où l'eau entre dans le sol en ce moment, avec une flèche vers le bas

@@ -3,7 +3,7 @@
 //   node tests/verifier-physique.mjs [--seulement 1,4,…]
 //
 // Le moteur (simulation.js, scenes.js) est déterministe : hasard à graine fixe. Chaque contrôle
-// dit ce qu'il vérifie. Durée : environ 20 minutes.
+// dit ce qu'il vérifie. Durée : environ 25 minutes.
 //   1. Conservation de la masse : bac à sable (toutes les transformations), cycle de l'eau,
 //      expérience de fusion ; outils (une paroi ou une plaque posée ne change pas la masse, l'eau
 //      posée l'augmente exactement de ce qui est posé) ; sublimation dans l'air sec et froid.
@@ -405,6 +405,25 @@ if (partie(8, 'Longue durée du cycle, nappe, cavité au froid, glace chauffée 
     verifier(`masse conservée sur 80 000 pas (écart ${(monde.masses().total - m0).toExponential(1)} g)`, Math.abs(monde.masses().total - m0) < 1e-6 * m0);
   }
   {
+    // niveau ABSOLU de la mer sur 150 000 pas (20 °C et 12 °C) ; aucune case d'eau trop pleine
+    for (const tMer of [20, 12]) {
+      const {monde} = SC.cycle(tMer);
+      monde.r.soleil = 3;
+      const {nx, ny, typ, m} = monde, oc = monde.r.ocean;
+      const niveau = b => { let s = 0, k = 0; for (let x = b.x0; x <= b.x1; x++) { let y = 0; while (y < ny && !(oc[y * nx + x] && typ[y * nx + x] === EAU)) y++; if (y < ny) { s += y + 1 - Math.min(1, m[y * nx + x]); k++; } } return s / k; };
+      const niveaux = [];
+      let mMax = 0;
+      for (let k = 1; k <= 150000; k++) {
+        monde.avancer();
+        if (k % 250 === 0) for (let i = 0; i < monde.n; i++) if (typ[i] === EAU && m[i] > mMax) mMax = m[i];
+        if (k % 2000 === 0 && k >= 10000) niveaux.push(niveau(monde.r.mers[0]), niveau(monde.r.mers[1]));
+      }
+      const tri = niveaux.slice().sort((a, b) => a - b), med = tri[tri.length >> 1];
+      verifier(`air à ${tMer} °C, 150 000 pas : la surface des deux mers reste à ±1 ligne de sa hauteur habituelle (de ${arrondi(tri[0], 2)} à ${arrondi(tri[tri.length - 1], 2)} ; médiane ${arrondi(med, 2)}) ; aucune case d’eau au-delà de 1,5 g (au plus ${arrondi(mMax, 2)} g)`,
+        tri[0] >= med - 1 && tri[tri.length - 1] <= med + 1 && mMax <= 1.5);
+    }
+  }
+  {
     // calcul plus rapide (transformations lentes un pas sur deux) : mêmes nuages, pluie et vapeur
     const bilan = alt => {
       const {monde, infos} = SC.cycle(20);
@@ -509,39 +528,43 @@ if (partie(8, 'Longue durée du cycle, nappe, cavité au froid, glace chauffée 
     }
   }
   {
-    // panache au-dessus de l'eau qui bout ; juste au-dessus de l'eau, l'air (réchauffé par la vapeur
-    // chaude) est plus chaud que la brume et n'est pas saturé : il reste clair sans règle particulière
+    // pendant toute l'ébullition : air chaud et clair au ras de l'eau, brume plus haut, panache qui sort
+    // du bécher (le bécher ne se remplit pas de brume)
     const [nx, ny] = dims(770, 714);
     const {monde, thermometres} = SC.bacASable(nx, ny, 20);
-    const th = thermometres[0];
-    let brumeMax = 0, mesures = 0, sursat = 0, nCouche = 0, gouttes = 0, plusChaud = 0, comparables = 0;
-    for (let k = 1; k <= 2500; k++) {
+    const th = thermometres[0], xc = Math.round(th.x), yt = Math.round(th.y);
+    let xg = xc; while (monde.typ[yt * nx + xg] !== VERRE) xg--;
+    let xd = xc; while (monde.typ[yt * nx + xd] !== VERRE) xd++;
+    let yh = yt; while (yh > 0 && monde.typ[yh * nx + xg] === VERRE) yh--; yh++;
+    const visible = i => 0.97 * (1 - Math.exp(-monde.d[i] / 0.0025)) > 0.4;
+    let mesures = 0, clairMin = Infinity, fracMax = 0, panacheMax = 0, sursat = 0, nCouche = 0, tCouche = 0, plusChaud = 0, comparables = 0;
+    for (let k = 1; k <= 4200; k++) {
       monde.avancer();
-      if (k < 700 || k % 100) continue;
-      let brume = 0, Tb = 0;
-      for (let i = 0; i < monde.n; i++) {
-        if (monde.typ[i] !== AIR) continue;
-        const x = i % nx;
-        if (Math.abs(x - th.x) <= 14 && 0.97 * (1 - Math.exp(-monde.d[i] / 0.0025)) > 0.4) { brume++; Tb += monde.T[i]; }
-      }
-      brumeMax = Math.max(brumeMax, brume);
+      if (k % 200 || monde.compteurs.bulles < 5) continue;
+      let y = 0; while (y < ny && monde.typ[y * nx + xc] !== EAU) y++;
+      if (y >= yt) break;   // presque plus d'eau
+      let clair = 0;
+      for (let yy = y - 1; yy >= 0; yy--) { const i = yy * nx + xc; if (monde.typ[i] !== AIR || visible(i)) break; clair++; }
+      let br = 0, tot = 0;
+      for (let yy = yh; yy < y; yy++) for (let x = xg + 1; x < xd; x++) { const i = yy * nx + x; if (monde.typ[i] !== AIR) continue; tot++; if (visible(i)) br++; }
+      let pan = 0, Tb = 0;
+      for (let yy = Math.max(0, yh - 40); yy < yh; yy++) for (let x = xg - 15; x <= xd + 15; x++) { if (x < 0 || x >= nx) continue; const i = yy * nx + x; if (monde.typ[i] === AIR && visible(i)) { pan++; Tb += monde.T[i]; } }
       let Tc = 0, nc = 0;
-      for (let x = Math.round(th.x) - 5; x <= Math.round(th.x) + 5; x++) {
-        let y = 0; while (y < ny && monde.typ[y * nx + x] !== EAU) y++;
-        for (const yy of [y - 1, y - 2]) {
-          const i = yy * nx + x;
-          if (yy < 0 || monde.typ[i] !== AIR) continue;
-          nCouche++; Tc += monde.T[i]; nc++;
-          if (monde.v[i] > 1.05 * satLiquide(monde.T[i])) sursat++;
-          if (yy === y - 1 && 0.97 * (1 - Math.exp(-monde.d[i] / 0.0025)) > 0.4) gouttes++;   // brume visible au ras de l'eau
-        }
+      for (let x = xc - 4; x <= xc + 4; x++) {
+        let yy = 0; while (yy < ny && monde.typ[yy * nx + x] !== EAU) yy++;
+        const i = (yy - 1) * nx + x;
+        if (yy < 1 || monde.typ[i] !== AIR) continue;
+        nCouche++; nc++; Tc += monde.T[i]; tCouche += monde.T[i];
+        if (monde.v[i] > 1.05 * satLiquide(monde.T[i])) sursat++;
       }
-      if (brume > 20 && nc > 0) { comparables++; if (Tc / nc > Tb / brume + 5) plusChaud++; }
+      clairMin = Math.min(clairMin, clair); fracMax = Math.max(fracMax, tot ? br / tot : 0); panacheMax = Math.max(panacheMax, pan);
+      if (pan > 20 && nc) { comparables++; if (Tc / nc > Tb / pan + 10) plusChaud++; }
       mesures++;
     }
-    verifier(`bac à sable : un panache de brume au-dessus du bécher qui bout (jusqu’à ${brumeMax} cases de brume nette au-dessus du bécher)`, brumeMax >= 100);
-    verifier(`bac à sable : à 1 ou 2 cases au-dessus de l’eau qui bout, l’air n’est pas sursaturé (${sursat} cases sur ${nCouche} au-delà de 105 %) et sans brume visible au ras de l’eau (${gouttes} cases), plus chaud que la brume plus haut (${plusChaud} mesures sur ${comparables})`,
-      mesures > 10 && sursat <= 0.02 * nCouche && gouttes <= 0.03 * nCouche && comparables >= 5 && plusChaud === comparables);
+    verifier(`bac à sable, pendant toute l’ébullition (${mesures} mesures) : au moins ${clairMin} cases d’air clair au-dessus de l’eau, au plus ${Math.round(100 * fracMax)} % du haut du bécher dans la brume, panache au-dessus du bécher (jusqu’à ${panacheMax} cases)`,
+      mesures >= 8 && clairMin >= 3 && fracMax <= 0.5 && panacheMax >= 100);
+    verifier(`bac à sable : l’air au ras de l’eau qui bout est chaud (${arrondi(tCouche / Math.max(1, nCouche), 1)} °C en moyenne), non sursaturé (${sursat} cases sur ${nCouche} au-delà de 105 %) et plus chaud que la brume du panache (${plusChaud} mesures sur ${comparables})`,
+      nCouche > 0 && tCouche / nCouche >= 60 && sursat <= 0.02 * nCouche && comparables >= 3 && plusChaud === comparables);
   }
 }
 
