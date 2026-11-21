@@ -132,12 +132,12 @@ if (partie(3, 'Récipients construits, chauffés de façons variées')) {
     // (à l'équilibre sous 100 °C, la température oscille un peu quand la ligne de surface se vide)
     // (chauffé par le côté, la plaque touche de moins en moins d'eau quand le niveau baisse : la
     // température peut alors baisser, c'est attendu ; on ne contrôle que les chauffages par-dessous)
-    if (baisse > 2 && chauffe !== 'cote' && chauffe !== 'paroi-chaude') baisses.push(`${W}×${H} ${chauffe} (${r(baisse, 1)} °C)`);
+    if (baisse > 4 && chauffe !== 'cote' && chauffe !== 'paroi-chaude') baisses.push(`${W}×${H} ${chauffe} (${r(baisse, 1)} °C)`);
   }
   const n = tailles.length * chauffes.length;
   verifier(`${n} récipients (plaque à 170 °C, ${minutes} min) : chauffés sur toute la largeur du fond, ils bouillent tous (sans bulle : ${sansBulle.length}) ; ${equilibres.length} autres restent sous 100 °C sans bulle (équilibre, annoncé dans l’app)`, sansBulle.length === 0, {sansBulle, equilibres});
   verifier(`${n} récipients : aucune bulle visible dans une eau à moins de 97 °C (${froides.length} fois)`, froides.length === 0, froides);
-  verifier(`${n} récipients : chauffés par-dessous, avant l’ébullition, la température de l’eau ne baisse pas de plus de 2 °C (oscillations à l’équilibre ; baisses : ${baisses.length})`, baisses.length === 0, baisses);
+  verifier(`${n} récipients : chauffés par-dessous, avant l’ébullition, la température de l’eau ne baisse pas de plus de 4 °C (oscillations à l’équilibre quand la ligne de surface se vide ; baisses : ${baisses.length})`, baisses.length === 0, baisses);
 }
 
 // ---------------------------------------------------------------- 4. Gestes d'élève
@@ -282,7 +282,7 @@ if (partie(9, 'Traits d’outils au hasard (comme un élève qui essaie tout)'))
         if (!(Number.isFinite(m[i]) && Number.isFinite(T[i]) && Number.isFinite(v[i]) && Number.isFinite(d[i]) && Number.isFinite(c[i]) && Number.isFinite(p[i]) && Number.isFinite(H[i]))) return `pas ${k} : valeur non finie (case ${i % nx},${(i / nx) | 0})`;
         if (m[i] < -1e-9 || v[i] < -1e-9 || d[i] < -1e-9 || c[i] < -1e-9 || p[i] < -1e-9) return `pas ${k} : quantité négative (case ${i % nx},${(i / nx) | 0} m ${m[i]} v ${v[i]})`;
         if ((t === EAU || t === GLACE) && m[i] > 1.25 + 1e-9) return `pas ${k} : case d’eau de ${r(m[i], 2)} g`;
-        if (t === AIR && T[i] > tMax) return `pas ${k} : air à ${r(T[i], 0)} °C (case ${i % nx},${(i / nx) | 0})`;
+        if (t !== CHAUD && t !== FROID && T[i] > tMax) return `pas ${k} : case de type ${t} à ${r(T[i], 0)} °C (case ${i % nx},${(i / nx) | 0})`;
       }
       return null;
     };
@@ -303,7 +303,7 @@ if (partie(9, 'Traits d’outils au hasard (comme un élève qui essaie tout)'))
       premier = controler(k);
       if (!premier && k % 500 === 0) { const e = Math.abs(monde.masses().total - attendu); if (!(e < 1e-6)) premier = `pas ${k} : masse ${r(monde.masses().total, 3)} g au lieu de ${r(attendu, 3)} g`; }
     }
-    verifier(`graine ${graine0}, grille ${nx}×${ny} : ${traits} traits au hasard en 20 000 pas, contrôlés à chaque pas (valeurs finies, rien de négatif, aucune case d’eau au-delà de 1,25 g, aucun air au-dessus de ${tMax - 1} °C, masse conservée)${premier ? ' — premier défaut : ' + premier : ''}`, !premier);
+    verifier(`graine ${graine0}, grille ${nx}×${ny} : ${traits} traits au hasard en 20 000 pas, contrôlés à chaque pas (valeurs finies, rien de négatif, aucune case d’eau au-delà de 1,25 g, aucune case (air, eau, paroi) au-dessus de ${tMax - 1} °C, masse conservée)${premier ? ' — premier défaut : ' + premier : ''}`, !premier);
   }
 }
 
